@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ayllu Basket — Club deportivo de Arica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=Caveat:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --naranja:#E8552A;
+  --naranja-hover:#CC4620;
+  --naranja-suave:#FCEBE4;
+  --naranja-texto:#9B3B14;
+  --tinta:#17171A;
+  --papel:#FAF9F7;
+  --blanco:#FFFFFF;
+  --gris:#6E6E74;
+  --linea:#E4E2DE;
+  --verde-fondo:#E2F1E9;
+  --verde:#1D7A4F;
+  --ancho:1120px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+body{margin:0;background:var(--papel);color:var(--tinta);
+  font-family:"Barlow",system-ui,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:"Barlow Condensed",system-ui,sans-serif;font-weight:700;line-height:1.02;margin:0;letter-spacing:-.01em}
+h1{font-size:clamp(2.7rem,7vw,4.8rem);text-transform:uppercase}
+h2{font-size:clamp(1.9rem,4vw,2.7rem);text-transform:uppercase}
+h3{font-size:1.3rem}
+p{margin:0}
+a{color:inherit;text-decoration:none}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--naranja);outline-offset:3px;border-radius:2px}
+.wrap{max-width:var(--ancho);margin:0 auto;padding:0 24px}
+.seccion{padding:76px 0}
+.seccion+.seccion{border-top:1px solid var(--linea)}
+.cab{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:34px}
+.enlace{font-weight:600;font-size:.95rem;color:var(--naranja)}
+.enlace:hover{text-decoration:underline}
+.ico{flex:none;vertical-align:-2px}
+.ph{background:var(--tinta);position:relative;overflow:hidden}
+.ph::after{content:attr(data-ph);position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:rgba(255,255,255,.3);font-size:.78rem;text-align:center;padding:8px}
+
+/* barra */
+.barra{position:sticky;top:0;z-index:20;background:var(--papel);border-bottom:1px solid var(--linea)}
+.barra .wrap{display:flex;align-items:center;gap:24px;height:70px}
+.marca{display:flex;align-items:center;gap:11px}
+.escudo{width:38px;height:38px;border-radius:50%;background:var(--naranja);flex:none}
+.marca b{display:block;font-family:"Barlow Condensed";font-weight:700;font-size:1.35rem;text-transform:uppercase;line-height:1}
+.marca span{font-size:.75rem;color:var(--gris);letter-spacing:.06em}
+.nav{margin-left:auto;display:flex;gap:26px;font-weight:500;font-size:.95rem;align-items:center}
+.nav a:hover{color:var(--naranja)}
+.boton{display:inline-block;background:var(--naranja);color:#fff;font-weight:600;padding:14px 30px;border-radius:4px;transition:background .15s}
+.boton:hover{background:var(--naranja-hover)}
+.boton.chico{padding:10px 20px;font-size:.95rem}
+.boton-linea{display:inline-block;border:1.5px solid var(--tinta);font-weight:600;padding:12px 26px;border-radius:4px;transition:.15s}
+.boton-linea:hover{background:var(--tinta);color:#fff}
+@media(max-width:900px){.nav a:not(.boton){display:none}}
+
+/* hero */
+.hero{padding:60px 0 76px}
+.hero .wrap{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
+.hero .bajada{font-size:1.1rem;color:var(--gris);margin:22px 0 30px;max-width:40ch}
+.cifras{display:flex;gap:52px;margin-top:46px;padding-top:28px;border-top:1px solid var(--linea)}
+.cifra strong{display:block;font-family:"Barlow Condensed";font-size:2.7rem;font-weight:700;line-height:1}
+.cifra span{font-size:.9rem;color:var(--gris)}
+.hero .ph{aspect-ratio:4/3;border-radius:6px}
+@media(max-width:880px){.hero .wrap{grid-template-columns:1fr;gap:36px}.hero .ph{order:-1;aspect-ratio:16/10}}
+
+/* partidos */
+.partidos{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.partido{background:var(--blanco);border:1px solid var(--linea);border-radius:6px;padding:20px;transition:border-color .15s}
+.partido:hover{border-color:var(--tinta)}
+.partido .meta{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}
+.fecha{font-size:.86rem;color:var(--gris);display:flex;align-items:center;gap:7px}
+.pill{font-size:.74rem;font-weight:600;padding:4px 10px;border-radius:3px;white-space:nowrap}
+.pill.cat{background:var(--naranja-suave);color:var(--naranja-texto)}
+.pill.ok{background:var(--verde-fondo);color:var(--verde)}
+.equipo{display:flex;align-items:center;gap:10px;padding:7px 0;font-weight:600}
+.dot{width:26px;height:26px;border-radius:50%;background:var(--naranja);flex:none}
+.dot.rival{background:#3A3A42}
+.vs{margin-left:auto;color:var(--naranja);font-weight:600;font-size:.9rem}
+.marcador{margin-left:auto;font-family:"Barlow Condensed";font-size:1.4rem}
+.sede{display:flex;align-items:center;gap:7px;margin-top:14px;padding-top:13px;border-top:1px solid var(--linea);font-size:.86rem;color:var(--gris)}
+@media(max-width:880px){.partidos{grid-template-columns:1fr}}
+
+/* categorias */
+.cats{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+.cat{background:var(--blanco);border:1px solid var(--linea);border-radius:6px;overflow:hidden;display:flex;flex-direction:column;position:relative;transition:border-color .15s}
+.cat:hover{border-color:var(--tinta)}
+.cat.destacada{border:1.5px solid var(--naranja)}
+.destaque{position:absolute;top:12px;right:12px;background:var(--naranja);color:#fff;font-size:.7rem;font-weight:600;padding:4px 10px;border-radius:3px;z-index:2}
+.cat .ph{aspect-ratio:4/3}
+.cat .cuerpo{padding:18px;display:flex;flex-direction:column;gap:10px;flex:1}
+.cat h3{text-transform:uppercase}
+.edad{font-size:.86rem;color:var(--gris)}
+.horario{display:flex;align-items:center;gap:8px;font-size:.88rem;color:var(--gris);margin-top:auto;padding-top:10px;border-top:1px solid var(--linea)}
+@media(max-width:900px){.cats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.cats{grid-template-columns:1fr}}
+
+/* valores */
+.valores{background:var(--tinta);color:#EDEBE8;padding:70px 0}
+.valores .wrap{display:grid;grid-template-columns:1fr 1.2fr;gap:60px;align-items:center}
+.cita{font-family:"Caveat",cursive;font-size:clamp(2rem,4vw,2.9rem);line-height:1.25;color:#fff}
+.cita-autor{margin-top:14px;font-size:.9rem;color:#8F8E8B}
+.rejilla{display:grid;grid-template-columns:repeat(4,1fr);gap:26px;text-align:center}
+.valor svg{color:var(--naranja)}
+.valor p{margin-top:12px;font-size:.92rem;line-height:1.4}
+@media(max-width:880px){.valores .wrap{grid-template-columns:1fr;gap:40px}.rejilla{grid-template-columns:repeat(2,1fr);gap:32px}}
+
+/* noticias */
+.noticias{display:grid;grid-template-columns:repeat(3,1fr);gap:26px}
+.nota .ph{aspect-ratio:16/10;border-radius:6px;margin-bottom:14px}
+.nota time{font-size:.83rem;color:var(--gris)}
+.nota h3{margin-top:5px;font-size:1.22rem;text-transform:none}
+.nota:hover h3{color:var(--naranja)}
+@media(max-width:880px){.noticias{grid-template-columns:1fr}}
+
+/* auspiciadores */
+.logos{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:34px}
+.logo{height:28px;width:112px;background:#D2D0CB;border-radius:3px}
+
+/* footer */
+footer{background:var(--tinta);color:#C9C7C4;padding:60px 0 30px}
+.pie{display:grid;grid-template-columns:1.5fr 1fr 1.1fr 1.3fr;gap:40px}
+footer h4{font-family:"Barlow Condensed";font-size:1.05rem;text-transform:uppercase;color:#fff;margin:0 0 16px;font-weight:600}
+footer ul{list-style:none;margin:0;padding:0;display:grid;gap:9px;font-size:.92rem}
+footer li{display:flex;align-items:center;gap:9px}
+footer a:hover{color:var(--naranja)}
+.suscribir{display:flex;gap:8px;margin-top:14px}
+.suscribir input{flex:1;min-width:0;background:#242429;border:1px solid #35353B;color:#fff;border-radius:4px;padding:11px 13px;font:inherit;font-size:.9rem}
+.suscribir input::placeholder{color:#7C7B79}
+.suscribir button{background:var(--naranja);color:#fff;border:0;border-radius:4px;padding:11px 20px;font:inherit;font-weight:600;cursor:pointer}
+.suscribir button:hover{background:var(--naranja-hover)}
+.legal{margin-top:44px;padding-top:22px;border-top:1px solid #2E2E33;font-size:.85rem;color:#8B8A88}
+@media(max-width:900px){.pie{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.pie{grid-template-columns:1fr;gap:30px}}
+</style>
+</head>
+<body>
+
+<header class="barra">
+  <div class="wrap">
+    <a class="marca" href="#">
+      <span class="escudo"></span>
+      <span><b>Ayllu Basket</b><span>Club deportivo</span></span>
+    </a>
+    <nav class="nav">
+      <a href="#encuentros">Encuentros</a>
+      <a href="#academia">Academia</a>
+      <a href="#club">El club</a>
+      <a href="#noticias">Noticias</a>
+      <a class="boton chico" href="#contacto">Únete al club</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <h1>Más que un club,<br>una comunidad</h1>
+      <p class="bajada">Formamos jugadores y personas en Arica, desde el mini basket hasta la categoría adulta.</p>
+      <a class="boton" href="#academia">Ver horarios de entrenamiento</a>
+      <div class="cifras">
+        <div class="cifra"><strong>+300</strong><span>Partidos jugados</span></div>
+        <div class="cifra"><strong>12</strong><span>Categorías formativas</span></div>
+      </div>
+    </div>
+    <div class="ph" data-ph="foto: equipo en círculo"></div>
+  </div>
+</section>
+
+<section class="seccion" id="encuentros">
+  <div class="wrap">
+    <div class="cab">
+      <h2>Próximos encuentros</h2>
+      <a class="enlace" href="#">Ver calendario completo</a>
+    </div>
+    <div class="partidos">
+      <a class="partido" href="#">
+        <div class="meta">
+          <span class="fecha"><svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>Sáb 26 oct · 16:30</span>
+          <span class="pill cat">U15 masculino</span>
+        </div>
+        <div class="equipo"><span class="dot"></span>Ayllu Basket<span class="vs">VS</span></div>
+        <div class="equipo"><span class="dot rival"></span>Cóndores Basket</div>
+        <div class="sede"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Coliseo Polideportivo Sur</div>
+      </a>
+      <a class="partido" href="#">
+        <div class="meta">
+          <span class="fecha"><svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>Dom 27 oct · 11:00</span>
+          <span class="pill cat">U17 femenino</span>
+        </div>
+        <div class="equipo"><span class="dot"></span>Ayllu Basket<span class="vs">VS</span></div>
+        <div class="equipo"><span class="dot rival"></span>Alianza del Valle</div>
+        <div class="sede"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Cancha Techada 1</div>
+      </a>
+      <a class="partido" href="#">
+        <div class="meta">
+          <span class="fecha">Finalizado</span>
+          <span class="pill ok">Victoria</span>
+        </div>
+        <div class="equipo"><span class="dot"></span>Ayllu Basket<span class="marcador">74</span></div>
+        <div class="equipo"><span class="dot rival"></span>Titanes BC<span class="marcador">59</span></div>
+        <div class="sede"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Liga Metropolitana</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="seccion" id="academia">
+  <div class="wrap">
+    <div class="cab">
+      <h2>Academia y categorías</h2>
+      <a class="enlace" href="#">Ver horarios completos</a>
+    </div>
+    <div class="cats">
+      <a class="cat" href="#">
+        <span class="ph" data-ph="foto: niño con balón"></span>
+        <span class="cuerpo">
+          <h3>Mini basket</h3>
+          <span class="edad">4 a 7 años</span>
+          <span class="horario"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Mar y jue · 16:30</span>
+        </span>
+      </a>
+      <a class="cat" href="#">
+        <span class="ph" data-ph="foto: niños entrenando"></span>
+        <span class="cuerpo">
+          <h3>U9 · U11</h3>
+          <span class="edad">8 a 11 años</span>
+          <span class="horario"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Mar y jue · 18:00</span>
+        </span>
+      </a>
+      <a class="cat destacada" href="#">
+        <span class="destaque">Más popular</span>
+        <span class="ph" data-ph="foto: juvenil driblando"></span>
+        <span class="cuerpo">
+          <h3>U13 · U15</h3>
+          <span class="edad">12 a 15 años</span>
+          <span class="horario"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Lun, mié y vie · 17:30</span>
+        </span>
+      </a>
+      <a class="cat" href="#">
+        <span class="ph" data-ph="foto: jugadora adulta"></span>
+        <span class="cuerpo">
+          <h3>U17 y mayores</h3>
+          <span class="edad">16 años en adelante</span>
+          <span class="horario"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Lun a jue · 19:30</span>
+        </span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="valores" id="club">
+  <div class="wrap">
+    <div>
+      <p class="cita">Disciplina hoy,<br>grandes historias mañana.</p>
+      <p class="cita-autor">Ayllu Basket · Arica, Chile</p>
+    </div>
+    <div class="rejilla">
+      <div class="valor">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>
+        <p>Deporte<br>con valores</p>
+      </div>
+      <div class="valor">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 20V13M12 20V8M19 20V4"/></svg>
+        <p>Desarrollo<br>integral</p>
+      </div>
+      <div class="valor">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3.2"/><path d="M3 19c0-3.2 2.7-5 6-5s6 1.8 6 5"/><path d="M16 7.5a3 3 0 0 1 0 5.6M18 19c0-2.4-1-4-2.5-4.6"/></svg>
+        <p>Comunidad<br>y familia</p>
+      </div>
+      <div class="valor">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 19l6-9 4 5 3-4 5 8z"/></svg>
+        <p>Arica<br>y su gente</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="seccion" id="noticias">
+  <div class="wrap">
+    <div class="cab">
+      <h2>Noticias del club</h2>
+      <a class="enlace" href="#">Ver todas</a>
+    </div>
+    <div class="noticias">
+      <a class="nota" href="#"><span class="ph" data-ph="foto"></span><time datetime="2024-10-12">12 octubre 2024</time><h3>Gran participación en el torneo regional</h3></a>
+      <a class="nota" href="#"><span class="ph" data-ph="foto"></span><time datetime="2024-10-05">5 octubre 2024</time><h3>Matrículas abiertas 2024</h3></a>
+      <a class="nota" href="#"><span class="ph" data-ph="foto"></span><time datetime="2024-09-28">28 septiembre 2024</time><h3>Ayllu sigue creciendo</h3></a>
+    </div>
+  </div>
+</section>
+
+<section class="seccion">
+  <div class="wrap logos">
+    <span class="logo"></span><span class="logo"></span><span class="logo"></span>
+    <span class="logo"></span><span class="logo"></span><span class="logo"></span>
+  </div>
+</section>
+
+<footer id="contacto">
+  <div class="wrap">
+    <div class="pie">
+      <div>
+        <div class="marca" style="color:#fff;margin-bottom:14px">
+          <span class="escudo"></span>
+          <span><b>Ayllu Basket</b><span style="color:#8B8A88">Club deportivo</span></span>
+        </div>
+        <p style="font-size:.92rem;max-width:30ch">Comunidad que vive el básquet.</p>
+      </div>
+      <div>
+        <h4>Navegación</h4>
+        <ul>
+          <li><a href="#encuentros">Encuentros</a></li>
+          <li><a href="#academia">Academia</a></li>
+          <li><a href="#club">El club</a></li>
+          <li><a href="#noticias">Noticias</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contacto</h4>
+        <ul>
+          <li><svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Arica, Chile</li>
+          <li><svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg><a href="mailto:ayllubasket@gmail.com">ayllubasket@gmail.com</a></li>
+          <li><svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1z"/></svg><a href="tel:+56985284500">+56 9 8528 4500</a></li>
+          <li style="gap:14px;margin-top:4px"><a href="#">Instagram</a><a href="#">Facebook</a><a href="#">YouTube</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Únete a nuestra comunidad</h4>
+        <p style="font-size:.92rem">Recibe novedades, partidos y actividades.</p>
+        <form class="suscribir" onsubmit="return false">
+          <label for="correo" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Tu correo electrónico</label>
+          <input id="correo" type="email" placeholder="nombre@correo.cl">
+          <button type="submit">Suscribirme</button>
+        </form>
+      </div>
+    </div>
+    <p class="legal">© 2024 Ayllu Basket · Club deportivo de Arica</p>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ayllu Basket — Panel de tesorería</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --naranja:#E8552A;--naranja-hover:#CC4620;--naranja-suave:#FCEBE4;--naranja-texto:#9B3B14;
+  --tinta:#17171A;--papel:#F4F3F1;--blanco:#FFFFFF;--gris:#6E6E74;--linea:#E1DFDB;
+  --verde:#1D7A4F;--verde-fondo:#E2F1E9;--rojo:#B3261E;--rojo-fondo:#FBE9E7;
+  --ambar:#8A6A12;--ambar-fondo:#FFF6E3;--morado:#5B3A8E;--morado-fondo:#EEE8F7;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--papel);color:var(--tinta);font-family:"Barlow",system-ui,sans-serif;font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1{font-family:"Barlow Condensed",system-ui,sans-serif;font-weight:700;margin:0;font-size:1.9rem;text-transform:uppercase;letter-spacing:-.01em;line-height:1.05}
+h2{font-size:1.1rem;font-weight:600;margin:0}
+p{margin:0}
+button{font:inherit}
+:is(a,button,input,select,textarea):focus-visible{outline:2px solid var(--naranja);outline-offset:2px;border-radius:3px}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px}
+
+.barra{background:var(--tinta);color:#fff;position:sticky;top:0;z-index:20}
+.barra .wrap{display:flex;align-items:center;gap:14px;height:60px}
+.escudo{width:32px;height:32px;border-radius:50%;background:var(--naranja);flex:none}
+.barra b{font-family:"Barlow Condensed";font-size:1.2rem;text-transform:uppercase}
+.rol{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:.9rem;color:#B9B7B4}
+.avatar{width:30px;height:30px;border-radius:50%;background:#3A3A42;display:grid;place-items:center;font-size:.75rem;font-weight:600;color:#fff}
+
+.tabs{background:var(--blanco);border-bottom:1px solid var(--linea);position:sticky;top:60px;z-index:19;overflow-x:auto}
+.tabs .wrap{display:flex;gap:4px}
+.tab{padding:14px 16px;border:0;background:none;color:var(--gris);font-weight:500;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent}
+.tab:hover{color:var(--tinta)}
+.tab[aria-selected="true"]{color:var(--tinta);border-bottom-color:var(--naranja);font-weight:600}
+.url{font-family:ui-monospace,Menlo,monospace;font-size:.78rem;color:var(--gris);padding:8px 0 0}
+
+main{padding:24px 0 70px}
+.cabecera{margin-bottom:20px}
+.sub{color:var(--gris);font-size:.95rem;margin-top:4px}
+.tarjeta{background:var(--blanco);border:1px solid var(--linea);border-radius:8px}
+.pad{padding:18px}
+.btn{background:var(--naranja);color:#fff;border:0;border-radius:5px;padding:11px 20px;font-weight:600;cursor:pointer}
+.btn:hover{background:var(--naranja-hover)}
+.btn.gris{background:var(--blanco);color:var(--tinta);border:1px solid var(--linea)}
+.btn.gris:hover{background:var(--papel)}
+.btn.chico{padding:8px 14px;font-size:.9rem}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.pill{font-size:.75rem;font-weight:600;padding:3px 9px;border-radius:3px;display:inline-block;white-space:nowrap}
+.pill.ok{background:var(--verde-fondo);color:var(--verde)}
+.pill.no{background:var(--rojo-fondo);color:var(--rojo)}
+.pill.esp{background:var(--ambar-fondo);color:var(--ambar)}
+.pill.cat{background:var(--naranja-suave);color:var(--naranja-texto)}
+.pill.beca{background:var(--morado-fondo);color:var(--morado)}
+.pill.gris{background:#EDECEA;color:#4A4A4E}
+label.campo{display:grid;gap:5px;font-size:.85rem;color:var(--gris);font-weight:500}
+input,select,textarea{background:var(--blanco);border:1px solid var(--linea);border-radius:5px;padding:10px 12px;font:inherit;color:inherit;width:100%}
+.aviso{display:flex;gap:10px;border-radius:6px;padding:12px 14px;font-size:.9rem;margin-bottom:18px;background:var(--ambar-fondo);border:1px solid #F0DEB4;color:#6B5312}
+.aviso.priv{background:var(--morado-fondo);border-color:#D6C9EC;color:#4A2F74}
+
+.resumen{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1px;background:var(--linea);border:1px solid var(--linea);border-radius:8px;overflow:hidden;margin-bottom:18px}
+.kpi{background:var(--blanco);padding:16px}
+.kpi span{display:block;font-size:.82rem;color:var(--gris)}
+.kpi b{font-family:"Barlow Condensed";font-size:1.9rem;font-weight:700;line-height:1.1}
+
+.fila-j{display:flex;align-items:center;gap:12px;padding:14px 16px;border-top:1px solid var(--linea);flex-wrap:wrap}
+.fila-j:first-child{border-top:0}
+.ini{width:36px;height:36px;border-radius:50%;background:#EDECEA;display:grid;place-items:center;font-size:.78rem;font-weight:600;color:#4A4A4E;flex:none}
+.nom{font-weight:600;min-width:0}
+.nom small{display:block;font-weight:400;color:var(--gris);font-size:.83rem}
+.acc{margin-left:auto;display:flex;gap:8px;align-items:center}
+.form-pago{padding:0 16px 16px;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));align-items:end;background:#FBFAF9;border-top:1px solid var(--linea)}
+.form-pago.oculto{display:none}
+.form-pago > :first-child{padding-top:14px}
+
+.mov{display:flex;gap:12px;padding:12px 16px;border-top:1px solid var(--linea);font-size:.91rem;align-items:center;flex-wrap:wrap}
+.mov small{color:var(--gris)}
+.oculto{display:none}
+@media(max-width:600px){.acc{margin-left:0;width:100%}.acc .btn{flex:1}}
+</style>
+</head>
+<body>
+
+<header class="barra">
+  <div class="wrap">
+    <span class="escudo"></span>
+    <b>Ayllu Basket</b>
+    <span class="rol">Tesorería <span class="avatar">MR</span></span>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Secciones de tesorería">
+  <div class="wrap">
+    <button class="tab" role="tab" aria-selected="true" data-vista="pagos">Pagos</button>
+    <button class="tab" role="tab" aria-selected="false" data-vista="morosidad">Morosidad</button>
+    <button class="tab" role="tab" aria-selected="false" data-vista="becas">Becas</button>
+  </div>
+</nav>
+
+<main><div class="wrap">
+<p class="url" id="url">/tesoreria/pagos/</p>
+
+<!-- ===== HU-12 / HU-21 PAGOS ===== -->
+<section id="v-pagos">
+  <div class="cabecera">
+    <h1>Pagos de septiembre</h1>
+    <p class="sub">HU-12 · Registra aquí los pagos en efectivo, transferencia o POS. Los de Webpay entran solos.</p>
+  </div>
+
+  <div class="resumen">
+    <div class="kpi"><span>Recaudado este mes</span><b>$3.150.000</b></div>
+    <div class="kpi"><span>Cuotas pendientes</span><b>39</b></div>
+    <div class="kpi"><span>Pagadas por Webpay</span><b>82</b></div>
+    <div class="kpi"><span>Registradas a mano</span><b>44</b></div>
+  </div>
+
+  <div class="tarjeta" id="lista-pagos"></div>
+</section>
+
+<!-- ===== HU-15 / HU-22 MOROSIDAD ===== -->
+<section id="v-morosidad" class="oculto">
+  <div class="cabecera">
+    <h1>Alertas de morosidad</h1>
+    <p class="sub">HU-15 · La alerta es informativa: no excluye al jugador de entrenamientos ni de nóminas.</p>
+  </div>
+
+  <div class="aviso">
+    <span aria-hidden="true">&#9432;</span>
+    <span>El entrenador no ve esta pantalla ni ninguna marca de deuda en su listado de jugadores.</span>
+  </div>
+
+  <div class="tarjeta pad" style="margin-bottom:16px;display:flex;gap:14px;align-items:end;flex-wrap:wrap">
+    <label class="campo" style="max-width:220px">Generar alerta a partir de
+      <select><option>1 cuota impaga</option><option selected>2 cuotas impagas</option><option>3 cuotas impagas</option></select>
+    </label>
+    <button class="btn gris chico">Guardar umbral</button>
+  </div>
+
+  <div class="tarjeta">
+    <div class="fila-j">
+      <span class="ini">JF</span>
+      <span class="nom">Joaquín Flores Tapia<small>U15 Varones · 2 cuotas · $50.000</small></span>
+      <span class="acc">
+        <small class="sub" style="font-size:.83rem">Último aviso: 2 sep</small>
+        <button class="btn gris chico" data-cobrar>Reenviar aviso</button>
+      </span>
+    </div>
+    <div class="fila-j">
+      <span class="ini">VR</span>
+      <span class="nom">Vicente Rojas Cid<small>U15 Varones · 3 cuotas · $75.000</small></span>
+      <span class="acc">
+        <small class="sub" style="font-size:.83rem">Último aviso: 11 sep</small>
+        <button class="btn gris chico" data-cobrar disabled title="Debe pasar al menos una semana">Reenviar aviso</button>
+      </span>
+    </div>
+    <div class="fila-j">
+      <span class="ini">FA</span>
+      <span class="nom">Florencia Araya Pinto<small>U11 · 2 cuotas · $50.000</small></span>
+      <span class="acc">
+        <small class="sub" style="font-size:.83rem">Sin avisos</small>
+        <button class="btn gris chico" data-cobrar>Enviar aviso</button>
+      </span>
+    </div>
+  </div>
+  <p class="sub" style="margin-top:12px">Cada envío queda registrado con fecha y destinatario. No se puede reenviar dos veces en la misma semana.</p>
+</section>
+
+<!-- ===== HU-14 BECAS ===== -->
+<section id="v-becas" class="oculto">
+  <div class="cabecera">
+    <h1>Becas vigentes</h1>
+    <p class="sub">HU-14 · Durante la vigencia no se generan cuotas ni deuda para el jugador.</p>
+  </div>
+
+  <div class="aviso priv">
+    <span aria-hidden="true">&#9679;</span>
+    <span>Información confidencial. El jugador becado aparece como alumno regular para todos los demás perfiles, incluido su propio apoderado.</span>
+  </div>
+
+  <div class="tarjeta" style="margin-bottom:16px">
+    <div class="fila-j">
+      <span class="ini">MC</span>
+      <span class="nom">Matías Choque Vilca<small>U15 Varones</small></span>
+      <span class="acc"><span class="pill beca">Vigente hasta dic 2026</span><button class="btn gris chico">Editar</button></span>
+    </div>
+    <div class="fila-j">
+      <span class="ini">AC</span>
+      <span class="nom">Agustín Caqueo Mamani<small>U15 Varones</small></span>
+      <span class="acc"><span class="pill beca">Vigente hasta jun 2026</span><button class="btn gris chico">Editar</button></span>
+    </div>
+    <div class="fila-j">
+      <span class="ini">SP</span>
+      <span class="nom">Sofía Pizarro Luna<small>U13 Damas</small></span>
+      <span class="acc"><span class="pill gris">Expirada en mar 2026</span><button class="btn gris chico">Renovar</button></span>
+    </div>
+  </div>
+
+  <div class="tarjeta pad">
+    <h2>Asignar beca</h2>
+    <p class="sub" style="margin-bottom:14px">La suspensión de cobro empieza en el período que indiques.</p>
+    <div style="display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));align-items:end">
+      <label class="campo">Jugador<select><option>Buscar por nombre o RUT…</option></select></label>
+      <label class="campo">Desde<input type="month" value="2026-10"></label>
+      <label class="campo">Hasta<input type="month" value="2026-12"></label>
+      <button class="btn chico">Asignar</button>
+    </div>
+  </div>
+</section>
+</div></main>
+
+<script>
+const jugadores = [
+  {n:"Tomás Vergara Cortés", c:"U15 Varones", e:"pendiente"},
+  {n:"Benjamín Araya Soto", c:"U15 Varones", e:"webpay"},
+  {n:"Ignacio Mamani Choque", c:"U13", e:"pendiente"},
+  {n:"Camila Tapia Ríos", c:"U13 Damas", e:"pagado"},
+  {n:"Joaquín Flores Tapia", c:"U15 Varones", e:"pendiente"}
+];
+const ini = n => n.split(" ").map(p=>p[0]).slice(0,2).join("");
+const estados = {
+  pendiente:'<span class="pill no">Pendiente</span>',
+  pagado:'<span class="pill ok">Pagado · efectivo</span>',
+  webpay:'<span class="pill ok">Pagado · Webpay</span>'
+};
+
+document.getElementById("lista-pagos").innerHTML = jugadores.map((j,i)=>`
+  <div class="fila-j">
+    <span class="ini">${ini(j.n)}</span>
+    <span class="nom">${j.n}<small>${j.c} · $25.000</small></span>
+    <span class="acc">
+      ${estados[j.e]}
+      ${j.e==="pendiente" ? `<button class="btn chico" data-reg="${i}">Registrar pago</button>` : ""}
+    </span>
+  </div>
+  <div class="form-pago oculto" id="f${i}">
+    <label class="campo">Medio de pago
+      <select><option>Efectivo</option><option>Transferencia</option><option>Débito / POS</option><option>Otro autorizado</option></select>
+    </label>
+    <label class="campo">Período<select><option>Septiembre 2026</option><option>Agosto 2026</option></select></label>
+    <label class="campo">Monto<input type="text" value="$25.000"></label>
+    <label class="campo">Referencia<input type="text" placeholder="N.º de comprobante"></label>
+    <button class="btn chico" data-guardar="${i}">Guardar</button>
+  </div>`).join("") + `
+  <div class="mov" style="background:#FBFAF9"><b style="font-weight:600">Últimos movimientos</b></div>
+  <div class="mov"><span>Camila Tapia · $25.000 · efectivo</span><small style="margin-left:auto">Registrado por M. Rojas · 11 sep 18:40</small></div>
+  <div class="mov"><span>Benjamín Araya · $25.000 · Webpay</span><small style="margin-left:auto">Confirmado automáticamente · 9 sep 21:12</small></div>`;
+
+document.getElementById("lista-pagos").addEventListener("click", e => {
+  const abrir = e.target.closest("[data-reg]");
+  if(abrir) document.getElementById("f"+abrir.dataset.reg).classList.toggle("oculto");
+  const guardar = e.target.closest("[data-guardar]");
+  if(guardar){
+    guardar.textContent = "Pago registrado";
+    setTimeout(()=>{
+      document.getElementById("f"+guardar.dataset.guardar).classList.add("oculto");
+      guardar.textContent = "Guardar";
+    }, 1400);
+  }
+});
+
+document.querySelectorAll("[data-cobrar]").forEach(b => b.addEventListener("click", () => {
+  b.textContent = "Aviso enviado";
+  b.disabled = true;
+}));
+
+const rutas = {pagos:"/tesoreria/pagos/",morosidad:"/tesoreria/morosidad/",becas:"/tesoreria/becas/"};
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => {
+  const v = t.dataset.vista;
+  document.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-selected", x===t?"true":"false"));
+  Object.keys(rutas).forEach(k => document.getElementById("v-"+k).classList.toggle("oculto", k!==v));
+  document.getElementById("url").textContent = rutas[v];
+  window.scrollTo({top:0});
+}));
+</script>
+</body>
+</html>

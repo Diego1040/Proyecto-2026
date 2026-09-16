@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ayllu Basket — Panel del entrenador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --naranja:#E8552A;--naranja-hover:#CC4620;--naranja-suave:#FCEBE4;--naranja-texto:#9B3B14;
+  --tinta:#17171A;--papel:#F4F3F1;--blanco:#FFFFFF;--gris:#6E6E74;--linea:#E1DFDB;
+  --verde:#1D7A4F;--verde-fondo:#E2F1E9;--rojo:#B3261E;--rojo-fondo:#FBE9E7;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--papel);color:var(--tinta);font-family:"Barlow",system-ui,sans-serif;font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1,h2{font-family:"Barlow Condensed",system-ui,sans-serif;font-weight:700;margin:0;line-height:1.05;text-transform:uppercase;letter-spacing:-.01em}
+h1{font-size:1.9rem}
+h2{font-size:1.15rem;text-transform:none;font-weight:600}
+p{margin:0}
+a{color:inherit;text-decoration:none}
+button{font:inherit}
+:is(a,button,input,select):focus-visible{outline:2px solid var(--naranja);outline-offset:2px;border-radius:3px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+
+/* barra */
+.barra{background:var(--tinta);color:#fff;position:sticky;top:0;z-index:20}
+.barra .wrap{display:flex;align-items:center;gap:14px;height:60px}
+.escudo{width:32px;height:32px;border-radius:50%;background:var(--naranja);flex:none}
+.barra b{font-family:"Barlow Condensed";font-size:1.2rem;text-transform:uppercase;letter-spacing:.01em}
+.rol{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:.9rem;color:#B9B7B4}
+.avatar{width:30px;height:30px;border-radius:50%;background:#3A3A42;display:grid;place-items:center;font-size:.78rem;color:#fff;font-weight:600}
+
+/* nav de secciones */
+.tabs{background:var(--blanco);border-bottom:1px solid var(--linea);position:sticky;top:60px;z-index:19;overflow-x:auto}
+.tabs .wrap{display:flex;gap:4px}
+.tab{padding:14px 16px;border:0;background:none;color:var(--gris);font-weight:500;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent}
+.tab:hover{color:var(--tinta)}
+.tab[aria-selected="true"]{color:var(--tinta);border-bottom-color:var(--naranja);font-weight:600}
+.url{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.78rem;color:var(--gris);padding:8px 0 0}
+
+main{padding:26px 0 70px}
+.cabecera{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.sub{color:var(--gris);font-size:.95rem;margin-top:4px}
+.tarjeta{background:var(--blanco);border:1px solid var(--linea);border-radius:8px}
+.btn{background:var(--naranja);color:#fff;border:0;border-radius:5px;padding:11px 20px;font-weight:600;cursor:pointer}
+.btn:hover{background:var(--naranja-hover)}
+.btn.gris{background:var(--blanco);color:var(--tinta);border:1px solid var(--linea)}
+.btn.gris:hover{background:var(--papel)}
+.btn.chico{padding:8px 14px;font-size:.9rem}
+.pill{font-size:.75rem;font-weight:600;padding:3px 9px;border-radius:3px;white-space:nowrap}
+.pill.cat{background:var(--naranja-suave);color:var(--naranja-texto)}
+.pill.ok{background:var(--verde-fondo);color:var(--verde)}
+.pill.no{background:var(--rojo-fondo);color:var(--rojo)}
+.pill.gris{background:#EDECEA;color:#4A4A4E}
+select,input[type=date],input[type=time],input[type=text]{
+  background:var(--blanco);border:1px solid var(--linea);border-radius:5px;padding:10px 12px;font:inherit;color:inherit;max-width:100%}
+label.campo{display:grid;gap:5px;font-size:.85rem;color:var(--gris);font-weight:500}
+.aviso{display:flex;gap:10px;background:#FFF8E9;border:1px solid #F0DEB4;color:#6B5312;border-radius:6px;padding:12px 14px;font-size:.9rem;margin-bottom:20px}
+
+/* categorias */
+.grid-cat{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.cat{padding:18px;display:grid;gap:10px}
+.cat .top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.cat .n{font-family:"Barlow Condensed";font-size:1.5rem;font-weight:700}
+.cat .dato{display:flex;justify-content:space-between;font-size:.9rem;color:var(--gris);border-top:1px solid var(--linea);padding-top:9px}
+
+/* asistencia */
+.barra-filtros{display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin-bottom:16px}
+.lista{overflow:hidden}
+.jugador{display:flex;align-items:center;gap:12px;padding:13px 16px;border-top:1px solid var(--linea)}
+.jugador:first-child{border-top:0}
+.ini{width:36px;height:36px;border-radius:50%;background:#EDECEA;display:grid;place-items:center;font-size:.8rem;font-weight:600;color:#4A4A4E;flex:none}
+.nombre{font-weight:500;min-width:0}
+.nombre small{display:block;color:var(--gris);font-weight:400;font-size:.82rem}
+.marcar{margin-left:auto;display:flex;gap:6px;flex:none}
+.marcar button{border:1px solid var(--linea);background:var(--blanco);border-radius:5px;padding:9px 14px;min-width:46px;cursor:pointer;font-size:.88rem;font-weight:500;color:var(--gris)}
+.marcar button[aria-pressed="true"].si{background:var(--verde-fondo);border-color:var(--verde);color:var(--verde)}
+.marcar button[aria-pressed="true"].no{background:var(--rojo-fondo);border-color:var(--rojo);color:var(--rojo)}
+.pie-lista{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:16px;border-top:1px solid var(--linea);background:#FBFAF9}
+.contador{font-size:.92rem;color:var(--gris);margin-right:auto}
+.contador b{color:var(--tinta)}
+
+/* planificacion */
+.dos{display:grid;grid-template-columns:340px 1fr;gap:18px;align-items:start}
+.form{padding:18px;display:grid;gap:14px}
+.sesion{padding:15px 16px;border-top:1px solid var(--linea);display:grid;gap:6px}
+.sesion:first-child{border-top:0}
+.sesion .cab{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.sesion .obj{font-size:.93rem;color:var(--gris)}
+.sesion .resp{font-size:.85rem;color:var(--gris)}
+@media(max-width:800px){.dos{grid-template-columns:1fr}}
+
+/* nominas */
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:12px 16px;border-top:1px solid var(--linea);font-size:.93rem}
+th{background:#FBFAF9;border-top:0;font-size:.8rem;color:var(--gris);font-weight:600;letter-spacing:.02em}
+td.num,th.num{text-align:right}
+input[type=checkbox]{width:19px;height:19px;accent-color:var(--naranja)}
+.oculto{display:none}
+@media(max-width:600px){
+  h1{font-size:1.6rem}
+  .jugador{flex-wrap:wrap}
+  .marcar{width:100%;margin-left:0}
+  .marcar button{flex:1}
+  table{font-size:.88rem}
+  th:nth-child(4),td:nth-child(4){display:none}
+}
+</style>
+</head>
+<body>
+
+<header class="barra">
+  <div class="wrap">
+    <span class="escudo"></span>
+    <b>Ayllu Basket</b>
+    <span class="rol">
+      Entrenador
+      <span class="avatar">MF</span>
+    </span>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Secciones del entrenador">
+  <div class="wrap">
+    <button class="tab" role="tab" aria-selected="true" data-vista="categorias">Mis categorías</button>
+    <button class="tab" role="tab" aria-selected="false" data-vista="asistencia">Asistencia</button>
+    <button class="tab" role="tab" aria-selected="false" data-vista="planificacion">Planificación</button>
+    <button class="tab" role="tab" aria-selected="false" data-vista="nominas">Nóminas</button>
+  </div>
+</nav>
+
+<main>
+<div class="wrap">
+  <p class="url" id="url">/entrenador/categorias/</p>
+
+  <!-- ============ MIS CATEGORÍAS ============ -->
+  <section id="v-categorias">
+    <div class="cabecera">
+      <div>
+        <h1>Mis categorías</h1>
+        <p class="sub">Categorías asignadas al cuerpo técnico para la temporada en curso.</p>
+      </div>
+    </div>
+    <div class="grid-cat">
+      <a class="tarjeta cat" href="#" data-ir="asistencia">
+        <div class="top"><span class="n">U13 Damas</span><span class="pill cat">18 jugadoras</span></div>
+        <div class="dato"><span>Próxima sesión</span><span>Lun 15 · 17:30</span></div>
+        <div class="dato"><span>Asistencia del mes</span><span>84%</span></div>
+      </a>
+      <a class="tarjeta cat" href="#" data-ir="asistencia">
+        <div class="top"><span class="n">U15 Varones</span><span class="pill cat">21 jugadores</span></div>
+        <div class="dato"><span>Próxima sesión</span><span>Lun 15 · 19:00</span></div>
+        <div class="dato"><span>Asistencia del mes</span><span>91%</span></div>
+      </a>
+      <a class="tarjeta cat" href="#" data-ir="asistencia">
+        <div class="top"><span class="n">U17 Varones</span><span class="pill cat">16 jugadores</span></div>
+        <div class="dato"><span>Próxima sesión</span><span>Mar 16 · 19:30</span></div>
+        <div class="dato"><span>Asistencia del mes</span><span>78%</span></div>
+      </a>
+    </div>
+  </section>
+
+  <!-- ============ ASISTENCIA ============ -->
+  <section id="v-asistencia" class="oculto">
+    <div class="cabecera">
+      <div>
+        <h1>Control de asistencia</h1>
+        <p class="sub">HU-07 · Se guarda fecha, hora y usuario que registró cada marca.</p>
+      </div>
+    </div>
+
+    <div class="barra-filtros">
+      <label class="campo">Categoría
+        <select id="cat-asis">
+          <option>U13 Damas</option>
+          <option selected>U15 Varones</option>
+          <option>U17 Varones</option>
+        </select>
+      </label>
+      <label class="campo">Fecha de la sesión
+        <input type="date" value="2026-09-15">
+      </label>
+      <label class="campo">Hora
+        <input type="time" value="19:00">
+      </label>
+    </div>
+
+    <div class="tarjeta lista" id="lista-asis"></div>
+  </section>
+
+  <!-- ============ PLANIFICACIÓN ============ -->
+  <section id="v-planificacion" class="oculto">
+    <div class="cabecera">
+      <div>
+        <h1>Planificación de entrenamientos</h1>
+        <p class="sub">HU-06 · Cada sesión registra fecha, hora, objetivo y responsable. El historial se conserva.</p>
+      </div>
+    </div>
+
+    <div class="dos">
+      <form class="tarjeta form" onsubmit="return false">
+        <h2>Nueva sesión</h2>
+        <label class="campo">Categoría
+          <select><option>U13 Damas</option><option selected>U15 Varones</option><option>U17 Varones</option></select>
+        </label>
+        <label class="campo">Fecha
+          <input type="date" value="2026-09-18">
+        </label>
+        <label class="campo">Hora
+          <input type="time" value="19:00">
+        </label>
+        <label class="campo">Objetivo de la sesión
+          <input type="text" placeholder="Defensa en zona y transición">
+        </label>
+        <label class="campo">Responsable
+          <select><option>Marcelo Fuentes (head coach)</option><option>Ayudante técnico</option></select>
+        </label>
+        <button class="btn" type="submit">Guardar sesión</button>
+      </form>
+
+      <div class="tarjeta">
+        <div class="sesion">
+          <div class="cab"><b>Lun 15 sep · 19:00</b><span class="pill cat">U15 Varones</span></div>
+          <p class="obj">Fundamentos de bote bajo presión y lectura de bloqueo directo.</p>
+          <p class="resp">Responsable: Marcelo Fuentes</p>
+        </div>
+        <div class="sesion">
+          <div class="cab"><b>Mié 17 sep · 19:00</b><span class="pill cat">U15 Varones</span></div>
+          <p class="obj">Trabajo físico y rebote defensivo.</p>
+          <p class="resp">Responsable: Ayudante técnico</p>
+        </div>
+        <div class="sesion">
+          <div class="cab"><b>Jue 11 sep · 17:30</b><span class="pill cat">U13 Damas</span><span class="pill gris">Realizada</span></div>
+          <p class="obj">Iniciación al pase de pecho y desplazamientos defensivos.</p>
+          <p class="resp">Responsable: Marcelo Fuentes</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ NÓMINAS ============ -->
+  <section id="v-nominas" class="oculto">
+    <div class="cabecera">
+      <div>
+        <h1>Generar nómina</h1>
+        <p class="sub">HU-09 · Selección manual. La morosidad no excluye jugadores de forma automática.</p>
+      </div>
+    </div>
+
+    <div class="aviso">
+      <span aria-hidden="true">&#9432;</span>
+      <span>Esta vista no muestra información financiera ni condición de beca. El perfil Entrenador tiene ese acceso bloqueado por diseño.</span>
+    </div>
+
+    <div class="barra-filtros">
+      <label class="campo">Categoría
+        <select><option>U13 Damas</option><option selected>U15 Varones</option><option>U17 Varones</option></select>
+      </label>
+      <label class="campo">Encuentro
+        <select><option>Sáb 26 oct · vs Cóndores Basket</option><option>Dom 27 oct · vs Alianza del Valle</option></select>
+      </label>
+    </div>
+
+    <div class="tarjeta">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:44px"><input type="checkbox" id="todos" aria-label="Seleccionar todos"></th>
+            <th>Jugador</th>
+            <th>Asistencia último mes</th>
+            <th>Estado deportivo</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-nomina"></tbody>
+      </table>
+      <div class="pie-lista">
+        <span class="contador"><b id="sel">0</b> seleccionados · máximo 12 por nómina</span>
+        <button class="btn gris chico" data-ir="historial">Ver nóminas anteriores</button>
+        <button class="btn chico" id="gen">Generar nómina en PDF</button>
+      </div>
+    </div>
+  </section>
+</div>
+</main>
+
+<script>
+const jugadores = [
+  {n:"Benjamín Araya", c:"Alero · #7", a:92, e:"Disponible"},
+  {n:"Tomás Vergara", c:"Base · #4", a:88, e:"Disponible"},
+  {n:"Ignacio Mamani", c:"Pívot · #12", a:75, e:"Disponible"},
+  {n:"Matías Choque", c:"Escolta · #9", a:96, e:"Disponible"},
+  {n:"Vicente Rojas", c:"Alero · #14", a:64, e:"Lesión validada"},
+  {n:"Joaquín Flores", c:"Base · #3", a:83, e:"Disponible"},
+  {n:"Cristóbal Núñez", c:"Pívot · #21", a:79, e:"Disponible"},
+  {n:"Agustín Caqueo", c:"Escolta · #8", a:71, e:"Disponible"}
+];
+const ini = n => n.split(" ").map(p=>p[0]).slice(0,2).join("");
+
+// Asistencia
+const lista = document.getElementById("lista-asis");
+lista.innerHTML = jugadores.map((j,i)=>`
+  <div class="jugador">
+    <span class="ini">${ini(j.n)}</span>
+    <span class="nombre">${j.n}<small>${j.c}</small></span>
+    <span class="marcar">
+      <button class="si" aria-pressed="false" data-i="${i}" aria-label="Marcar presente a ${j.n}">Sí</button>
+      <button class="no" aria-pressed="false" data-i="${i}" aria-label="Marcar ausente a ${j.n}">No</button>
+    </span>
+  </div>`).join("") + `
+  <div class="pie-lista">
+    <span class="contador"><b id="presentes">0</b> de ${jugadores.length} presentes</span>
+    <button class="btn chico" id="guardar">Guardar asistencia</button>
+  </div>`;
+
+lista.addEventListener("click", e => {
+  const b = e.target.closest(".marcar button");
+  if(!b) return;
+  const fila = b.closest(".marcar");
+  fila.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x===b ? "true" : "false"));
+  document.getElementById("presentes").textContent =
+    lista.querySelectorAll('.si[aria-pressed="true"]').length;
+});
+lista.addEventListener("click", e => {
+  if(e.target.id !== "guardar") return;
+  const sin = jugadores.length - lista.querySelectorAll('button[aria-pressed="true"]').length/1;
+  const marcados = lista.querySelectorAll('.marcar').length -
+    [...lista.querySelectorAll('.marcar')].filter(m=>!m.querySelector('[aria-pressed="true"]')).length;
+  if(marcados < jugadores.length){
+    e.target.textContent = "Faltan jugadores por marcar";
+    setTimeout(()=>e.target.textContent="Guardar asistencia", 1800);
+    return;
+  }
+  e.target.textContent = "Asistencia guardada";
+  setTimeout(()=>e.target.textContent="Guardar asistencia", 1800);
+});
+
+// Nóminas
+const tabla = document.getElementById("tabla-nomina");
+tabla.innerHTML = jugadores.map((j,i)=>`
+  <tr>
+    <td><input type="checkbox" class="sel-j" aria-label="Incluir a ${j.n}"></td>
+    <td><b style="font-weight:500">${j.n}</b><br><small style="color:var(--gris)">${j.c}</small></td>
+    <td class="num">${j.a}%</td>
+    <td><span class="pill ${j.e==="Disponible"?"ok":"no"}">${j.e}</span></td>
+  </tr>`).join("");
+
+const contar = () => document.getElementById("sel").textContent =
+  tabla.querySelectorAll(".sel-j:checked").length;
+tabla.addEventListener("change", contar);
+document.getElementById("todos").addEventListener("change", e => {
+  tabla.querySelectorAll(".sel-j").forEach(c => c.checked = e.target.checked);
+  contar();
+});
+document.getElementById("gen").addEventListener("click", e => {
+  const n = tabla.querySelectorAll(".sel-j:checked").length;
+  e.target.textContent = n === 0 ? "Selecciona jugadores primero" : `Generando PDF (${n})…`;
+  setTimeout(()=>e.target.textContent="Generar nómina en PDF", 1800);
+});
+
+// Navegación entre vistas
+const rutas = {
+  categorias:"/entrenador/categorias/",
+  asistencia:"/entrenador/asistencia/",
+  planificacion:"/entrenador/planificacion/",
+  nominas:"/entrenador/nominas/"
+};
+function ir(v){
+  document.querySelectorAll(".tab").forEach(t =>
+    t.setAttribute("aria-selected", t.dataset.vista === v ? "true" : "false"));
+  Object.keys(rutas).forEach(k =>
+    document.getElementById("v-"+k).classList.toggle("oculto", k !== v));
+  document.getElementById("url").textContent = rutas[v];
+  window.scrollTo({top:0});
+}
+document.querySelectorAll(".tab").forEach(t =>
+  t.addEventListener("click", () => ir(t.dataset.vista)));
+document.querySelectorAll("[data-ir]").forEach(el =>
+  el.addEventListener("click", e => { e.preventDefault(); if(rutas[el.dataset.ir]) ir(el.dataset.ir); }));
+</script>
+</body>
+</html>

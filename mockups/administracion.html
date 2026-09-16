@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ayllu Basket — Panel de administración</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --naranja:#E8552A;--naranja-hover:#CC4620;--naranja-suave:#FCEBE4;--naranja-texto:#9B3B14;
+  --tinta:#17171A;--papel:#F4F3F1;--blanco:#FFFFFF;--gris:#6E6E74;--linea:#E1DFDB;
+  --verde:#1D7A4F;--verde-fondo:#E2F1E9;--rojo:#B3261E;--rojo-fondo:#FBE9E7;
+  --ambar:#8A6A12;--ambar-fondo:#FFF6E3;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--papel);color:var(--tinta);font-family:"Barlow",system-ui,sans-serif;font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1{font-family:"Barlow Condensed",system-ui,sans-serif;font-weight:700;margin:0;font-size:1.9rem;text-transform:uppercase;letter-spacing:-.01em;line-height:1.05}
+h2{font-size:1.1rem;font-weight:600;margin:0}
+p{margin:0}
+button{font:inherit}
+:is(a,button,input,select,textarea):focus-visible{outline:2px solid var(--naranja);outline-offset:2px;border-radius:3px}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px}
+
+.barra{background:var(--tinta);color:#fff;position:sticky;top:0;z-index:20}
+.barra .wrap{display:flex;align-items:center;gap:14px;height:60px}
+.escudo{width:32px;height:32px;border-radius:50%;background:var(--naranja);flex:none}
+.barra b{font-family:"Barlow Condensed";font-size:1.2rem;text-transform:uppercase}
+.rol{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:.9rem;color:#B9B7B4}
+.avatar{width:30px;height:30px;border-radius:50%;background:#3A3A42;display:grid;place-items:center;font-size:.75rem;font-weight:600;color:#fff}
+
+.tabs{background:var(--blanco);border-bottom:1px solid var(--linea);position:sticky;top:60px;z-index:19;overflow-x:auto}
+.tabs .wrap{display:flex;gap:4px}
+.tab{padding:14px 16px;border:0;background:none;color:var(--gris);font-weight:500;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;display:flex;align-items:center;gap:7px}
+.tab:hover{color:var(--tinta)}
+.tab[aria-selected="true"]{color:var(--tinta);border-bottom-color:var(--naranja);font-weight:600}
+.badge{background:var(--naranja);color:#fff;font-size:.72rem;font-weight:600;border-radius:9px;padding:1px 7px}
+.url{font-family:ui-monospace,Menlo,monospace;font-size:.78rem;color:var(--gris);padding:8px 0 0}
+
+main{padding:24px 0 70px}
+.cabecera{margin-bottom:20px}
+.sub{color:var(--gris);font-size:.95rem;margin-top:4px}
+.tarjeta{background:var(--blanco);border:1px solid var(--linea);border-radius:8px}
+.pad{padding:18px}
+.btn{background:var(--naranja);color:#fff;border:0;border-radius:5px;padding:11px 20px;font-weight:600;cursor:pointer}
+.btn:hover{background:var(--naranja-hover)}
+.btn.gris{background:var(--blanco);color:var(--tinta);border:1px solid var(--linea)}
+.btn.gris:hover{background:var(--papel)}
+.btn.peligro{background:var(--blanco);color:var(--rojo);border:1px solid #E8C4C0}
+.btn.peligro:hover{background:var(--rojo-fondo)}
+.btn.chico{padding:8px 14px;font-size:.9rem}
+.pill{font-size:.75rem;font-weight:600;padding:3px 9px;border-radius:3px;display:inline-block;white-space:nowrap}
+.pill.ok{background:var(--verde-fondo);color:var(--verde)}
+.pill.no{background:var(--rojo-fondo);color:var(--rojo)}
+.pill.esp{background:var(--ambar-fondo);color:var(--ambar)}
+.pill.cat{background:var(--naranja-suave);color:var(--naranja-texto)}
+.pill.gris{background:#EDECEA;color:#4A4A4E}
+label.campo{display:grid;gap:5px;font-size:.85rem;color:var(--gris);font-weight:500}
+input,select,textarea{background:var(--blanco);border:1px solid var(--linea);border-radius:5px;padding:10px 12px;font:inherit;color:inherit;width:100%}
+textarea{resize:vertical;min-height:72px}
+.aviso{display:flex;gap:10px;border-radius:6px;padding:12px 14px;font-size:.9rem;margin-bottom:18px;background:var(--ambar-fondo);border:1px solid #F0DEB4;color:#6B5312}
+
+/* fichas */
+.ficha{border-top:1px solid var(--linea);padding:16px}
+.ficha:first-child{border-top:0}
+.ficha .top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ini{width:38px;height:38px;border-radius:50%;background:#EDECEA;display:grid;place-items:center;font-size:.8rem;font-weight:600;color:#4A4A4E;flex:none}
+.ficha .nom{font-weight:600}
+.ficha .nom small{display:block;font-weight:400;color:var(--gris);font-size:.84rem}
+.acciones{margin-left:auto;display:flex;gap:8px}
+.detalle{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--linea);border:1px solid var(--linea);border-radius:6px;overflow:hidden;margin-top:14px}
+.detalle div{background:var(--blanco);padding:11px 13px}
+.detalle span{display:block;font-size:.78rem;color:var(--gris)}
+.rechazo{margin-top:14px;display:grid;gap:10px}
+
+/* categorias */
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:11px 14px;border-top:1px solid var(--linea);font-size:.92rem}
+th{background:#FBFAF9;border-top:0;font-size:.79rem;color:var(--gris);font-weight:600}
+
+/* importar */
+.dropzone{border:2px dashed var(--linea);border-radius:8px;padding:34px 20px;text-align:center;background:var(--blanco)}
+.log{border-top:1px solid var(--linea);padding:12px 16px;font-size:.9rem;display:flex;gap:10px;align-items:flex-start}
+.log:first-child{border-top:0}
+
+.oculto{display:none}
+@media(max-width:600px){
+  .acciones{margin-left:0;width:100%}
+  .acciones .btn{flex:1}
+  th:nth-child(3),td:nth-child(3){display:none}
+}
+</style>
+</head>
+<body>
+
+<header class="barra">
+  <div class="wrap">
+    <span class="escudo"></span>
+    <b>Ayllu Basket</b>
+    <span class="rol">Administración <span class="avatar">PS</span></span>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Secciones de administración">
+  <div class="wrap">
+    <button class="tab" role="tab" aria-selected="true" data-vista="fichas">Fichas pendientes <span class="badge">3</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-vista="categorias">Categorías</button>
+    <button class="tab" role="tab" aria-selected="false" data-vista="importar">Importar desde Excel</button>
+    <button class="tab" role="tab" aria-selected="false" data-vista="documentos">Reglamentos</button>
+  </div>
+</nav>
+
+<main><div class="wrap">
+<p class="url" id="url">/admin/fichas/</p>
+
+<!-- ===== HU-03 VALIDACIÓN DE FICHAS ===== -->
+<section id="v-fichas">
+  <div class="cabecera">
+    <h1>Fichas pendientes</h1>
+    <p class="sub">HU-03 · Una ficha no validada no queda activa. El rechazo exige un motivo.</p>
+  </div>
+
+  <div class="tarjeta">
+    <div class="ficha">
+      <div class="top">
+        <span class="ini">TV</span>
+        <span class="nom">Tomás Vergara Cortés<small>21.345.678-9 · nacido el 12/04/2011</small></span>
+        <span class="acciones">
+          <button class="btn peligro chico" data-rechazar>Rechazar</button>
+          <button class="btn chico" data-aprobar>Aprobar</button>
+        </span>
+      </div>
+      <div class="detalle">
+        <div><span>Categoría calculada</span>U15 Varones</div>
+        <div><span>Apoderada</span>Carolina Vergara</div>
+        <div><span>Emergencia</span>+56 9 8528 4500</div>
+        <div><span>Alerta de salud</span>Alergia al maní</div>
+      </div>
+      <div class="rechazo oculto">
+        <label class="campo">Motivo del rechazo (obligatorio)
+          <textarea placeholder="Ej: el RUT no coincide con el certificado de nacimiento."></textarea>
+        </label>
+        <div style="display:flex;gap:8px">
+          <button class="btn peligro chico" data-confirmar>Confirmar rechazo</button>
+          <button class="btn gris chico" data-cancelar>Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ficha">
+      <div class="top">
+        <span class="ini">IM</span>
+        <span class="nom">Ignacio Mamani Choque<small>22.901.334-K · nacido el 03/08/2014</small></span>
+        <span class="acciones">
+          <button class="btn peligro chico" data-rechazar>Rechazar</button>
+          <button class="btn chico" data-aprobar>Aprobar</button>
+        </span>
+      </div>
+      <div class="detalle">
+        <div><span>Categoría calculada</span>U13</div>
+        <div><span>Apoderado</span>Luis Mamani</div>
+        <div><span>Emergencia</span>+56 9 7712 0043</div>
+        <div><span>Alerta de salud</span>Sin alertas</div>
+      </div>
+      <div class="rechazo oculto">
+        <label class="campo">Motivo del rechazo (obligatorio)
+          <textarea placeholder="Ej: falta autorización del apoderado."></textarea>
+        </label>
+        <div style="display:flex;gap:8px">
+          <button class="btn peligro chico" data-confirmar>Confirmar rechazo</button>
+          <button class="btn gris chico" data-cancelar>Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ficha">
+      <div class="top">
+        <span class="ini">FA</span>
+        <span class="nom">Florencia Araya Pinto<small>23.118.902-4 · nacida el 27/01/2017</small></span>
+        <span class="acciones">
+          <button class="btn peligro chico" data-rechazar>Rechazar</button>
+          <button class="btn chico" data-aprobar>Aprobar</button>
+        </span>
+      </div>
+      <div class="detalle">
+        <div><span>Categoría calculada</span>U11 (mixta)</div>
+        <div><span>Apoderada</span>Paola Pinto</div>
+        <div><span>Emergencia</span>+56 9 6620 8891</div>
+        <div><span>Alerta de salud</span>Usa inhalador</div>
+      </div>
+      <div class="rechazo oculto">
+        <label class="campo">Motivo del rechazo (obligatorio)
+          <textarea></textarea>
+        </label>
+        <div style="display:flex;gap:8px">
+          <button class="btn peligro chico" data-confirmar>Confirmar rechazo</button>
+          <button class="btn gris chico" data-cancelar>Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== HU-05 CATEGORÍAS ===== -->
+<section id="v-categorias" class="oculto">
+  <div class="cabecera">
+    <h1>Categorías vigentes</h1>
+    <p class="sub">HU-05 · El traspaso es automático por año de nacimiento. Las excepciones quedan registradas.</p>
+  </div>
+
+  <div class="tarjeta">
+    <table>
+      <thead><tr><th>Categoría</th><th>Años de nacimiento</th><th>Rama</th><th>Jugadores</th></tr></thead>
+      <tbody>
+        <tr><td><b style="font-weight:600">Mini Basket</b></td><td>2018 en adelante</td><td>Mixta</td><td>24</td></tr>
+        <tr><td><b style="font-weight:600">U11</b></td><td>2015 – 2017</td><td>Mixta</td><td>31</td></tr>
+        <tr><td><b style="font-weight:600">U13 Damas</b></td><td>2013 – 2014</td><td>Damas</td><td>18</td></tr>
+        <tr><td><b style="font-weight:600">U13 Varones</b></td><td>2013 – 2014</td><td>Varones</td><td>22</td></tr>
+        <tr><td><b style="font-weight:600">U15 Damas</b></td><td>2011 – 2012</td><td>Damas</td><td>15</td></tr>
+        <tr><td><b style="font-weight:600">U15 Varones</b></td><td>2011 – 2012</td><td>Varones</td><td>21</td></tr>
+        <tr><td><b style="font-weight:600">U17 Varones</b></td><td>2009 – 2010</td><td>Varones</td><td>16</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tarjeta pad" style="margin-top:16px">
+    <h2>Excepción administrativa</h2>
+    <p class="sub" style="margin-bottom:14px">Mueve a un jugador fuera de la categoría que le corresponde por edad. Queda trazado con usuario y fecha.</p>
+    <div style="display:grid;gap:12px;max-width:460px">
+      <label class="campo">Jugador<select><option>Buscar por nombre o RUT…</option></select></label>
+      <label class="campo">Nueva categoría<select><option>U13 Varones</option><option>U15 Varones</option><option>U17 Varones</option></select></label>
+      <label class="campo">Justificación (obligatoria)<textarea placeholder="Ej: por desarrollo físico y solicitud del cuerpo técnico."></textarea></label>
+      <button class="btn chico" style="justify-self:start">Registrar excepción</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===== HU-19 IMPORTAR ===== -->
+<section id="v-importar" class="oculto">
+  <div class="cabecera">
+    <h1>Importar desde Excel</h1>
+    <p class="sub">HU-19 · Carga inicial de los jugadores que hoy están en planillas.</p>
+  </div>
+
+  <div class="aviso">
+    <span aria-hidden="true">&#9432;</span>
+    <span>Nada se guarda hasta que revises el resultado de la validación. Las filas con error no se importan.</span>
+  </div>
+
+  <div class="dropzone">
+    <p style="font-weight:600">Arrastra el archivo .xlsx o .csv aquí</p>
+    <p class="sub" style="margin:6px 0 14px">Columnas requeridas: nombre, RUT, fecha de nacimiento, rama, apoderado, teléfono</p>
+    <button class="btn chico" id="simular">Seleccionar archivo</button>
+  </div>
+
+  <div class="tarjeta oculto" id="resultado" style="margin-top:16px">
+    <div class="log"><span class="pill ok">148</span><span>Filas válidas, listas para importar.</span></div>
+    <div class="log"><span class="pill esp">12</span><span>Duplicados: ya existe un jugador con ese RUT. Se omiten.</span></div>
+    <div class="log"><span class="pill no">5</span><span>RUT con dígito verificador inválido (filas 23, 41, 88, 102, 140).</span></div>
+    <div class="log"><span class="pill no">3</span><span>Fecha de nacimiento vacía, no se puede asignar categoría (filas 19, 57, 134).</span></div>
+    <div class="log" style="background:#FBFAF9">
+      <button class="btn chico">Importar las 148 filas válidas</button>
+      <button class="btn gris chico">Descargar informe de errores</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===== HU-17 REGLAMENTOS ===== -->
+<section id="v-documentos" class="oculto">
+  <div class="cabecera">
+    <h1>Reglamentos y documentos</h1>
+    <p class="sub">HU-17 · Cada documento muestra su versión y fecha de vigencia.</p>
+  </div>
+
+  <div class="tarjeta">
+    <div class="ficha">
+      <div class="top">
+        <span class="nom">Reglamento interno del club<small>Versión 3 · vigente desde el 01/03/2026</small></span>
+        <span class="pill ok">Vigente</span>
+        <span class="acciones"><button class="btn gris chico">Reemplazar</button></span>
+      </div>
+    </div>
+    <div class="ficha">
+      <div class="top">
+        <span class="nom">Protocolo de viajes y competencias<small>Versión 1 · vigente desde el 15/04/2026</small></span>
+        <span class="pill ok">Vigente</span>
+        <span class="acciones"><button class="btn gris chico">Reemplazar</button></span>
+      </div>
+    </div>
+    <div class="ficha">
+      <div class="top">
+        <span class="nom">Reglamento interno del club<small>Versión 2 · reemplazada el 01/03/2026</small></span>
+        <span class="pill gris">Histórica</span>
+        <span class="acciones"><button class="btn gris chico">Ver</button></span>
+      </div>
+    </div>
+  </div>
+  <button class="btn" style="margin-top:16px">Publicar documento nuevo</button>
+</section>
+</div></main>
+
+<script>
+// aprobar / rechazar con motivo obligatorio (HU-03)
+document.querySelectorAll(".ficha").forEach(f => {
+  const caja = f.querySelector(".rechazo");
+  const top  = f.querySelector(".top");
+  f.querySelector("[data-rechazar]")?.addEventListener("click", () => caja.classList.remove("oculto"));
+  f.querySelector("[data-cancelar]")?.addEventListener("click", () => caja.classList.add("oculto"));
+  f.querySelector("[data-confirmar]")?.addEventListener("click", e => {
+    const t = caja.querySelector("textarea");
+    if(!t.value.trim()){
+      e.target.textContent = "Escribe un motivo";
+      t.focus();
+      setTimeout(()=>e.target.textContent="Confirmar rechazo", 1800);
+      return;
+    }
+    cerrar(f, top, '<span class="pill no">Rechazada</span>');
+  });
+  f.querySelector("[data-aprobar]")?.addEventListener("click", () => {
+    cerrar(f, top, '<span class="pill ok">Aprobada · jugador activo</span>');
+  });
+});
+function cerrar(f, top, html){
+  f.querySelector(".rechazo")?.classList.add("oculto");
+  f.querySelector(".acciones").innerHTML = html;
+  f.style.opacity = ".6";
+  const b = document.querySelector(".badge");
+  const n = Math.max(0, parseInt(b.textContent) - 1);
+  b.textContent = n; if(!n) b.style.display = "none";
+}
+
+document.getElementById("simular").addEventListener("click", () =>
+  document.getElementById("resultado").classList.remove("oculto"));
+
+const rutas = {
+  fichas:"/admin/fichas/",
+  categorias:"/admin/categorias/",
+  importar:"/admin/importar/",
+  documentos:"/admin/documentos/"
+};
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => {
+  const v = t.dataset.vista;
+  document.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-selected", x===t?"true":"false"));
+  Object.keys(rutas).forEach(k => document.getElementById("v-"+k).classList.toggle("oculto", k!==v));
+  document.getElementById("url").textContent = rutas[v];
+  window.scrollTo({top:0});
+}));
+</script>
+</body>
+</html>
