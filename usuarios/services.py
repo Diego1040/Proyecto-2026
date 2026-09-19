@@ -182,3 +182,24 @@ def cambiar_categoria_manual(
     historial.save()
 
     return nueva_categoria
+
+def registrar_auditoria(
+    *,
+    usuario,
+    accion,
+    entidad,
+    entidad_id=None,
+    detalle=None,
+):
+    from .models import Auditoria
+
+    if detalle is None:
+        detalle = {}
+
+    return Auditoria.objects.create(
+        usuario=usuario,
+        accion=accion,
+        entidad=entidad,
+        entidad_id=entidad_id,
+        detalle=detalle,
+    )
