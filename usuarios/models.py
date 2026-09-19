@@ -333,6 +333,15 @@ class Jugador(models.Model):
 
         if self.rut:
             self.rut = normalizar_rut(self.rut)
+        
+        if (
+            self.usuario
+            and self.usuario.rut != self.rut
+        ):
+            errores["usuario"] = (
+                "El RUT de la cuenta debe coincidir "
+                "con el RUT del jugador."
+            )
 
         if (
             self.fecha_nacimiento
@@ -352,6 +361,77 @@ class Jugador(models.Model):
 
         if errores:
             raise ValidationError(errores)
+
+    def save(self, *args, **kwargs):
+        if self.rut:
+            self.rut = normalizar_rut(self.rut)
+            validar_rut(self.rut)
+
+        super().save(*args, **kwargs)
+
+class Apoderado(models.Model):
+    """
+    Apoderado utilizado exclusivamente para autenticación,
+    autorización y acceso al sistema.
+    """
+    usuario = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="apoderado",
+    )
+
+    rut = models.CharField(
+        max_length=12,
+        unique=True,
+        validators=[validar_rut],
+    )
+
+    nombres = models.CharField(
+        max_length=100,
+    )
+
+    apellidos = models.CharField(
+        max_length=100,
+    )
+
+    telefono = models.CharField(
+        max_length=20,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        verbose_name = "apoderado"
+        verbose_name_plural = "apoderados"
+        ordering = ["apellidos", "nombres"]
+
+    def __str__(self):
+        return f"{self.nombres} {self.apellidos} ({self.rut})"
+
+    def clean(self):
+        super().clean()
+
+        if self.rut:
+            self.rut = normalizar_rut(self.rut)
+
+        if (
+            self.usuario
+            and self.usuario.rut != self.rut
+        ):
+            raise ValidationError({
+                "usuario": (
+                    "El RUT de la cuenta debe coincidir "
+                    "con el RUT del apoderado."
+                )
+            })
 
     def save(self, *args, **kwargs):
         if self.rut:
