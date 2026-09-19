@@ -12,6 +12,7 @@ from .models import (
     SolicitudInscripcion,
     HistorialCategoria,
     AlertaSalud,
+    Auditoria,
 )
 
 
@@ -344,4 +345,39 @@ class AlertaSaludAdmin(admin.ModelAdmin):
 
     autocomplete_fields = (
         "jugador",
+    )
+
+@admin.register(Auditoria)
+class AuditoriaAdmin(admin.ModelAdmin):
+    list_display = (
+        "accion",
+        "entidad",
+        "entidad_id",
+        "usuario",
+        "fecha",
+    )
+
+    list_filter = (
+        "accion",
+        "entidad",
+        "fecha",
+    )
+
+    search_fields = (
+        "accion",
+        "entidad",
+        "usuario__rut",
+    )
+
+    readonly_fields = (
+        "usuario",
+        "accion",
+        "entidad",
+        "entidad_id",
+        "detalle",
+        "fecha",
+    )
+
+    ordering = (
+        "-fecha",
     )

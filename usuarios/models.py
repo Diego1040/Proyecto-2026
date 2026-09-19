@@ -773,3 +773,45 @@ class AlertaSalud(models.Model):
 
     def __str__(self):
         return f"{self.jugador} - {self.tipo}"
+
+class Auditoria(models.Model):
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="acciones_auditoria",
+    )
+
+    accion = models.CharField(
+        max_length=100,
+    )
+
+    entidad = models.CharField(
+        max_length=100,
+    )
+
+    entidad_id = models.PositiveBigIntegerField(
+        null=True,
+        blank=True,
+    )
+
+    detalle = models.JSONField(
+        default=dict,
+        blank=True,
+    )
+
+    fecha = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    class Meta:
+        verbose_name = "auditoria"
+        verbose_name_plural = "auditorias"
+        ordering = ["-fecha"]
+
+    def __str__(self):
+        return (
+            f"{self.accion} - "
+            f"{self.entidad} #{self.entidad_id}"
+        )
