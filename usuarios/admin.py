@@ -7,6 +7,8 @@ from .models import (
     Jugador,
     ReglaCategoria,
     Usuario,
+    Apoderado,
+    ApoderadoJugador,
 )
 
 
@@ -188,4 +190,62 @@ class JugadorAdmin(admin.ModelAdmin):
     autocomplete_fields = (
         "usuario",
         "categoria_actual",
+    )
+
+@admin.register(Apoderado)
+class ApoderadoAdmin(admin.ModelAdmin):
+    list_display = (
+        "rut",
+        "nombres",
+        "apellidos",
+        "telefono",
+        "usuario",
+    )
+
+    search_fields = (
+        "rut",
+        "nombres",
+        "apellidos",
+        "telefono",
+    )
+
+    ordering = (
+        "apellidos",
+        "nombres",
+    )
+
+    autocomplete_fields = (
+        "usuario",
+    )
+
+
+@admin.register(ApoderadoJugador)
+class ApoderadoJugadorAdmin(admin.ModelAdmin):
+    list_display = (
+        "apoderado",
+        "jugador",
+        "parentesco",
+        "es_principal",
+        "puede_gestionar",
+        "activo",
+    )
+
+    list_filter = (
+        "es_principal",
+        "puede_gestionar",
+        "activo",
+    )
+
+    search_fields = (
+        "apoderado__rut",
+        "apoderado__nombres",
+        "apoderado__apellidos",
+        "jugador__rut",
+        "jugador__nombres",
+        "jugador__apellidos",
+    )
+
+    autocomplete_fields = (
+        "apoderado",
+        "jugador",
     )

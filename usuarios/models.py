@@ -439,3 +439,82 @@ class Apoderado(models.Model):
             validar_rut(self.rut)
 
         super().save(*args, **kwargs)
+
+class ApoderadoJugador(models.Model):
+    apoderado = models.ForeignKey(
+        Apoderado,
+        on_delete=models.CASCADE,
+        related_name="vinculos_jugadores",
+    )
+
+    jugador = models.ForeignKey(
+        Jugador,
+        on_delete=models.CASCADE,
+        related_name="vinculos_apoderados",
+    )
+
+    parentesco = models.CharField(
+        max_length=50,
+    )
+
+    es_principal = models.BooleanField(
+        default=False,
+    )
+
+    puede_gestionar = models.BooleanField(
+        default=True,
+    )
+
+    activo = models.BooleanField(
+        default=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    class Meta:
+        verbose_name = "relacion apoderado-jugador"
+        verbose_name_plural = "relaciones apoderado-jugador"
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=["apoderado", "jugador"],
+                name="unique_apoderado_jugador",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.apoderado} → {self.jugador}"
+
+    def clean(self):
+        super().clean()
+
+        errores = {}
+
+        if self.es_principal and not self.activo:
+            errores["es_principal"] = (
+                "Un apoderado principal debe estar activo."
+            )
+
+        if (
+            self.es_principal
+            and self.activo
+            and self.jugador_id
+        ):
+            principales = ApoderadoJugador.objects.filter(
+                jugador_id=self.jugador_id,
+                es_principal=True,
+                activo=True,
+            )
+
+            if self.pk:
+                principales = principales.exclude(pk=self.pk)
+
+            if principales.exists():
+                errores["es_principal"] = (
+                    "El jugador ya tiene un apoderado principal activo."
+                )
+
+        if errores:
+            raise ValidationError(errores)
