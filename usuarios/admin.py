@@ -9,6 +9,7 @@ from .models import (
     Usuario,
     Apoderado,
     ApoderadoJugador,
+    SolicitudInscripcion,
 )
 
 
@@ -248,4 +249,37 @@ class ApoderadoJugadorAdmin(admin.ModelAdmin):
     autocomplete_fields = (
         "apoderado",
         "jugador",
+    )
+
+@admin.register(SolicitudInscripcion)
+class SolicitudInscripcionAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "jugador",
+        "estado",
+        "fecha_solicitud",
+        "revisado_por",
+        "fecha_revision",
+    )
+
+    list_filter = (
+        "estado",
+        "procedencia",
+        "fecha_solicitud",
+    )
+
+    search_fields = (
+        "jugador__rut",
+        "jugador__nombres",
+        "jugador__apellidos",
+    )
+
+    autocomplete_fields = (
+        "jugador",
+        "solicitante",
+        "revisado_por",
+    )
+
+    readonly_fields = (
+        "fecha_solicitud",
     )

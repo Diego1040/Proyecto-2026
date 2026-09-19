@@ -518,3 +518,129 @@ class ApoderadoJugador(models.Model):
 
         if errores:
             raise ValidationError(errores)
+
+class SolicitudInscripcion(models.Model):
+    class Estado(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Pendiente"
+        EN_REVISION = "EN_REVISION", "En revision"
+        APROBADA = "APROBADA", "Aprobada"
+        RECHAZADA = "RECHAZADA", "Rechazada"
+
+    jugador = models.ForeignKey(
+        Jugador,
+        on_delete=models.PROTECT,
+        related_name="solicitudes_inscripcion",
+    )
+
+    solicitante = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="solicitudes_realizadas",
+    )
+
+    fecha_solicitud = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    estado = models.CharField(
+        max_length=20,
+        choices=Estado.choices,
+        default=Estado.PENDIENTE,
+    )
+
+    procedencia = models.CharField(
+        max_length=20,
+        choices=Jugador.Procedencia.choices,
+    )
+
+    club_anterior = models.CharField(
+        max_length=150,
+        blank=True,
+    )
+
+    observaciones = models.TextField(
+        blank=True,
+    )
+
+    consentimiento = models.BooleanField(
+        default=False,
+    )
+
+    revisado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="solicitudes_revisadas",
+    )
+
+    fecha_revision = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    motivo_rechazo = models.TextField(
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = "solicitud de inscripcion"
+        verbose_name_plural = "solicitudes de inscripcion"
+        ordering = ["-fecha_solicitud"]
+
+    def __str__(self):
+        return (
+            f"Solicitud #{self.pk} - "
+            f"{self.jugador} - "
+            f"{self.get_estado_display()}"
+        )
+
+    def clean(self):
+        super().clean()
+
+        errores = {}
+
+        if (
+            self.procedencia == Jugador.Procedencia.OTRO_CLUB
+            and not self.club_anterior.strip()
+        ):
+            errores["club_anterior"] = (
+                "Debe indicar el club anterior."
+            )
+
+        if not self.consentimiento:
+            errores["consentimiento"] = (
+                "Debe existir consentimiento para enviar la solicitud."
+            )
+
+        if self.estado == self.Estado.RECHAZADA:
+            if not self.motivo_rechazo.strip():
+                errores["motivo_rechazo"] = (
+                    "Debe indicar el motivo del rechazo."
+                )
+
+            if not self.revisado_por:
+                errores["revisado_por"] = (
+                    "Debe indicar quien reviso la solicitud."
+                )
+
+            if not self.fecha_revision:
+                errores["fecha_revision"] = (
+                    "Debe registrar la fecha de revision."
+                )
+
+        if self.estado == self.Estado.APROBADA:
+            if not self.revisado_por:
+                errores["revisado_por"] = (
+                    "Debe indicar quien aprobo la solicitud."
+                )
+
+            if not self.fecha_revision:
+                errores["fecha_revision"] = (
+                    "Debe registrar la fecha de revision."
+                )
+
+        if errores:
+            raise ValidationError(errores)
