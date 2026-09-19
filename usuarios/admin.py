@@ -10,6 +10,8 @@ from .models import (
     Apoderado,
     ApoderadoJugador,
     SolicitudInscripcion,
+    HistorialCategoria,
+    AlertaSalud,
 )
 
 
@@ -282,4 +284,64 @@ class SolicitudInscripcionAdmin(admin.ModelAdmin):
 
     readonly_fields = (
         "fecha_solicitud",
+    )
+
+@admin.register(HistorialCategoria)
+class HistorialCategoriaAdmin(admin.ModelAdmin):
+    list_display = (
+        "jugador",
+        "categoria_anterior",
+        "categoria_nueva",
+        "tipo_cambio",
+        "cambiado_por",
+        "fecha",
+    )
+
+    list_filter = (
+        "tipo_cambio",
+        "categoria_nueva",
+        "fecha",
+    )
+
+    search_fields = (
+        "jugador__rut",
+        "jugador__nombres",
+        "jugador__apellidos",
+    )
+
+    autocomplete_fields = (
+        "jugador",
+        "categoria_anterior",
+        "categoria_nueva",
+        "cambiado_por",
+    )
+
+    readonly_fields = (
+        "fecha",
+    )
+
+
+@admin.register(AlertaSalud)
+class AlertaSaludAdmin(admin.ModelAdmin):
+    list_display = (
+        "jugador",
+        "tipo",
+        "activa",
+        "updated_at",
+    )
+
+    list_filter = (
+        "activa",
+        "tipo",
+    )
+
+    search_fields = (
+        "jugador__rut",
+        "jugador__nombres",
+        "jugador__apellidos",
+        "tipo",
+    )
+
+    autocomplete_fields = (
+        "jugador",
     )

@@ -644,3 +644,132 @@ class SolicitudInscripcion(models.Model):
 
         if errores:
             raise ValidationError(errores)
+
+class HistorialCategoria(models.Model):
+    class TipoCambio(models.TextChoices):
+        AUTOMATICO = "AUTOMATICO", "Automatico"
+        EXCEPCION_MANUAL = (
+            "EXCEPCION_MANUAL",
+            "Excepcion manual",
+        )
+        CAMBIO_TEMPORADA = (
+            "CAMBIO_TEMPORADA",
+            "Cambio de temporada",
+        )
+
+    jugador = models.ForeignKey(
+        Jugador,
+        on_delete=models.CASCADE,
+        related_name="historial_categorias",
+    )
+
+    categoria_anterior = models.ForeignKey(
+        Categoria,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="historial_como_anterior",
+    )
+
+    categoria_nueva = models.ForeignKey(
+        Categoria,
+        on_delete=models.PROTECT,
+        related_name="historial_como_nueva",
+    )
+
+    tipo_cambio = models.CharField(
+        max_length=20,
+        choices=TipoCambio.choices,
+    )
+
+    motivo = models.TextField(
+        blank=True,
+    )
+
+    cambiado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="cambios_categoria_realizados",
+    )
+
+    fecha = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    class Meta:
+        verbose_name = "historial de categoria"
+        verbose_name_plural = "historiales de categorias"
+        ordering = ["-fecha"]
+
+    def __str__(self):
+        return (
+            f"{self.jugador} → "
+            f"{self.categoria_nueva} "
+            f"({self.get_tipo_cambio_display()})"
+        )
+
+    def clean(self):
+        super().clean()
+
+        errores = {}
+
+        if (
+            self.tipo_cambio == self.TipoCambio.EXCEPCION_MANUAL
+        ):
+            if not self.motivo.strip():
+                errores["motivo"] = (
+                    "Una excepcion manual requiere motivo."
+                )
+
+            if not self.cambiado_por:
+                errores["cambiado_por"] = (
+                    "Debe indicar quien realizo la excepcion."
+                )
+
+        if (
+            self.categoria_anterior_id
+            and self.categoria_anterior_id
+            == self.categoria_nueva_id
+        ):
+            errores["categoria_nueva"] = (
+                "La categoria nueva debe ser distinta "
+                "de la categoria anterior."
+            )
+
+        if errores:
+            raise ValidationError(errores)
+
+class AlertaSalud(models.Model):
+    jugador = models.ForeignKey(
+        Jugador,
+        on_delete=models.CASCADE,
+        related_name="alertas_salud",
+    )
+
+    tipo = models.CharField(
+        max_length=100,
+    )
+
+    descripcion = models.TextField()
+
+    activa = models.BooleanField(
+        default=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        verbose_name = "alerta de salud"
+        verbose_name_plural = "alertas de salud"
+        ordering = ["-activa", "tipo"]
+
+    def __str__(self):
+        return f"{self.jugador} - {self.tipo}"
