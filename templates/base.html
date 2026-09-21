@@ -1,0 +1,101 @@
+{% load static %}<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block titulo %}Ayllu Basket — Club deportivo de Arica{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=Caveat:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'css/styles.css' %}">
+{% block extra_css %}{% endblock %}
+</head>
+<body>
+
+{% block barra %}
+<header class="barra">
+  <div class="wrap">
+    <a class="marca" href="{% url 'inicio' %}">
+      <span class="escudo"></span>
+      <span><b>Ayllu Basket</b><span>Club deportivo</span></span>
+    </a>
+    <nav class="nav">
+      {% block nav %}
+        <a href="{% url 'inicio' %}#encuentros">Encuentros</a>
+        <a href="{% url 'inicio' %}#academia">Academia</a>
+        <a href="{% url 'inicio' %}#club">El club</a>
+        <a href="{% url 'inicio' %}#noticias">Noticias</a>
+      {% endblock %}
+      {% if user.is_authenticated %}
+        <span class="usuario">{{ user.rut }}</span>
+        <a href="{% url 'panel' %}">Mi panel</a>
+        <form action="{% url 'logout' %}" method="post" style="display:inline">
+          {% csrf_token %}
+          <button type="submit" class="salir">Cerrar sesión</button>
+        </form>
+      {% else %}
+        <a href="{% url 'login' %}">Ingresar</a>
+        <a class="boton chico" href="{% url 'inicio' %}#contacto">Únete al club</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+{% endblock %}
+
+{% if messages %}
+<div class="wrap avisos">
+  {% for mensaje in messages %}
+    <p class="aviso {{ mensaje.tags }}">{{ mensaje }}</p>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% block contenido %}{% endblock %}
+
+{% block pie %}
+<footer id="contacto">
+  <div class="wrap">
+    <div class="pie">
+      <div>
+        <div class="marca" style="color:#fff;margin-bottom:14px">
+          <span class="escudo"></span>
+          <span><b>Ayllu Basket</b><span style="color:#8B8A88">Club deportivo</span></span>
+        </div>
+        <p style="font-size:.92rem;max-width:30ch">Comunidad que vive el básquet.</p>
+      </div>
+      <div>
+        <h4>Navegación</h4>
+        <ul>
+          <li><a href="{% url 'inicio' %}#encuentros">Encuentros</a></li>
+          <li><a href="{% url 'inicio' %}#academia">Academia</a></li>
+          <li><a href="{% url 'inicio' %}#club">El club</a></li>
+          <li><a href="{% url 'inicio' %}#noticias">Noticias</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contacto</h4>
+        <ul>
+          <li><svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Arica, Chile</li>
+          <li><svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg><a href="mailto:ayllubasket@gmail.com">ayllubasket@gmail.com</a></li>
+          <li><svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1z"/></svg><a href="tel:+56985284500">+56 9 8528 4500</a></li>
+          <li style="gap:14px;margin-top:4px"><a href="#">Instagram</a><a href="#">Facebook</a><a href="#">YouTube</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Únete a nuestra comunidad</h4>
+        <p style="font-size:.92rem">Recibe novedades, partidos y actividades.</p>
+        <form class="suscribir" onsubmit="return false">
+          <label for="correo" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Tu correo electrónico</label>
+          <input id="correo" type="email" placeholder="nombre@correo.cl">
+          <button type="submit">Suscribirme</button>
+        </form>
+      </div>
+    </div>
+    <p class="legal">© {% now "Y" %} Ayllu Basket · Club deportivo de Arica</p>
+  </div>
+</footer>
+{% endblock %}
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

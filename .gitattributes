@@ -1,0 +1,10 @@
+# Normaliza los saltos de linea para que Windows, macOS y Linux
+# no generen diffs de archivos completos.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
