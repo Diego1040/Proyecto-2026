@@ -171,6 +171,7 @@ class JugadorAdmin(admin.ModelAdmin):
         "estado",
         "categoria_actual",
         "fecha_nacimiento",
+        "telefono",
     )
 
     list_filter = (
@@ -184,6 +185,9 @@ class JugadorAdmin(admin.ModelAdmin):
         "rut",
         "nombres",
         "apellidos",
+        "telefono",
+        "nombre_contacto_emergencia",
+        "telefono_contacto_emergencia",
     )
 
     ordering = (

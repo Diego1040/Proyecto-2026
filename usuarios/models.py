@@ -247,6 +247,16 @@ class Jugador(models.Model):
         blank=True,
     )
 
+    nombre_contacto_emergencia = models.CharField(
+        max_length=150,
+        blank=True,
+    )
+
+    telefono_contacto_emergencia = models.CharField(
+        max_length=20,
+        blank=True,
+    )
+
     estado = models.CharField(
         max_length=10,
         choices=Estado.choices,
