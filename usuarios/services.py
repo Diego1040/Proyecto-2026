@@ -10,6 +10,7 @@ from .models import (
     ReglaCategoria,
     HistorialCategoria,
     Jugador,
+    SolicitudInscripcion,
 )
 
 
@@ -129,6 +130,188 @@ def asignar_categoria_automatica(
 
     return nueva_categoria
 
+@transaction.atomic
+def crear_solicitud_inscripcion(
+    *,
+    jugador,
+    solicitante=None,
+    consentimiento,
+    observaciones="",
+    temporada=None,
+    fecha_referencia=None,
+):
+    """
+    Crea una solicitud de inscripcion para un jugador
+
+    - Valida al jugador.
+    - Comprueba apoderado activo si es menor de edad
+    - Asigna categoria automaticamente
+    - Crea la solicitud en estado pendiente
+    """
+
+    if fecha_referencia is None:
+        fecha_referencia = timezone.localdate()
+
+    jugador.full_clean()
+
+    # Permite utilizar tanto un jugador nuevo como uno ya guardado.
+    if jugador.pk is None:
+        jugador.save()
+
+    edad = calcular_edad(
+        jugador.fecha_nacimiento,
+        fecha_referencia,
+    )
+
+    if edad < 18:
+        tiene_apoderado = (
+            jugador.vinculos_apoderados
+            .filter(activo=True)
+            .exists()
+        )
+
+        if not tiene_apoderado:
+            raise ValidationError(
+                "Un jugador menor de edad debe tener "
+                "al menos un apoderado activo."
+            )
+
+    categoria = asignar_categoria_automatica(
+        jugador=jugador,
+        temporada=temporada,
+        fecha_referencia=fecha_referencia,
+    )
+
+    if categoria is None:
+        raise ValidationError(
+            "No existe una categoría aplicable "
+            "para el jugador."
+        )
+
+    solicitud = SolicitudInscripcion(
+        jugador=jugador,
+        solicitante=solicitante,
+        procedencia=jugador.procedencia,
+        club_anterior=jugador.club_anterior,
+        observaciones=observaciones.strip(),
+        consentimiento=consentimiento,
+    )
+
+    solicitud.full_clean()
+    solicitud.save()
+
+    return solicitud
+
+@transaction.atomic
+def marcar_solicitud_en_revision(*, solicitud):
+    if solicitud.estado != SolicitudInscripcion.Estado.PENDIENTE:
+        raise ValidationError(
+            "Solo una solicitud pendiente puede pasar a revision."
+        )
+
+    solicitud.estado = SolicitudInscripcion.Estado.EN_REVISION
+    solicitud.full_clean()
+    solicitud.save(update_fields=["estado"])
+
+    return solicitud
+
+@transaction.atomic
+def aprobar_solicitud_inscripcion(
+    *,
+    solicitud,
+    usuario,
+):
+    if usuario is None:
+        raise ValidationError(
+            "Debe indicar el usuario que aprueba la solicitud."
+        )
+
+    if solicitud.estado != SolicitudInscripcion.Estado.EN_REVISION:
+        raise ValidationError(
+            "Solo una solicitud en revision puede ser aprobada."
+        )
+
+    jugador = solicitud.jugador
+
+    if jugador.categoria_actual_id is None:
+        raise ValidationError(
+            "El jugador debe tener una categoria asignada "
+            "antes de aprobar la solicitud."
+        )
+
+    solicitud.estado = SolicitudInscripcion.Estado.APROBADA
+    solicitud.revisado_por = usuario
+    solicitud.fecha_revision = timezone.now()
+    solicitud.motivo_rechazo = ""
+
+    solicitud.full_clean()
+    solicitud.save()
+
+    jugador.estado = Jugador.Estado.ACTIVO
+
+    if jugador.fecha_ingreso is None:
+        jugador.fecha_ingreso = timezone.localdate()
+
+    jugador.full_clean()
+    jugador.save()
+
+    registrar_auditoria(
+        usuario=usuario,
+        accion="SOLICITUD_APROBADA",
+        entidad="SolicitudInscripcion",
+        entidad_id=solicitud.pk,
+        detalle={
+            "jugador_id": jugador.pk,
+            "estado_anterior": "EN_REVISION",
+            "estado_nuevo": "APROBADA",
+        },
+    )
+
+    return solicitud
+
+@transaction.atomic
+def rechazar_solicitud_inscripcion(
+    *,
+    solicitud,
+    usuario,
+    motivo,
+):
+    if usuario is None:
+        raise ValidationError(
+            "Debe indicar el usuario que rechaza la solicitud."
+        )
+
+    if solicitud.estado != SolicitudInscripcion.Estado.EN_REVISION:
+        raise ValidationError(
+            "Solo una solicitud en revision puede ser rechazada."
+        )
+
+    if not motivo or not motivo.strip():
+        raise ValidationError(
+            "Debe indicar el motivo del rechazo."
+        )
+
+    solicitud.estado = SolicitudInscripcion.Estado.RECHAZADA
+    solicitud.revisado_por = usuario
+    solicitud.fecha_revision = timezone.now()
+    solicitud.motivo_rechazo = motivo.strip()
+
+    solicitud.full_clean()
+    solicitud.save()
+
+    registrar_auditoria(
+        usuario=usuario,
+        accion="SOLICITUD_RECHAZADA",
+        entidad="SolicitudInscripcion",
+        entidad_id=solicitud.pk,
+        detalle={
+            "jugador_id": solicitud.jugador_id,
+            "estado_anterior": "EN_REVISION",
+            "estado_nuevo": "RECHAZADA",
+        },
+    )
+
+    return solicitud
 
 def categoria_anterior_id_igual(anterior, nueva):
     if anterior is None:
