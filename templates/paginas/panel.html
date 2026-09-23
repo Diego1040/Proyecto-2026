@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block titulo %}Mi panel — Ayllu Basket{% endblock %}
+
+{% block contenido %}
+<section class="panel">
+  <div class="wrap">
+    <h1>Mi panel</h1>
+    <p class="bajada">Sesión iniciada correctamente.</p>
+
+    <div class="tarjeta">
+      <h3>Datos de la cuenta</h3>
+      <dl>
+        <dt>RUT</dt><dd>{{ user.rut }}</dd>
+        <dt>Correo</dt><dd>{{ user.email|default:"sin registrar" }}</dd>
+        <dt>Último ingreso</dt><dd>{{ user.last_login|date:"d/m/Y H:i"|default:"primer ingreso" }}</dd>
+        <dt>Perfil</dt><dd>{{ perfil }}</dd>
+      </dl>
+    </div>
+  </div>
+</section>
+{% endblock %}
