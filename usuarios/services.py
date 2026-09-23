@@ -57,9 +57,13 @@ def obtener_categoria_automatica(
             "La rama del jugador debe ser DAMAS o VARONES."
         )
 
-    edad = calcular_edad(
+    calcular_edad(
         fecha_nacimiento,
         fecha_referencia,
+    )
+
+    edad_categoria = (
+        temporada - fecha_nacimiento.year
     )
 
     reglas = (
@@ -69,11 +73,11 @@ def obtener_categoria_automatica(
             temporada=temporada,
             activa=True,
             categoria__activa=True,
-            edad_min__lte=edad,
+            edad_min__lte=edad_categoria,
         )
         .filter(
             Q(edad_max__isnull=True)
-            | Q(edad_max__gte=edad)
+            | Q(edad_max__gte=edad_categoria)
         )
         .filter(
             Q(categoria__rama=Categoria.Rama.MIXTO)
