@@ -94,7 +94,7 @@ class AsignacionCategoriaTest(TestCase):
 
     def test_adulto_cae_en_todo_competidor(self):
         categoria = self.categoria_de(date(1995, 3, 10), Categoria.Rama.VARONES)
-        self.assertEqual(categoria.nombre, "Todo Competidor Varones")
+        self.assertEqual(categoria.nombre, "T/C Varones")
 
     def test_sin_regla_aplicable_devuelve_none(self):
         # Cuatro anios: por debajo del tramo minimo cargado.
