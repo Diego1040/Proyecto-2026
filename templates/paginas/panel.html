@@ -5,18 +5,46 @@
 {% block contenido %}
 <section class="panel">
   <div class="wrap">
+
     <h1>Mi panel</h1>
-    <p class="bajada">Sesión iniciada correctamente.</p>
+
+    <p class="bajada">
+      {% if user.first_name %}
+        Bienvenido, {{ user.first_name }} {{ user.last_name }}.
+      {% else %}
+        Bienvenido a Ayllu Basket.
+      {% endif %}
+    </p>
 
     <div class="tarjeta">
       <h3>Datos de la cuenta</h3>
+
       <dl>
-        <dt>RUT</dt><dd>{{ user.rut }}</dd>
-        <dt>Correo</dt><dd>{{ user.email|default:"sin registrar" }}</dd>
-        <dt>Último ingreso</dt><dd>{{ user.last_login|date:"d/m/Y H:i"|default:"primer ingreso" }}</dd>
-        <dt>Perfil</dt><dd>{{ perfil }}</dd>
+        <dt>Nombre completo</dt>
+        <dd>
+          {% if user.first_name %}
+            {{ user.first_name }} {{ user.last_name }}
+          {% else %}
+            Sin registrar
+          {% endif %}
+        </dd>
+
+        <dt>RUT</dt>
+        <dd>{{ user.rut }}</dd>
+
+        <dt>Correo</dt>
+        <dd>{{ user.email|default:"Sin registrar" }}</dd>
+
+        <dt>Último ingreso</dt>
+        <dd>
+          {{ user.last_login|date:"d/m/Y H:i"|default:"Primer ingreso" }}
+        </dd>
+
+        <dt>Perfil</dt>
+        <dd>{{ perfil }}</dd>
       </dl>
     </div>
+
   </div>
 </section>
 {% endblock %}
