@@ -80,8 +80,23 @@ textarea{resize:vertical;min-height:78px}
 .acc{margin-left:auto;display:flex;gap:8px;align-items:center}
 @media(max-width:560px){.fila{grid-template-columns:1fr}.acc{margin-left:0;width:100%}.acc .btn{flex:1}}
 .oculto{display:none}
+
+/* Mensaje temporal de cambios */
+
+.mensaje-temporal {
+  opacity: 1;
+  transition: opacity .5s ease, transform .5s ease;
+  
+}
+
+.mensaje-temporal.ocultando {
+  opacity: 0;
+  transform: translateY(-5px);
+}
 </style>
+
 </head>
+
 <body>
 
 <header class="barra">
@@ -105,17 +120,19 @@ textarea{resize:vertical;min-height:78px}
 
 {% if messages %}
 
-  {% for mensaje in messages %}
+  <div id="mensajes-temporales">
 
-    <div class="aviso">
+    {% for mensaje in messages %}
 
-      {{ mensaje }}
+      <div class="aviso mensaje-temporal">
+        {{ mensaje }}
+      </div>
 
-    </div>
+    {% endfor %}
 
-  {% endfor %}
+  </div>
 
-{% endif %}   
+{% endif %}
     
     
     
@@ -129,107 +146,112 @@ textarea{resize:vertical;min-height:78px}
     <h1>Mi pupilo</h1>
 
     <p class="sub">
-      HU-04 · Información del jugador asociado a tu cuenta.
+      HU-04 · Información de los jugadores asociados a tu cuenta.
     </p>
   </div>
 
 
-  {% if jugador %}
+  {% if jugadores %}
 
-    <div class="tarjeta">
+    {% for jugador in jugadores %}
 
-      <div class="pad perfil">
+      <div class="tarjeta" style="margin-bottom:16px">
 
-        <span class="foto">
-          {{ jugador.nombres|first }}{{ jugador.apellidos|first }}
-        </span>
+        <div class="pad perfil">
 
-        <div>
-
-          <h2 style="font-size:1.4rem">
-            {{ jugador.nombres }} {{ jugador.apellidos }}
-          </h2>
-
-          <p class="sub">
-            RUT · {{ jugador.rut }}
-          </p>
-
-        </div>
-
-
-        {% if jugador.categoria_actual %}
-
-          <span class="pill cat" style="margin-left:auto">
-            {{ jugador.categoria_actual }}
+          <span class="foto">
+            {{ jugador.nombres|first }}{{ jugador.apellidos|first }}
           </span>
 
-        {% else %}
+          <div>
 
-          <span class="pill esp" style="margin-left:auto">
-            Categoría pendiente
-          </span>
+            <h2 style="font-size:1.4rem">
+              {{ jugador.nombres }} {{ jugador.apellidos }}
+            </h2>
 
-        {% endif %}
+            <p class="sub">
+              RUT · {{ jugador.rut }}
+            </p>
 
-      </div>
-
-
-      <div class="datos">
-
-        <div class="dato">
-
-          <span>Fecha de nacimiento</span>
-
-          <b>
-            {{ jugador.fecha_nacimiento|date:"d/m/Y" }}
-          </b>
-
-        </div>
+          </div>
 
 
-        <div class="dato">
+          {% if jugador.categoria_actual %}
 
-          <span>Rama</span>
-
-          <b>
-            {{ jugador.get_rama_display }}
-          </b>
-
-        </div>
-
-
-        <div class="dato">
-
-          <span>Estado</span>
-
-          {% if jugador.estado == "ACTIVO" %}
-
-            <b>Activo</b>
-
-          {% elif jugador.estado == "PENDIENTE" %}
-
-            <b>Pendiente de revisión</b>
+            <span class="pill cat" style="margin-left:auto">
+              {{ jugador.categoria_actual }}
+            </span>
 
           {% else %}
 
-            <b>Inactivo</b>
+            <span class="pill esp" style="margin-left:auto">
+              Categoría pendiente
+            </span>
 
           {% endif %}
 
         </div>
 
+
+        <div class="datos">
+
+          <div class="dato">
+
+            <span>Fecha de nacimiento</span>
+
+            <b>
+              {{ jugador.fecha_nacimiento|date:"d/m/Y" }}
+            </b>
+
+          </div>
+
+
+          <div class="dato">
+
+            <span>Rama</span>
+
+            <b>
+              {{ jugador.get_rama_display }}
+            </b>
+
+          </div>
+
+
+          <div class="dato">
+
+            <span>Estado</span>
+
+            {% if jugador.estado == "ACTIVO" %}
+
+              <b>Activo</b>
+
+            {% elif jugador.estado == "PENDIENTE" %}
+
+              <b>Pendiente de revisión</b>
+
+            {% else %}
+
+              <b>Inactivo</b>
+
+            {% endif %}
+
+          </div>
+
+        </div>
+
       </div>
 
-    </div>
+    {% endfor %}
+
 
   {% else %}
 
     <div class="tarjeta pad">
 
-      <h2>Aún no tienes un jugador registrado</h2>
+      <h2>Aún no tienes jugadores registrados</h2>
 
       <p class="sub" style="margin-top:6px">
-        Para registrar un pupilo utiliza la sección
+        Para registrar un alumno utiliza la sección
         <strong>Inscripción</strong>.
       </p>
 
@@ -238,7 +260,9 @@ textarea{resize:vertical;min-height:78px}
   {% endif %}
 
 
-<!---->
+  
+
+ <!-- ===== DATOS DE CONTACTO ===== -->
 
 <div class="tarjeta pad" style="margin-top:16px">
 
@@ -247,7 +271,6 @@ textarea{resize:vertical;min-height:78px}
   <p class="sub" style="margin-bottom:14px">
     Puedes actualizarlos cuando quieras.
   </p>
-
 
   <form
       method="post"
@@ -262,37 +285,33 @@ textarea{resize:vertical;min-height:78px}
       value="contacto"
     >
 
-
     <div class="fila">
 
       <label class="campo">
-
         Teléfono
 
         <input
           type="tel"
           name="telefono"
           value="{{ apoderado.telefono }}"
+          placeholder="+56 9 1234 5678"
           required
         >
-
       </label>
 
 
       <label class="campo">
-
         Correo
 
         <input
           type="email"
           name="email"
           value="{{ user.email }}"
+          placeholder="correo@ejemplo.cl"
         >
-
       </label>
 
     </div>
-
 
     <button
       class="btn chico"
@@ -304,9 +323,12 @@ textarea{resize:vertical;min-height:78px}
 
   </form>
 
-</div>
+</div> 
 
 </section>
+
+
+
 
 <!-- ===== ESTADO DE CUENTA (HU-11 / HU-13) ===== -->
 <section id="v-cuenta" class="oculto">
@@ -373,7 +395,7 @@ textarea{resize:vertical;min-height:78px}
 <section id="v-inscripcion" class="oculto">
   <div class="cabecera">
     <h1>Inscribir a un jugador</h1>
-    <p class="sub">HU-01 · La ficha queda pendiente hasta que Administración la revise.</p>
+    <p class="sub">La ficha queda pendiente hasta que Administración la revise.</p>
   </div>
 
   <form
@@ -606,7 +628,7 @@ textarea{resize:vertical;min-height:78px}
     <h2 style="margin-top:6px">Salud</h2>
     <p class="sub" style="margin-top:-8px">Solo lo necesario para actuar en cancha. No pedimos historial clínico.</p>
     <label class="campo">Alergias o alertas de emergencia
-      <input type="text" placeholder="Alergia severa al maní · usa inhalador">
+      <input type="text" placeholder="Opcional">
     </label>
     
     <label class="campo">Apoyo pedagógico o consideraciones
@@ -648,6 +670,7 @@ textarea{resize:vertical;min-height:78px}
   </form>
 </section>
 </div></main>
+
 
 
 <script>
@@ -721,6 +744,28 @@ document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () =>
   document.getElementById("url").textContent = rutas[v];
   window.scrollTo({top:0});
 }));
+
+// Ocultar mensajes de Django automáticamente
+document.addEventListener("DOMContentLoaded", () => {
+
+    const mensajes = document.querySelectorAll(".mensaje-temporal");
+
+    mensajes.forEach((mensaje) => {
+
+        setTimeout(() => {
+
+            mensaje.classList.add("ocultando");
+
+            setTimeout(() => {
+                mensaje.remove();
+            }, 500);
+
+        }, 3500);
+
+    });
+
+});
+
 </script>
 </body>
 </html>

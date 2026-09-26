@@ -12,14 +12,12 @@ from .models import (
 
 
 def inicio(request):
-    """Portada publica del club."""
+    """Portada pública del club."""
     return render(request, "paginas/inicio.html")
 
 
 @login_required
 def panel(request):
-
-
 
     usuario = request.user
 
@@ -33,17 +31,6 @@ def panel(request):
         # -------------------------------------------------
         # GUARDAR DATOS DE CONTACTO
         # -------------------------------------------------
-        
-        if request.method == "POST":
-            print("===================================")
-            print("POST RECIBIDO")
-            print(request.POST)
-            print("===================================")
-
-
-
-
-
         if (
             request.method == "POST"
             and request.POST.get("accion") == "contacto"
@@ -66,7 +53,7 @@ def panel(request):
             return redirect("panel")
 
         # -------------------------------------------------
-        # INSCRIPCIÓN HU-01
+        # FORMULARIO HU-01
         # -------------------------------------------------
         form = InscripcionForm()
 
@@ -77,70 +64,107 @@ def panel(request):
 
             form = InscripcionForm(request.POST)
 
+            print("===================================")
+            print("HU-01: POST RECIBIDO")
+            print(request.POST)
+            print("FORMULARIO VALIDO:", form.is_valid())
+            print("ERRORES:", form.errors)
+            print("===================================")
+
             if form.is_valid():
 
                 datos = form.cleaned_data
 
-                with transaction.atomic():
+                try:
 
-                    # 1. Crear jugador
-                    jugador = Jugador.objects.create(
-                        rut=datos["rut"],
-                        nombres=datos["nombres"],
-                        apellidos=datos["apellidos"],
-                        fecha_nacimiento=datos["fecha_nacimiento"],
-                        rama=datos["rama"],
-                        estado=Jugador.Estado.PENDIENTE,
-                        procedencia=datos["procedencia"],
-                        club_anterior=datos["club_anterior"],
+                    with transaction.atomic():
+
+                        # ---------------------------------
+                        # 1. CREAR JUGADOR
+                        # ---------------------------------
+                        jugador = Jugador.objects.create(
+                            rut=datos["rut"],
+                            nombres=datos["nombres"],
+                            apellidos=datos["apellidos"],
+                            fecha_nacimiento=datos["fecha_nacimiento"],
+                            rama=datos["rama"],
+                            estado=Jugador.Estado.PENDIENTE,
+                            procedencia=datos["procedencia"],
+                            club_anterior=datos["club_anterior"],
+                        )
+
+                        # ---------------------------------
+                        # 2. RELACIONAR APODERADO - JUGADOR
+                        # ---------------------------------
+                        ApoderadoJugador.objects.create(
+                            apoderado=apoderado,
+                            jugador=jugador,
+                            parentesco=datos["parentesco"],
+                            es_principal=True,
+                            puede_gestionar=True,
+                            activo=True,
+                        )
+
+                        # ---------------------------------
+                        # 3. CREAR SOLICITUD
+                        # ---------------------------------
+                        SolicitudInscripcion.objects.create(
+                            jugador=jugador,
+                            solicitante=usuario,
+                            estado=SolicitudInscripcion.Estado.PENDIENTE,
+                            procedencia=datos["procedencia"],
+                            club_anterior=datos["club_anterior"],
+                            consentimiento=datos["consentimiento"],
+                        )
+
+                    messages.success(
+                        request,
+                        (
+                            f"La solicitud de inscripción de "
+                            f"{jugador.nombres} {jugador.apellidos} "
+                            "fue enviada correctamente y quedó "
+                            "pendiente de revisión."
+                        )
                     )
 
-                    # 2. Relacionar apoderado y jugador
-                    ApoderadoJugador.objects.create(
-                        apoderado=apoderado,
-                        jugador=jugador,
-                        parentesco=datos["parentesco"],
-                        es_principal=True,
-                        puede_gestionar=True,
-                        activo=True,
+                    return redirect("panel")
+
+                except Exception as error:
+
+                    print("===================================")
+                    print("ERROR AL GUARDAR HU-01")
+                    print(error)
+                    print("===================================")
+
+                    messages.error(
+                        request,
+                        (
+                            "No fue posible guardar la inscripción. "
+                            "Revisa los datos e inténtalo nuevamente."
+                        )
                     )
 
-                    # 3. Crear solicitud
-                    SolicitudInscripcion.objects.create(
-                        jugador=jugador,
-                        solicitante=usuario,
-                        estado=SolicitudInscripcion.Estado.PENDIENTE,
-                        procedencia=datos["procedencia"],
-                        club_anterior=datos["club_anterior"],
-                        consentimiento=datos["consentimiento"],
-                    )
+            else:
 
-                messages.success(
+                messages.error(
                     request,
-                    (
-                        f"La solicitud de inscripción de "
-                        f"{jugador.nombres} {jugador.apellidos} "
-                        "fue enviada correctamente y quedó pendiente "
-                        "de revisión."
-                    )
+                    "No se pudo enviar la inscripción. Revisa los campos indicados."
                 )
 
-                # Evita volver a enviar el formulario al actualizar
-                return redirect("panel")
-
         # -------------------------------------------------
-        # OBTENER EL PUPILO DEL APODERADO
+        # OBTENER TODOS LOS JUGADORES DEL APODERADO
         # -------------------------------------------------
-        jugador = (
+        vinculos = (
             apoderado.vinculos_jugadores
             .filter(activo=True)
-            .select_related("jugador__categoria_actual")
+            .select_related("jugador", "jugador__categoria_actual")
             .order_by("-es_principal", "-created_at")
-            .first()
         )
 
+        jugadores = [vinculo.jugador for vinculo in vinculos]
+
         # -------------------------------------------------
-        # RENDER
+        # RENDER DEL PANEL
         # -------------------------------------------------
         return render(
             request,
@@ -148,7 +172,7 @@ def panel(request):
             {
                 "perfil": "Apoderado",
                 "apoderado": apoderado,
-                "jugador": jugador.jugador if jugador else None,
+                "jugadores": jugadores,
                 "form": form,
             },
         )
