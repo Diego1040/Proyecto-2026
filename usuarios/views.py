@@ -1,14 +1,35 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import InscripcionForm
+from .services import (
+    asignar_categoria_automatica,
+    aprobar_solicitud_inscripcion,
+    marcar_solicitud_en_revision,
+    rechazar_solicitud_inscripcion,
+)
 from .models import (
     ApoderadoJugador,
     Jugador,
     SolicitudInscripcion,
 )
+
+
+# =========================================================
+# ROLES
+# =========================================================
+def es_administracion(usuario):
+    """
+    Indica si el usuario pertenece al rol Administracion del club.
+
+    Por ahora el rol se maneja con el grupo de Django
+    "Administración". Si el equipo decide otra forma de manejar
+    roles, solo hay que cambiar esta funcion.
+    """
+    return usuario.groups.filter(name="Administración").exists()
 
 
 def inicio(request):
@@ -93,6 +114,9 @@ def panel(request):
                             club_anterior=datos["club_anterior"],
                         )
 
+                        # Asignar categoria segun edad y rama
+                        asignar_categoria_automatica(jugador)
+
                         # ---------------------------------
                         # 2. RELACIONAR APODERADO - JUGADOR
                         # ---------------------------------
@@ -163,6 +187,15 @@ def panel(request):
 
         jugadores = [vinculo.jugador for vinculo in vinculos]
 
+        # Ultima solicitud de cada jugador, para mostrar si fue
+        # rechazada y el motivo (HU-03)
+        for jugador in jugadores:
+            jugador.ultima_solicitud = (
+                jugador.solicitudes_inscripcion
+                .order_by("-fecha_solicitud")
+                .first()
+            )
+
         # -------------------------------------------------
         # RENDER DEL PANEL
         # -------------------------------------------------
@@ -178,7 +211,13 @@ def panel(request):
         )
 
     # =====================================================
-    # ADMINISTRACIÓN
+    # ADMINISTRACIÓN DEL CLUB (HU-03)
+    # =====================================================
+    if es_administracion(usuario):
+        return redirect("validar_fichas")
+
+    # =====================================================
+    # ADMINISTRACIÓN (superusuario / staff de Django)
     # =====================================================
     if usuario.is_staff:
 
@@ -198,5 +237,123 @@ def panel(request):
         "paginas/panel.html",
         {
             "perfil": "Jugador",
+        },
+    )
+
+
+# =========================================================
+# HU-03 · VALIDACIÓN DE FICHAS
+# =========================================================
+@login_required
+def validar_fichas(request):
+
+    usuario = request.user
+
+    if not es_administracion(usuario):
+        messages.error(
+            request,
+            "No tienes permiso para validar fichas de inscripción."
+        )
+        return redirect("panel")
+
+    # -----------------------------------------------------
+    # APROBAR O RECHAZAR
+    # -----------------------------------------------------
+    if request.method == "POST":
+
+        solicitud = get_object_or_404(
+            SolicitudInscripcion.objects.select_related("jugador"),
+            pk=request.POST.get("solicitud_id"),
+        )
+        accion = request.POST.get("accion")
+        motivo = request.POST.get("motivo", "")
+        jugador = solicitud.jugador
+
+        try:
+            with transaction.atomic():
+
+                # Si nadie la ha revisado aun, pasa a "en revision"
+                if solicitud.estado == SolicitudInscripcion.Estado.PENDIENTE:
+                    marcar_solicitud_en_revision(solicitud=solicitud)
+
+                if accion == "aprobar":
+                    aprobar_solicitud_inscripcion(
+                        solicitud=solicitud,
+                        usuario=usuario,
+                    )
+                    messages.success(
+                        request,
+                        f"Ficha de {jugador.nombres} {jugador.apellidos} "
+                        "aprobada. El jugador quedó activo."
+                    )
+
+                elif accion == "rechazar":
+                    rechazar_solicitud_inscripcion(
+                        solicitud=solicitud,
+                        usuario=usuario,
+                        motivo=motivo,
+                    )
+                    messages.success(
+                        request,
+                        f"Ficha de {jugador.nombres} {jugador.apellidos} "
+                        "rechazada."
+                    )
+
+                else:
+                    raise ValidationError("Acción no válida.")
+
+        except ValidationError as error:
+            messages.error(request, " ".join(error.messages))
+
+        return redirect("validar_fichas")
+
+    # -----------------------------------------------------
+    # LISTADO DE FICHAS POR REVISAR
+    # -----------------------------------------------------
+    solicitudes = (
+        SolicitudInscripcion.objects
+        .filter(
+            estado__in=[
+                SolicitudInscripcion.Estado.PENDIENTE,
+                SolicitudInscripcion.Estado.EN_REVISION,
+            ]
+        )
+        .select_related("jugador", "jugador__categoria_actual")
+        .prefetch_related(
+            "jugador__vinculos_apoderados__apoderado",
+            "jugador__alertas_salud",
+        )
+        .order_by("fecha_solicitud")
+    )
+
+    fichas = []
+
+    for solicitud in solicitudes:
+        jugador = solicitud.jugador
+
+        vinculo = next(
+            (v for v in jugador.vinculos_apoderados.all() if v.activo),
+            None,
+        )
+
+        alertas = [
+            alerta.descripcion
+            for alerta in jugador.alertas_salud.all()
+            if alerta.activa
+        ]
+
+        fichas.append({
+            "solicitud": solicitud,
+            "jugador": jugador,
+            "apoderado": vinculo.apoderado if vinculo else None,
+            "parentesco": vinculo.parentesco if vinculo else "",
+            "alertas": alertas,
+        })
+
+    return render(
+        request,
+        "usuarios/validar_fichas.html",
+        {
+            "fichas": fichas,
         },
     )

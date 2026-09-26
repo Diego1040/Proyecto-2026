@@ -225,6 +225,10 @@ textarea{resize:vertical;min-height:78px}
 
               <b>Activo</b>
 
+            {% elif jugador.ultima_solicitud.estado == "RECHAZADA" %}
+
+              <b style="color:var(--rojo)">Inscripción rechazada</b>
+
             {% elif jugador.estado == "PENDIENTE" %}
 
               <b>Pendiente de revisión</b>
@@ -238,6 +242,12 @@ textarea{resize:vertical;min-height:78px}
           </div>
 
         </div>
+
+        {% if jugador.estado != "ACTIVO" and jugador.ultima_solicitud.estado == "RECHAZADA" %}
+          <div style="margin:14px 16px 16px;padding:12px 14px;border-radius:6px;background:var(--rojo-fondo);border:1px solid #E8C4C0;color:var(--rojo);font-size:.9rem">
+            <b>Motivo del rechazo:</b> {{ jugador.ultima_solicitud.motivo_rechazo }}
+          </div>
+        {% endif %}
 
       </div>
 
