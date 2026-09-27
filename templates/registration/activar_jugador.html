@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Activar cuenta - Ayllu Basket
+    </title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: #F4F3F1;
+            color: #17171A;
+            font-family: Arial, sans-serif;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            padding: 20px;
+        }
+
+        .contenedor {
+            width: 100%;
+            max-width: 480px;
+        }
+
+        .tarjeta {
+            background: white;
+            border: 1px solid #E1DFDB;
+            border-radius: 10px;
+            padding: 28px;
+            box-shadow: 0 4px 18px rgba(0,0,0,.05);
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: 28px;
+        }
+
+        .sub {
+            color: #6E6E74;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .campo {
+            display: grid;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        .campo label {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #D8D6D2;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+
+        input:focus {
+            outline: 2px solid #E8552A;
+            border-color: #E8552A;
+        }
+
+        .btn {
+            width: 100%;
+            border: 0;
+            border-radius: 6px;
+            padding: 13px;
+            background: #E8552A;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background: #CC4620;
+        }
+
+        .aviso {
+            background: #FFF6E3;
+            border: 1px solid #F0DEB4;
+            color: #6B5312;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+
+        .error {
+            background: #FBE9E7;
+            border: 1px solid #E8B4B0;
+            color: #B3261E;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 18px;
+        }
+
+        .login {
+            display: block;
+            text-align: center;
+            margin-top: 18px;
+            color: #6E6E74;
+            text-decoration: none;
+        }
+
+        .login:hover {
+            color: #17171A;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="contenedor">
+
+    <div class="tarjeta">
+
+        <h1>
+            Activa tu cuenta
+        </h1>
+
+        <p class="sub">
+            Esta opción es para jugadores de 18 años o más
+            que todavía no tienen una cuenta personal.
+        </p>
+
+
+        {% if messages %}
+
+            {% for mensaje in messages %}
+
+                <div class="error">
+
+                    {{ mensaje }}
+
+                </div>
+
+            {% endfor %}
+
+        {% endif %}
+
+
+        <div class="aviso">
+
+            Debes ingresar los datos que coincidan
+            con la ficha registrada en Ayllu Basket.
+
+        </div>
+
+
+        <form
+            method="post"
+        >
+
+            {% csrf_token %}
+
+
+            <div class="campo">
+
+                <label for="rut">
+                    RUT
+                </label>
+
+                <input
+                    type="text"
+                    id="rut"
+                    name="rut"
+                    value="{{ rut }}"
+                    placeholder="21.345.678-9"
+                    required
+                >
+
+            </div>
+
+
+            <div class="campo">
+
+                <label for="fecha_nacimiento">
+                    Fecha de nacimiento
+                </label>
+
+                <input
+                    type="date"
+                    id="fecha_nacimiento"
+                    name="fecha_nacimiento"
+                    value="{{ fecha_nacimiento }}"
+                    required
+                >
+
+            </div>
+
+
+            <div class="campo">
+
+                <label for="password1">
+                    Nueva contraseña
+                </label>
+
+                <input
+                    type="password"
+                    id="password1"
+                    name="password1"
+                    required
+                >
+
+            </div>
+
+
+            <div class="campo">
+
+                <label for="password2">
+                    Confirmar contraseña
+                </label>
+
+                <input
+                    type="password"
+                    id="password2"
+                    name="password2"
+                    required
+                >
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="btn"
+            >
+
+                Activar mi cuenta
+
+            </button>
+
+        </form>
+
+
+        <a
+            href="{% url 'login' %}"
+            class="login"
+        >
+
+            Volver al inicio de sesión
+
+        </a>
+
+    </div>
+
+</div>
+
+</body>
+
+</html>

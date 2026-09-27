@@ -72,6 +72,41 @@ class InscripcionForm(forms.Form):
         ),
     )
 
+    peso_kg = forms.DecimalField(
+    label="Peso (kg)",
+    max_digits=5,
+    decimal_places=2,
+    min_value=1,
+    max_value=300,
+    required=False,
+    widget=forms.NumberInput(
+        attrs={
+            "placeholder": "Ej: 58.5",
+            "step": "0.01",
+            "min": "1",
+            "max": "300",
+        }
+    ),
+)
+
+    talla_cm = forms.DecimalField(
+    label="Talla (cm)",
+    max_digits=5,
+    decimal_places=2,
+    min_value=40,
+    max_value=250,
+    required=False,
+    widget=forms.NumberInput(
+        attrs={
+            "placeholder": "Ej: 165",
+            "step": "0.01",
+            "min": "40",
+            "max": "250",
+        }
+    ),
+)
+
+
     rama = forms.ChoiceField(
         label="Rama",
         choices=Jugador.Rama.choices,

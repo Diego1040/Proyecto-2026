@@ -10,4 +10,10 @@ urlpatterns = [
         views.validar_fichas,
         name="validar_fichas",
     ),
+ path("jugador/", views.panel_jugador, name="panel_jugador"),
+ path(
+    "activar-jugador/",
+    views.activar_jugador,
+    name="activar_jugador",
+),
 ]
