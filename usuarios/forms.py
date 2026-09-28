@@ -27,7 +27,7 @@ class UsuarioChangeForm(UserChangeForm):
             "is_staff",
             "is_superuser",
         )
-        
+
 class InscripcionJugadorForm(forms.Form):
     rut = forms.CharField(
         label="RUT del jugador",
@@ -54,7 +54,10 @@ class InscripcionJugadorForm(forms.Form):
 
     rama = forms.ChoiceField(
         label="Rama",
-        choices=Jugador.Rama.choices,
+        choices=[
+            ("", "Selecciona una rama"),
+            *Jugador.Rama.choices,
+        ],
     )
 
     telefono = forms.CharField(
@@ -77,13 +80,23 @@ class InscripcionJugadorForm(forms.Form):
 
     procedencia = forms.ChoiceField(
         label="Procedencia deportiva",
-        choices=Jugador.Procedencia.choices,
+        choices=[
+            ("", "Selecciona una procedencia"),
+            *Jugador.Procedencia.choices,
+        ],
     )
 
     club_anterior = forms.CharField(
         label="Club anterior",
         max_length=150,
         required=False,
+        help_text="Solo se solicita si vienes de otro club.",
+        widget=forms.TextInput(
+            attrs={
+                "placeholder": "Ej.: Club Deportivo Norte",
+                "autocomplete": "organization",
+            },
+        ),
     )
 
     peso_kg = forms.DecimalField(
@@ -92,6 +105,13 @@ class InscripcionJugadorForm(forms.Form):
         decimal_places=2,
         required=False,
         min_value=0,
+        widget=forms.NumberInput(
+            attrs={
+                "placeholder": "Ej.: 65.5",
+                "step": "0.01",
+                "inputmode": "decimal",
+            },
+        ),
     )
 
     talla_cm = forms.DecimalField(
@@ -100,6 +120,13 @@ class InscripcionJugadorForm(forms.Form):
         decimal_places=2,
         required=False,
         min_value=0,
+        widget=forms.NumberInput(
+            attrs={
+                "placeholder": "Ej.: 175",
+                "step": "0.01",
+                "inputmode": "decimal",
+            },
+        ),
     )
 
     rut_apoderado = forms.CharField(
@@ -126,14 +153,25 @@ class InscripcionJugadorForm(forms.Form):
         required=False,
     )
 
-    parentesco = forms.CharField(
+    parentesco = forms.ChoiceField(
         label="Parentesco",
-        max_length=50,
+        choices=[
+            ("", "Selecciona el parentesco"),
+            ("MADRE", "Madre"),
+            ("PADRE", "Padre"),
+            ("TUTOR", "Tutor"),
+        ],
         required=False,
-        help_text=(
-            "Ejemplo: Madre, Padre o Tutor. "
-            "El catalogo definitivo aun debe confirmarse."
-        ),
+    )
+
+    tiene_alerta_salud = forms.ChoiceField(
+        label="¿El jugador tiene alguna alerta de salud relevante?",
+        choices=[
+            ("NO", "No"),
+            ("SI", "Sí"),
+        ],
+        widget=forms.RadioSelect,
+        required=True,
     )
 
     alerta_tipo = forms.CharField(
@@ -143,13 +181,26 @@ class InscripcionJugadorForm(forms.Form):
         help_text=(
             "Solo informacion necesaria para seguridad/emergencias."
         ),
+        widget=forms.TextInput(
+            attrs={
+                "placeholder": (
+                    "Ej.: alergia, asma o restriccion relevante"
+                ),
+            },
+        ),
     )
 
     alerta_descripcion = forms.CharField(
         label="Descripcion de la alerta",
         required=False,
         widget=forms.Textarea(
-            attrs={"rows": 3},
+            attrs={
+                "rows": 3,
+                "placeholder": (
+                    "Indica solo lo necesario para actuar "
+                    "de forma segura ante una emergencia."
+                ),
+            },
         ),
     )
 
@@ -157,7 +208,13 @@ class InscripcionJugadorForm(forms.Form):
         label="Observaciones",
         required=False,
         widget=forms.Textarea(
-            attrs={"rows": 3},
+            attrs={
+                "rows": 3,
+                "placeholder": (
+                    "Agrega aqui cualquier antecedente relevante "
+                    "para la solicitud."
+                ),
+            },
         ),
     )
 
@@ -211,9 +268,48 @@ class InscripcionJugadorForm(forms.Form):
     def clean(self):
         cleaned = super().clean()
 
-        fecha_nacimiento = cleaned.get(
-            "fecha_nacimiento"
-        )
+        procedencia = cleaned.get("procedencia")
+
+        club_anterior = (cleaned.get("club_anterior") or "").strip()
+
+        if procedencia == Jugador.Procedencia.OTRO_CLUB:
+            if not club_anterior:
+                self.add_error(
+                    "club_anterior",
+                    "Debe indicar el club anterior.",
+                )
+            else:
+                cleaned["club_anterior"] = club_anterior
+        else:
+            cleaned["club_anterior"] = ""
+
+        tiene_alerta_salud = cleaned.get("tiene_alerta_salud")
+        alerta_tipo = (cleaned.get("alerta_tipo") or "").strip()
+
+        alerta_descripcion = (cleaned.get("alerta_descripcion") or "").strip()
+
+        if tiene_alerta_salud == "SI":
+
+            if not alerta_tipo:
+                self.add_error(
+                    "alerta_tipo",
+                    "Debe indicar el tipo de alerta de salud.",
+                )
+
+            if not alerta_descripcion:
+                self.add_error(
+                    "alerta_descripcion",
+                    "Debe describir la alerta de salud.",
+                )
+
+            cleaned["alerta_tipo"] = alerta_tipo
+            cleaned["alerta_descripcion"] = (alerta_descripcion)
+
+        else:
+            cleaned["alerta_tipo"] = ""
+            cleaned["alerta_descripcion"] = ""
+
+        fecha_nacimiento = cleaned.get("fecha_nacimiento")
 
         if not fecha_nacimiento:
             return cleaned
@@ -231,45 +327,6 @@ class InscripcionJugadorForm(forms.Form):
             return cleaned
 
         cleaned["edad_calculada"] = edad
-
-        procedencia = cleaned.get("procedencia")
-
-        if (
-            procedencia == Jugador.Procedencia.OTRO_CLUB
-            and not (
-                cleaned.get("club_anterior") or ""
-            ).strip()
-        ):
-            self.add_error(
-                "club_anterior",
-                "Debe indicar el club anterior.",
-            )
-
-        alerta_tipo = (
-            cleaned.get("alerta_tipo") or ""
-        ).strip()
-
-        alerta_descripcion = (
-            cleaned.get("alerta_descripcion") or ""
-        ).strip()
-
-        if bool(alerta_tipo) != bool(alerta_descripcion):
-            mensaje = (
-                "Si registra una alerta de salud debe "
-                "indicar tanto el tipo como la descripción."
-            )
-
-            if not alerta_tipo:
-                self.add_error(
-                    "alerta_tipo",
-                    mensaje,
-                )
-
-            if not alerta_descripcion:
-                self.add_error(
-                    "alerta_descripcion",
-                    mensaje,
-                )
 
         if edad < 18:
             if self.apoderado_existente is None:
@@ -302,9 +359,7 @@ class InscripcionJugadorForm(forms.Form):
                             f"Debe indicar {etiqueta}.",
                         )
 
-                rut_apoderado = cleaned.get(
-                    "rut_apoderado"
-                )
+                rut_apoderado = cleaned.get("rut_apoderado")
 
                 rut_jugador = cleaned.get("rut")
 
@@ -335,10 +390,9 @@ class InscripcionJugadorForm(forms.Form):
                             "con esa cuenta para agregar otro jugador."
                         ),
                     )
+
             else:
-                parentesco = (
-                    cleaned.get("parentesco") or ""
-                ).strip()
+                parentesco = (cleaned.get("parentesco") or "").strip()
 
                 if not parentesco:
                     self.add_error(
@@ -347,23 +401,11 @@ class InscripcionJugadorForm(forms.Form):
                     )
 
         else:
-            telefono = (
-                cleaned.get("telefono") or ""
-            ).strip()
+            telefono = (cleaned.get("telefono") or "").strip()
 
-            nombre_emergencia = (
-                cleaned.get(
-                    "nombre_contacto_emergencia"
-                )
-                or ""
-            ).strip()
+            nombre_emergencia = (cleaned.get("nombre_contacto_emergencia") or "").strip()
 
-            telefono_emergencia = (
-                cleaned.get(
-                    "telefono_contacto_emergencia"
-                )
-                or ""
-            ).strip()
+            telefono_emergencia = (cleaned.get("telefono_contacto_emergencia") or "").strip()
 
             if not telefono:
                 self.add_error(
@@ -393,9 +435,7 @@ class InscripcionJugadorForm(forms.Form):
                 )
 
             if self.apoderado_existente is not None:
-                parentesco = (
-                    cleaned.get("parentesco") or ""
-                ).strip()
+                parentesco = (cleaned.get("parentesco") or "").strip()
 
                 if not parentesco:
                     self.add_error(
@@ -407,7 +447,7 @@ class InscripcionJugadorForm(forms.Form):
                     )
 
         return cleaned
-    
+
 class RechazoSolicitudForm(forms.Form):
     motivo = forms.CharField(
         label="Motivo del rechazo",

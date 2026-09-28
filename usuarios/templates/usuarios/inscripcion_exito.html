@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block titulo %}
+Solicitud enviada — Ayllu Basket
+{% endblock %}
+
+{% block contenido %}
+<section class="seccion">
+  <div class="wrap wrap-formulario">
+    <div class="tarjeta confirmacion">
+      <p class="etiqueta-seccion">Inscripción</p>
+      <h1>Solicitud enviada</h1>
+
+      <p class="bajada">
+        Los datos fueron registrados correctamente
+        y ahora quedan pendientes de revisión administrativa.
+      </p>
+
+      {% if solicitud_id %}
+        <p>
+          Número de solicitud:
+          <strong>#{{ solicitud_id }}</strong>
+        </p>
+      {% endif %}
+
+      <p>
+        La solicitud no activa automáticamente al jugador.
+        Administración debe revisarla antes.
+      </p>
+
+      <a class="boton" href="{% url 'inicio' %}">
+        Volver al inicio
+      </a>
+    </div>
+  </div>
+</section>
+{% endblock %}

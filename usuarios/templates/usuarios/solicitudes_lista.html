@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block titulo %}
+Solicitudes — Administración — Ayllu Basket
+{% endblock %}
+
+{% block contenido %}
+<section class="seccion">
+  <div class="wrap">
+    <div class="cab">
+      <div>
+        <p class="etiqueta-seccion">Administración</p>
+        <h1>Solicitudes de inscripción</h1>
+      </div>
+    </div>
+
+    <form method="get" class="tarjeta filtro-solicitudes">
+      <div class="campo">
+        <label for="estado">Filtrar por estado</label>
+
+        <select id="estado" name="estado">
+          <option value="">Todos</option>
+
+          {% for valor, etiqueta in estados %}
+            <option
+              value="{{ valor }}"
+              {% if estado_actual == valor %}selected{% endif %}
+            >
+              {{ etiqueta }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <button class="boton chico" type="submit">
+        Filtrar
+      </button>
+    </form>
+
+    <div class="tarjeta tabla-contenedor">
+      <table class="tabla-ayllu">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Jugador</th>
+            <th>Estado</th>
+            <th>Categoría</th>
+            <th>Fecha</th>
+            <th></th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for solicitud in solicitudes %}
+            <tr>
+              <td>#{{ solicitud.pk }}</td>
+              <td>{{ solicitud.jugador }}</td>
+              <td>{{ solicitud.get_estado_display }}</td>
+              <td>
+                {{ solicitud.jugador.categoria_actual|default:"—" }}
+              </td>
+              <td>
+                {{ solicitud.fecha_solicitud|date:"d/m/Y H:i" }}
+              </td>
+              <td>
+                <a
+                  class="enlace"
+                  href="{% url 'solicitud_detalle' solicitud.pk %}"
+                >
+                  Revisar
+                </a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6">
+                No hay solicitudes para mostrar.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

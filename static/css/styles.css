@@ -23,7 +23,7 @@ h2{font-size:clamp(1.9rem,4vw,2.7rem);text-transform:uppercase}
 h3{font-size:1.3rem}
 p{margin:0}
 a{color:inherit;text-decoration:none}
-a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--naranja);outline-offset:3px;border-radius:2px}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--naranja);outline-offset:3px;border-radius:2px}
 .wrap{max-width:var(--ancho);margin:0 auto;padding:0 24px}
 .seccion{padding:76px 0}
 .seccion+.seccion{border-top:1px solid var(--linea)}
@@ -169,3 +169,331 @@ footer a:hover{color:var(--naranja)}
 .panel dl{display:grid;grid-template-columns:auto 1fr;gap:10px 22px;margin:18px 0 0;font-size:.95rem}
 .panel dt{font-weight:600}
 .panel dd{margin:0;color:var(--gris)}
+
+/* ===== Flujo de inscripción ===== */
+
+.wrap-formulario{
+  max-width:900px;
+}
+
+.cab-formulario{
+  margin-bottom:22px;
+}
+
+.etiqueta-seccion{
+  color:var(--naranja);
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  font-size:.82rem;
+  margin-bottom:6px;
+}
+
+.formulario-ayllu{
+  padding:24px;
+}
+
+.formulario-ayllu fieldset{
+  border:0;
+  border-top:1px solid var(--linea);
+  padding:22px 0 4px;
+  margin:0 0 18px;
+}
+
+.formulario-ayllu legend{
+  font-family:"Barlow Condensed",system-ui,sans-serif;
+  font-size:1.25rem;
+  font-weight:700;
+  padding-right:12px;
+}
+
+.rejilla-form{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px;
+}
+
+.formulario-ayllu .campo{
+  margin-bottom:16px;
+}
+
+/* Inputs, selects y textareas con el mismo diseño */
+
+.formulario-ayllu input:not([type="checkbox"]):not([type="radio"]),
+.formulario-ayllu select,
+.formulario-ayllu textarea{
+  width:100%;
+  background:var(--blanco);
+  border:1px solid var(--linea);
+  border-radius:5px;
+  padding:12px 13px;
+  font:inherit;
+  font-size:.98rem;
+  color:var(--tinta);
+
+  transition:
+    border-color .15s,
+    box-shadow .15s,
+    background .15s;
+}
+
+.formulario-ayllu select{
+  min-height:48px;
+  cursor:pointer;
+}
+
+.formulario-ayllu textarea{
+  resize:vertical;
+  min-height:108px;
+}
+
+/* Foco */
+
+.formulario-ayllu input:not([type="checkbox"]):not([type="radio"]):focus,
+.formulario-ayllu select:focus,
+.formulario-ayllu textarea:focus{
+  border-color:var(--naranja);
+  box-shadow:0 0 0 3px var(--naranja-suave);
+  outline:none;
+}
+
+/* Placeholder */
+
+.formulario-ayllu input::placeholder,
+.formulario-ayllu textarea::placeholder{
+  color:#9B9995;
+}
+
+/* Campo con error */
+
+.formulario-ayllu .campo:has(.yerro)
+input:not([type="checkbox"]),
+
+.formulario-ayllu .campo:has(.yerro)
+select,
+
+.formulario-ayllu .campo:has(.yerro)
+textarea{
+  border-color:var(--naranja-texto);
+  background:#FFF9F7;
+}
+
+/* Textos de ayuda */
+
+.bloque-ayuda{
+  display:block;
+  margin:4px 0 16px;
+}
+
+/* Resumen superior de errores */
+
+.resumen-errores{
+  display:grid;
+  gap:2px;
+  margin-bottom:16px;
+}
+
+.resumen-errores strong{
+  font-weight:700;
+}
+
+/* Etiqueta "Opcional" */
+
+.opcional{
+  display:inline-block;
+  margin-left:6px;
+  color:var(--gris);
+  font-size:.76rem;
+  font-weight:500;
+  text-transform:none;
+  letter-spacing:0;
+}
+
+/* Elementos dinámicos */
+
+#bloque-club-anterior[hidden],
+.formulario-ayllu fieldset[hidden]{
+  display:none;
+}
+
+/* Consentimiento */
+
+.consentimiento label{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+}
+
+.campo_consentimiento input{
+  width:auto !important;
+}
+
+.consentimiento input{
+  margin-top:4px;
+}
+
+/* Botones */
+
+.acciones-form{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  flex-wrap:wrap;
+  padding-top:4px;
+}
+
+.formulario-ayllu .acciones-form .boton{
+  border:0;
+  font:inherit;
+  font-weight:600;
+  cursor:pointer;
+}
+
+.opciones-radio ul{
+  list-style:none;
+  margin:8px 0 0;
+  padding:0;
+  display:flex;
+  gap:24px;
+}
+
+.opciones-radio li {
+  margin: 0;
+}
+
+.opciones-radio label{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  cursor:pointer;
+  font-weight:500;
+}
+
+.opciones-radio input[type="radio"]{
+  width:auto;
+  margin:0;
+  accent-color:var(--naranja);
+}
+
+#bloque-alerta-salud[hidden]{
+  display:none;
+}
+
+/* Pantalla de confirmación */
+
+.confirmacion{
+  padding:28px;
+}
+
+/* Responsive */
+
+@media (max-width:700px){
+
+  .rejilla-form{
+    grid-template-columns:1fr;
+  }
+
+  .formulario-ayllu{
+    padding:18px;
+  }
+
+  .acciones-form{
+    align-items:stretch;
+  }
+
+  .acciones-form .boton{
+    width:100%;
+    text-align:center;
+  }
+
+}
+
+
+/* ===== Gestión de solicitudes ===== */
+
+.filtro-solicitudes{
+  display:flex;
+  align-items:end;
+  gap:14px;
+  padding:18px;
+  margin:18px 0;
+}
+
+.filtro-solicitudes .campo{
+  margin:0;
+  min-width:220px;
+}
+
+.tabla-contenedor{
+  overflow-x:auto;
+}
+
+.tabla-ayllu{
+  width:100%;
+  border-collapse:collapse;
+}
+
+.tabla-ayllu th,
+.tabla-ayllu td{
+  padding:12px 14px;
+  border-bottom:1px solid var(--linea);
+  text-align:left;
+  vertical-align:top;
+}
+
+.tabla-ayllu th{
+  font-size:.84rem;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+
+.detalle-solicitud,
+.acciones-revision{
+  padding:22px;
+  margin-bottom:18px;
+}
+
+.datos-detalle{
+  display:grid;
+  grid-template-columns:180px 1fr;
+  gap:8px 18px;
+}
+
+.datos-detalle dt{
+  font-weight:600;
+}
+
+.datos-detalle dd{
+  margin:0;
+}
+
+.acciones-revision{
+  display:grid;
+  gap:16px;
+}
+
+.form-rechazo{
+  border-top:1px solid var(--linea);
+  padding-top:16px;
+}
+
+.boton-secundario{
+  background:transparent;
+  color:var(--tinta);
+  border:1px solid var(--linea);
+}
+
+@media (max-width:700px){
+  .filtro-solicitudes{
+    align-items:stretch;
+    flex-direction:column;
+  }
+
+  .datos-detalle{
+    grid-template-columns:1fr;
+  }
+
+  .datos-detalle dd{
+    margin-bottom:8px;
+  }
+}

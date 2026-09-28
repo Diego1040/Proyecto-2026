@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block titulo %}
+Solicitud #{{ solicitud.pk }} — Ayllu Basket
+{% endblock %}
+
+{% block contenido %}
+
+<section class="seccion">
+  <div class="wrap wrap-formulario">
+    <!-- Encabezado -->
+    <div class="cab-formulario">
+      <p class="etiqueta-seccion">
+        Administración
+      </p>
+      <h1>
+        Solicitud #{{ solicitud.pk }}
+      </h1>
+      <p class="bajada">
+        Estado:
+        <strong>
+          {{ solicitud.get_estado_display }}
+        </strong>
+      </p>
+    </div>
+
+    <!-- DATOS DEL JUGADOR -->
+    <div class="tarjeta detalle-solicitud">
+      <h2>Datos del jugador</h2>
+      <dl class="datos-detalle">
+        <dt>Nombre</dt>
+        <dd>
+          {{ solicitud.jugador }}
+        </dd>
+        <dt>RUT</dt>
+        <dd>
+          {{ solicitud.jugador.rut }}
+        </dd>
+        <dt>Fecha de nacimiento</dt>
+        <dd>
+          {{ solicitud.jugador.fecha_nacimiento|date:"d/m/Y" }}
+        </dd>
+        <dt>Rama</dt>
+        <dd>
+          {{ solicitud.jugador.get_rama_display }}
+        </dd>
+        <dt>Categoría</dt>
+        <dd>
+          {{ solicitud.jugador.categoria_actual|default:"Sin categoría" }}
+        </dd>
+        <dt>Teléfono del jugador</dt>
+        <dd>
+          {{ solicitud.jugador.telefono|default:"—" }}
+        </dd>
+        <dt>Contacto de emergencia</dt>
+        <dd>
+          {{ solicitud.jugador.nombre_contacto_emergencia|default:"—" }}
+        </dd>
+        <dt>Teléfono de emergencia</dt>
+        <dd>
+          {{ solicitud.jugador.telefono_contacto_emergencia|default:"—" }}
+        </dd>
+      </dl>
+    </div>
+    <!-- INFORMACIÓN DEPORTIVA -->
+    <div class="tarjeta detalle-solicitud">
+      <h2>Información deportiva</h2>
+      <dl class="datos-detalle">
+        <dt>Procedencia</dt>
+        <dd>
+          {{ solicitud.get_procedencia_display }}
+        </dd>
+        <dt>Club anterior</dt>
+        <dd>
+          {{ solicitud.club_anterior|default:"—" }}
+        </dd>
+        <dt>Peso</dt>
+        <dd>
+          {% if solicitud.jugador.peso_kg is not None %}
+            {{ solicitud.jugador.peso_kg }} kg
+          {% else %}
+            —
+          {% endif %}
+        </dd>
+        <dt>Talla</dt>
+        <dd>
+          {% if solicitud.jugador.talla_cm is not None %}
+            {{ solicitud.jugador.talla_cm }} cm
+          {% else %}
+            —
+          {% endif %}
+        </dd>
+      </dl>
+    </div>
+
+    <!-- APODERADO -->
+    <div class="tarjeta detalle-solicitud">
+      <h2>Apoderado</h2>
+      {% for vinculo in solicitud.jugador.vinculos_apoderados.all %}
+        {% if vinculo.activo %}
+          <dl class="datos-detalle">
+            <dt>Nombre</dt>
+            <dd>
+              {{ vinculo.apoderado }}
+            </dd>
+            <dt>RUT</dt>
+            <dd>
+              {{ vinculo.apoderado.rut }}
+            </dd>
+            <dt>Teléfono</dt>
+            <dd>
+              {{ vinculo.apoderado.telefono|default:"—" }}
+            </dd>
+            <dt>Parentesco</dt>
+            <dd>
+              {{ vinculo.parentesco }}
+            </dd>
+            <dt>Apoderado principal</dt>
+            <dd>
+              {% if vinculo.es_principal %}
+                Sí
+              {% else %}
+                No
+              {% endif %}
+            </dd>
+          </dl>
+        {% endif %}
+      {% empty %}
+        <p>
+          Sin apoderado asociado.
+        </p>
+      {% endfor %}
+    </div>
+
+    <!-- SEGURIDAD Y SALUD -->
+    <div class="tarjeta detalle-solicitud">
+      <h2>Seguridad y salud</h2>
+      {% for alerta in solicitud.jugador.alertas_salud.all %}
+        {% if alerta.activa %}
+          <div class="alerta-salud-detalle">
+            <p>
+              <strong>
+                {{ alerta.tipo }}
+              </strong>
+            </p>
+            <p>
+              {{ alerta.descripcion }}
+            </p>
+          </div>
+        {% endif %}
+      {% empty %}
+        <p>
+          Sin alertas de salud registradas.
+        </p>
+      {% endfor %}
+    </div>
+
+    <!-- DATOS DE LA SOLICITUD -->
+    <div class="tarjeta detalle-solicitud">
+      <h2>Datos de la solicitud</h2>
+      <dl class="datos-detalle">
+        <dt>Fecha de solicitud</dt>
+        <dd>
+          {{ solicitud.fecha_solicitud|date:"d/m/Y H:i" }}
+        </dd>
+        <dt>Consentimiento</dt>
+        <dd>
+          {% if solicitud.consentimiento %}
+            Sí
+          {% else %}
+            No
+          {% endif %}
+        </dd>
+        <dt>Observaciones</dt>
+        <dd>
+          {{ solicitud.observaciones|default:"—" }}
+        </dd>
+      </dl>
+    </div>
+
+    <!-- ACCIONES ADMINISTRATIVAS -->
+    <div class="tarjeta acciones-revision">
+      <h2>Acciones</h2>
+      <!-- PENDIENTE -->
+      {% if solicitud.estado == "PENDIENTE" %}
+        <p>
+          La solicitud todavía no ha sido tomada
+          para revisión.
+        </p>
+        <form method="post" action="{% url 'solicitud_iniciar_revision' solicitud.pk %}">
+          {% csrf_token %}
+          <button class="boton" type="submit">
+            Marcar en revisión
+          </button>
+        </form>
+      {% endif %}
+
+      <!-- EN REVISIÓN -->
+      {% if solicitud.estado == "EN_REVISION" %}
+        <p>
+          Revisa los antecedentes antes de aprobar
+          o rechazar esta solicitud.
+        </p>
+
+        <!-- Aprobar -->
+        <form method="post" action="{% url 'solicitud_aprobar' solicitud.pk %}">
+          {% csrf_token %}
+          <button class="boton" type="submit">
+            Aprobar solicitud
+          </button>
+        </form>
+
+        <!-- Rechazar -->
+        <form method="post" action="{% url 'solicitud_rechazar' solicitud.pk %}" class="form-rechazo">
+          {% csrf_token %}
+          <div class="campo">
+            {{ rechazo_form.motivo.label_tag }}
+            {{ rechazo_form.motivo }}
+            {% for error in rechazo_form.motivo.errors %}
+              <span class="yerro">
+                {{ error }}
+              </span>
+            {% endfor %}
+          </div>
+          <button type="submit" class="boton boton-secundario">
+            Rechazar solicitud
+          </button>
+        </form>
+      {% endif %}
+
+      <!-- YA REVISADA -->
+      {% if solicitud.fecha_revision %}
+        <hr>
+        <dl class="datos-detalle">
+          <dt>Revisada por</dt>
+          <dd>
+            {{ solicitud.revisado_por|default:"—" }}
+          </dd>
+          <dt>Fecha de revisión</dt>
+          <dd>
+            {{ solicitud.fecha_revision|date:"d/m/Y H:i" }}
+          </dd>
+        </dl>
+      {% endif %}
+
+      <!-- MOTIVO DE RECHAZO -->
+      {% if solicitud.motivo_rechazo %}
+        <div class="motivo-rechazo">
+          <strong>
+            Motivo del rechazo:
+          </strong>
+          <p>
+            {{ solicitud.motivo_rechazo }}
+          </p>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Volver -->
+    <p>
+      <a class="enlace" href="{% url 'solicitudes_administracion' %}">
+        ← Volver a solicitudes
+      </a>
+    </p>
+  </div>
+</section>
+
+{% endblock %}

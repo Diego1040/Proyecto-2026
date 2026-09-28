@@ -1,0 +1,512 @@
+{% extends "base.html" %}
+
+{% block titulo %}
+Inscripción — Ayllu Basket
+{% endblock %}
+
+{% block contenido %}
+<section class="seccion formulario-inscripcion">
+  <div class="wrap wrap-formulario">
+
+    <div class="cab-formulario">
+      <p class="etiqueta-seccion">Inscripción</p>
+
+      <h1>
+        {% if modo_apoderado %}
+          Inscribir otro jugador
+        {% else %}
+          Únete a Ayllu Basket
+        {% endif %}
+      </h1>
+
+      <p class="bajada">
+        Completa los datos requeridos.
+        La solicitud quedará pendiente de revisión administrativa.
+      </p>
+    </div>
+
+    {% if form.errors %}
+      <div class="aviso error resumen-errores" role="alert">
+        <strong>Revisa los campos indicados.</strong>
+        <p>Hay información incompleta o que necesita corrección.</p>
+      </div>
+    {% endif %}
+
+    {% if form.non_field_errors %}
+      <div class="aviso error">
+        {% for error in form.non_field_errors %}
+          <p>{{ error }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <form method="post" novalidate class="tarjeta formulario-ayllu">
+      {% csrf_token %}
+
+      <fieldset>
+        <legend>Datos del jugador</legend>
+
+        <div class="rejilla-form">
+
+          <div class="campo">
+            {{ form.rut.label_tag }}
+            {{ form.rut }}
+
+            {% if form.rut.help_text %}
+              <span class="ayuda">
+                {{ form.rut.help_text }}
+              </span>
+            {% endif %}
+
+            {% for error in form.rut.errors %}
+              <span class="yerro">{{ error }}</span>
+            {% endfor %}
+          </div>
+
+          <div class="campo">
+            {{ form.nombres.label_tag }}
+            {{ form.nombres }}
+
+            {% for error in form.nombres.errors %}
+              <span class="yerro">{{ error }}</span>
+            {% endfor %}
+          </div>
+
+          <div class="campo">
+            {{ form.apellidos.label_tag }}
+            {{ form.apellidos }}
+
+            {% for error in form.apellidos.errors %}
+              <span class="yerro">{{ error }}</span>
+            {% endfor %}
+          </div>
+
+          <div class="campo">
+            {{ form.fecha_nacimiento.label_tag }}
+            {{ form.fecha_nacimiento }}
+
+            {% for error in form.fecha_nacimiento.errors %}
+              <span class="yerro">{{ error }}</span>
+            {% endfor %}
+          </div>
+
+          <div class="campo">
+            {{ form.rama.label_tag }}
+            {{ form.rama }}
+
+            {% for error in form.rama.errors %}
+              <span class="yerro">{{ error }}</span>
+            {% endfor %}
+          </div>
+
+        </div>
+      </fieldset>
+
+      <fieldset id="bloque-adulto">
+        <legend>Contacto del jugador</legend>
+
+        <p class="ayuda bloque-ayuda">
+          Para jugadores adultos, teléfono y contacto de emergencia
+          son obligatorios.
+        </p>
+
+        <div class="rejilla-form">
+
+          <div class="campo">
+            {{ form.telefono.label_tag }}
+            {{ form.telefono }}
+
+            {% for error in form.telefono.errors %}
+              <span class="yerro">{{ error }}</span>
+            {% endfor %}
+          </div>
+
+          <div class="campo">
+            {{ form.nombre_contacto_emergencia.label_tag }}
+            {{ form.nombre_contacto_emergencia }}
+
+            {% for error in form.nombre_contacto_emergencia.errors %}
+              <span class="yerro">{{ error }}</span>
+            {% endfor %}
+          </div>
+
+          <div class="campo">
+            {{ form.telefono_contacto_emergencia.label_tag }}
+            {{ form.telefono_contacto_emergencia }}
+
+            {% for error in form.telefono_contacto_emergencia.errors %}
+              <span class="yerro">{{ error }}</span>
+            {% endfor %}
+          </div>
+
+        </div>
+      </fieldset>
+
+      <fieldset id="bloque-apoderado">
+        <legend>Apoderado</legend>
+
+        {% if modo_apoderado %}
+
+          <p class="aviso">
+            Se utilizará el apoderado asociado a la cuenta
+            que inició sesión.
+          </p>
+
+        {% else %}
+
+          <p class="ayuda bloque-ayuda">
+            Estos datos son obligatorios cuando el jugador
+            es menor de 18 años.
+          </p>
+
+          <div class="rejilla-form">
+
+            <div class="campo">
+              {{ form.rut_apoderado.label_tag }}
+              {{ form.rut_apoderado }}
+
+              {% for error in form.rut_apoderado.errors %}
+                <span class="yerro">{{ error }}</span>
+              {% endfor %}
+            </div>
+
+            <div class="campo">
+              {{ form.nombres_apoderado.label_tag }}
+              {{ form.nombres_apoderado }}
+
+              {% for error in form.nombres_apoderado.errors %}
+                <span class="yerro">{{ error }}</span>
+              {% endfor %}
+            </div>
+
+            <div class="campo">
+              {{ form.apellidos_apoderado.label_tag }}
+              {{ form.apellidos_apoderado }}
+
+              {% for error in form.apellidos_apoderado.errors %}
+                <span class="yerro">{{ error }}</span>
+              {% endfor %}
+            </div>
+
+            <div class="campo">
+              {{ form.telefono_apoderado.label_tag }}
+              {{ form.telefono_apoderado }}
+
+              {% for error in form.telefono_apoderado.errors %}
+                <span class="yerro">{{ error }}</span>
+              {% endfor %}
+            </div>
+
+          </div>
+
+        {% endif %}
+
+        <div class="campo">
+          {{ form.parentesco.label_tag }}
+          {{ form.parentesco }}
+
+          {% if form.parentesco.help_text %}
+            <span class="ayuda">
+              {{ form.parentesco.help_text }}
+            </span>
+          {% endif %}
+
+          {% for error in form.parentesco.errors %}
+            <span class="yerro">{{ error }}</span>
+          {% endfor %}
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Información deportiva</legend>
+
+        <div class="rejilla-form">
+
+          <div class="campo">
+            {{ form.procedencia.label_tag }}
+            {{ form.procedencia }}
+
+            {% for error in form.procedencia.errors %}
+              <span class="yerro">{{ error }}</span>
+            {% endfor %}
+          </div>
+
+          <div class="campo" id="bloque-club-anterior">
+            {{ form.club_anterior.label_tag }}
+            {{ form.club_anterior }}
+
+            {% if form.club_anterior.help_text %}
+              <span class="ayuda">
+                {{ form.club_anterior.help_text }}
+              </span>
+            {% endif %}
+
+            {% for error in form.club_anterior.errors %}
+              <span class="yerro">{{ error }}</span>
+            {% endfor %}
+          </div>
+
+          <div class="campo">
+            <label for="{{ form.peso_kg.id_for_label }}">
+              {{ form.peso_kg.label }}
+              <span class="opcional">Opcional</span>
+            </label>
+
+            {{ form.peso_kg }}
+
+            {% for error in form.peso_kg.errors %}
+              <span class="yerro">{{ error }}</span>
+            {% endfor %}
+          </div>
+
+          <div class="campo">
+            <label for="{{ form.talla_cm.id_for_label }}">
+              {{ form.talla_cm.label }}
+              <span class="opcional">Opcional</span>
+            </label>
+
+            {{ form.talla_cm }}
+
+            {% for error in form.talla_cm.errors %}
+              <span class="yerro">{{ error }}</span>
+            {% endfor %}
+          </div>
+
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Seguridad y observaciones</legend>
+
+        <p class="ayuda bloque-ayuda">
+            Registra únicamente información relevante para la
+            seguridad del jugador.
+        </p>
+
+        <div class="campo campo-alerta-pregunta">
+            {{ form.tiene_alerta_salud.label_tag }}
+
+            <div class="opciones-radio">
+            {{ form.tiene_alerta_salud }}
+            </div>
+
+            {% for error in form.tiene_alerta_salud.errors %}
+            <span class="yerro">{{ error }}</span>
+            {% endfor %}
+        </div>
+
+        <div id="bloque-alerta-salud">
+
+            <div class="campo">
+            {{ form.alerta_tipo.label_tag }}
+            {{ form.alerta_tipo }}
+
+            {% if form.alerta_tipo.help_text %}
+                <span class="ayuda">
+                {{ form.alerta_tipo.help_text }}
+                </span>
+            {% endif %}
+
+            {% for error in form.alerta_tipo.errors %}
+                <span class="yerro">{{ error }}</span>
+            {% endfor %}
+            </div>
+
+            <div class="campo">
+            {{ form.alerta_descripcion.label_tag }}
+            {{ form.alerta_descripcion }}
+
+            {% for error in form.alerta_descripcion.errors %}
+                <span class="yerro">{{ error }}</span>
+            {% endfor %}
+            </div>
+
+        </div>
+
+        <div class="campo">
+            <label for="{{ form.observaciones.id_for_label }}">
+            {{ form.observaciones.label }}
+            <span class="opcional">Opcional</span>
+            </label>
+
+            {{ form.observaciones }}
+
+            {% for error in form.observaciones.errors %}
+            <span class="yerro">{{ error }}</span>
+            {% endfor %}
+        </div>
+
+      </fieldset>
+
+      <div class="campo campo_consentimiento consentimiento">
+        <label>
+          {{ form.consentimiento }}
+          <span>
+            {{ form.consentimiento.label }}
+          </span>
+        </label>
+
+        {% for error in form.consentimiento.errors %}
+          <span class="yerro">{{ error }}</span>
+        {% endfor %}
+      </div>
+
+      <div class="acciones-form">
+        <button class="boton" type="submit">
+          Enviar solicitud
+        </button>
+
+        <a class="enlace" href="{% url 'inicio' %}">
+          Volver al inicio
+        </a>
+      </div>
+
+    </form>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const fecha = document.getElementById("id_fecha_nacimiento");
+
+  const bloqueAdulto = document.getElementById("bloque-adulto");
+
+  const bloqueApoderado =document.getElementById("bloque-apoderado");
+
+
+  const procedencia = document.getElementById("id_procedencia");
+
+  const bloqueClubAnterior = document.getElementById("bloque-club-anterior");
+
+  const clubAnterior = document.getElementById("id_club_anterior");
+
+
+  const opcionesAlerta = document.querySelectorAll('input[name="tiene_alerta_salud"]');
+
+  const bloqueAlertaSalud = document.getElementById("bloque-alerta-salud");
+
+  const alertaTipo = document.getElementById("id_alerta_tipo");
+
+  const alertaDescripcion = document.getElementById("id_alerta_descripcion");
+
+
+  const modoApoderado = {% if modo_apoderado %}true{% else %}false{% endif %};
+
+
+  function calcularEdad(fechaNacimiento) {
+
+    if (!fechaNacimiento) {
+      return null;
+    }
+
+    const nacimiento = new Date(fechaNacimiento + "T00:00:00");
+
+    const hoy = new Date();
+
+    let edad = hoy.getFullYear() - nacimiento.getFullYear();
+
+    const cumpleEsteAno = new Date(
+      hoy.getFullYear(),
+      nacimiento.getMonth(),
+      nacimiento.getDate()
+    );
+
+    if (hoy < cumpleEsteAno) {
+      edad--;
+    }
+
+    return edad;
+  }
+
+
+  function actualizarEdad() {
+
+    const edad = calcularEdad(fecha.value);
+
+    // Si todavia no hay fecha
+    if (edad === null) {
+
+      bloqueAdulto.hidden = true;
+      bloqueAdulto.disabled = true;
+
+      bloqueApoderado.hidden = !modoApoderado;
+      bloqueApoderado.disabled = !modoApoderado;
+
+      return;
+    }
+
+
+    // Menor de 18
+    if (edad < 18) {
+
+      bloqueAdulto.hidden = true;
+      bloqueAdulto.disabled = true;
+
+      bloqueApoderado.hidden = false;
+      bloqueApoderado.disabled = false;
+
+    }
+
+    // Adulto
+    else {
+
+      bloqueAdulto.hidden = false;
+      bloqueAdulto.disabled = false;
+
+      bloqueApoderado.hidden = !modoApoderado;
+      bloqueApoderado.disabled = !modoApoderado;
+
+    }
+  }
+
+
+  function actualizarProcedencia() {
+
+    const otroClub = procedencia.value === "OTRO_CLUB";
+
+    bloqueClubAnterior.hidden = !otroClub;
+    clubAnterior.disabled = !otroClub;
+
+    if (!otroClub) {
+      clubAnterior.value = "";
+    }
+  }
+
+
+  function actualizarAlertaSalud() {
+
+    const seleccionada =
+      document.querySelector(
+        'input[name="tiene_alerta_salud"]:checked'
+      );
+
+    const tieneAlerta = seleccionada && seleccionada.value === "SI";
+
+    bloqueAlertaSalud.hidden = !tieneAlerta;
+
+    alertaTipo.disabled = !tieneAlerta;
+    alertaDescripcion.disabled = !tieneAlerta;
+
+    if (!tieneAlerta) {
+      alertaTipo.value = "";
+      alertaDescripcion.value = "";
+    }
+  }
+
+
+  fecha.addEventListener("change", actualizarEdad);
+
+  procedencia.addEventListener("change", actualizarProcedencia);
+
+  opcionesAlerta.forEach(function (opcion) {
+    opcion.addEventListener("change", actualizarAlertaSalud);
+  });
+
+
+  actualizarEdad();
+  actualizarProcedencia();
+  actualizarAlertaSalud();
+
+</script>
+{% endblock %}
