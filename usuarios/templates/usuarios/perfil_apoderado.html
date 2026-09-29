@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block titulo %}Mi perfil de apoderado — Ayllu Basket{% endblock %}
+
+{% block contenido %}
+<section class="seccion panel-perfil">
+  <div class="wrap">
+    <div class="cab cab-perfil">
+      <div>
+        <p class="etiqueta-seccion">Apoderado</p>
+        <h1>{{ apoderado.nombres }} {{ apoderado.apellidos }}</h1>
+        <p class="texto-secundario">Jugadores vinculados actualmente a tu cuenta.</p>
+      </div>
+      <a class="boton" href="{% url 'agregar_jugador_apoderado' %}">Agregar jugador</a>
+    </div>
+
+    <article class="tarjeta tarjeta-perfil tarjeta-contacto">
+      <div class="cab-contacto">
+        <div>
+          <p class="etiqueta-seccion">Contacto</p>
+          <h2>Actualizar teléfono</h2>
+          <p class="texto-secundario">El club utilizará este número para contactarte.</p>
+        </div>
+
+        <form method="post" class="form-contacto" novalidate>
+          {% csrf_token %}
+          {% for error in telefono_form.non_field_errors %}
+            <p class="yerro">{{ error }}</p>
+          {% endfor %}
+          <div class="campo campo-contacto">
+            {{ telefono_form.telefono.label_tag }}
+            {{ telefono_form.telefono }}
+            {% for error in telefono_form.telefono.errors %}
+              <span class="yerro">{{ error }}</span>
+            {% endfor %}
+          </div>
+          <button class="boton" type="submit">Guardar teléfono</button>
+        </form>
+      </div>
+    </article>
+
+    {% if vinculos %}
+      <div class="tarjetas-jugadores">
+        {% for vinculo in vinculos %}
+          <article class="tarjeta tarjeta-jugador">
+            <div class="cab-tarjeta-jugador">
+              <div>
+                <p class="etiqueta-seccion">Jugador asociado</p>
+                <h2>{{ vinculo.jugador.nombres }} {{ vinculo.jugador.apellidos }}</h2>
+              </div>
+              <span class="pill estado-deportivo {% if vinculo.jugador.estado == 'ACTIVO' %}ok{% else %}cat{% endif %}">
+                Estado: {{ vinculo.jugador.get_estado_display }}
+              </span>
+            </div>
+
+            <dl class="datos-perfil datos-jugador">
+              <dt>Parentesco</dt><dd>{{ vinculo.parentesco|capfirst }}</dd>
+              <dt>RUT</dt><dd>{{ vinculo.jugador.rut }}</dd>
+              <dt>Categoría</dt><dd>{{ vinculo.jugador.categoria_actual|default:"Sin asignar" }}</dd>
+              <dt>Rama</dt><dd>{{ vinculo.jugador.get_rama_display }}</dd>
+              <dt>Nacimiento</dt><dd>{{ vinculo.jugador.fecha_nacimiento|date:"d/m/Y" }}</dd>
+              <dt>Permiso de gestión</dt>
+              <dd>{% if vinculo.puede_gestionar %}Habilitado{% else %}Solo consulta{% endif %}</dd>
+              {% with ultima=vinculo.jugador.solicitudes_ordenadas.0 %}
+                <dt>Estado de solicitud</dt>
+                <dd class="estado-solicitud-contenedor">
+                  {% if ultima %}
+                    <span class="pill estado-solicitud
+                      {% if ultima.estado == 'APROBADA' %}ok
+                      {% elif ultima.estado == 'RECHAZADA' %}rechazada
+                      {% elif ultima.estado == 'EN_REVISION' %}revision
+                      {% else %}pendiente{% endif %}">
+                      {{ ultima.get_estado_display }}
+                    </span>
+                  {% else %}
+                    <span class="pill neutra">Sin solicitudes</span>
+                  {% endif %}
+                </dd>
+                {% if ultima.motivo_rechazo %}
+                  <dt>Motivo del rechazo</dt>
+                  <dd class="motivo-rechazo">{{ ultima.motivo_rechazo }}</dd>
+                {% endif %}
+              {% endwith %}
+            </dl>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="tarjeta tarjeta-perfil estado-vacio">
+        <p class="etiqueta-seccion">Jugadores asociados</p>
+        <h2>No tienes jugadores vinculados</h2>
+        <p class="texto-secundario">Puedes enviar la solicitud del primer jugador desde este perfil.</p>
+      </div>
+    {% endif %}
+
+    <p class="volver-panel"><a class="enlace" href="{% url 'panel' %}">Volver al panel general</a></p>
+  </div>
+</section>
+{% endblock %}

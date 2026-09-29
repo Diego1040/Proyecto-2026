@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block titulo %}Mi perfil de jugador — Ayllu Basket{% endblock %}
+
+{% block contenido %}
+<section class="seccion panel-perfil">
+  <div class="wrap">
+    <div class="cab cab-perfil">
+      <div>
+        <p class="etiqueta-seccion">Jugador</p>
+        <h1>{{ jugador.nombres }} {{ jugador.apellidos }}</h1>
+      </div>
+      <a class="boton-linea" href="{% url 'panel' %}">Volver al panel</a>
+    </div>
+
+    <div class="rejilla-perfil">
+      <article class="tarjeta tarjeta-perfil">
+        <div class="cab-tarjeta-perfil">
+          <div>
+            <p class="etiqueta-seccion">Información actual</p>
+            <h2>Ficha deportiva</h2>
+          </div>
+          <span class="pill estado-deportivo {% if jugador.estado == 'ACTIVO' %}ok{% else %}cat{% endif %}">
+            Estado: {{ jugador.get_estado_display }}
+          </span>
+        </div>
+        <dl class="datos-perfil">
+          <dt>Categoría</dt><dd>{{ jugador.categoria_actual|default:"Sin asignar" }}</dd>
+          <dt>Rama</dt><dd>{{ jugador.get_rama_display }}</dd>
+          <dt>Fecha de nacimiento</dt><dd>{{ jugador.fecha_nacimiento|date:"d/m/Y" }}</dd>
+          <dt>Teléfono</dt><dd>{{ jugador.telefono|default:"Sin registrar" }}</dd>
+          <dt>Procedencia</dt><dd>{{ jugador.get_procedencia_display }}</dd>
+          {% if jugador.club_anterior %}
+            <dt>Club anterior</dt><dd>{{ jugador.club_anterior }}</dd>
+          {% endif %}
+        </dl>
+      </article>
+
+      <article class="tarjeta tarjeta-perfil">
+        <p class="etiqueta-seccion">Seguridad</p>
+        <h2>Alertas de salud activas</h2>
+        {% if jugador.alertas_activas %}
+          <ul class="lista-perfil">
+            {% for alerta in jugador.alertas_activas %}
+              <li>
+                <strong>{{ alerta.tipo }}</strong>
+                <span>{{ alerta.descripcion }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="estado-vacio-seccion">
+            <strong>Sin alertas activas</strong>
+            <p class="texto-secundario">No hay alertas de salud activas registradas.</p>
+          </div>
+        {% endif %}
+      </article>
+    </div>
+
+    <article class="tarjeta tarjeta-perfil tarjeta-contacto">
+      <div class="cab-contacto">
+        <div>
+          <p class="etiqueta-seccion">Contacto</p>
+          <h2>Actualizar teléfono</h2>
+          <p class="texto-secundario">Este es el único dato personal editable desde tu perfil.</p>
+        </div>
+
+        <form method="post" class="form-contacto" novalidate>
+          {% csrf_token %}
+          {% for error in telefono_form.non_field_errors %}
+            <p class="yerro">{{ error }}</p>
+          {% endfor %}
+          <div class="campo campo-contacto">
+            {{ telefono_form.telefono.label_tag }}
+            {{ telefono_form.telefono }}
+            {% for error in telefono_form.telefono.errors %}
+              <span class="yerro">{{ error }}</span>
+            {% endfor %}
+          </div>
+          <button class="boton" type="submit">Guardar teléfono</button>
+        </form>
+      </div>
+    </article>
+
+    <article class="tarjeta tarjeta-perfil historial-perfil">
+      <p class="etiqueta-seccion">Trayectoria</p>
+      <h2>Historial de categorías</h2>
+      {% if jugador.historial_categorias_cargado %}
+        <ul class="lista-perfil lista-historial">
+          {% for cambio in jugador.historial_categorias_cargado %}
+            <li>
+              <strong>{{ cambio.categoria_nueva }}</strong>
+              <span>
+                {{ cambio.get_tipo_cambio_display }} · {{ cambio.fecha|date:"d/m/Y H:i" }}
+                {% if cambio.categoria_anterior %}
+                  · Antes: {{ cambio.categoria_anterior }}
+                {% endif %}
+              </span>
+              {% if cambio.motivo %}<span>{{ cambio.motivo }}</span>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="estado-vacio-seccion">
+          <strong>Sin cambios registrados</strong>
+          <p class="texto-secundario">Todavía no hay cambios de categoría en el historial.</p>
+        </div>
+      {% endif %}
+    </article>
+  </div>
+</section>
+{% endblock %}

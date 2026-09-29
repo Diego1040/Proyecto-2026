@@ -28,6 +28,41 @@ class UsuarioChangeForm(UserChangeForm):
             "is_superuser",
         )
 
+
+class TelefonoJugadorForm(forms.ModelForm):
+    class Meta:
+        model = Jugador
+        fields = ("telefono",)
+        labels = {
+            "telefono": "Teléfono",
+        }
+        widgets = {
+            "telefono": forms.TextInput(
+                attrs={
+                    "autocomplete": "tel",
+                    "placeholder": "+56 9 XXXX XXXX",
+                },
+            ),
+        }
+
+
+class TelefonoApoderadoForm(forms.ModelForm):
+    class Meta:
+        model = Apoderado
+        fields = ("telefono",)
+        labels = {
+            "telefono": "Teléfono",
+        }
+        widgets = {
+            "telefono": forms.TextInput(
+                attrs={
+                    "autocomplete": "tel",
+                    "placeholder": "+56 9 XXXX XXXX",
+                },
+            ),
+        }
+
+
 class InscripcionJugadorForm(forms.Form):
     rut = forms.CharField(
         label="RUT del jugador",

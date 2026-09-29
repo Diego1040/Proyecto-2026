@@ -5,6 +5,13 @@ from . import views
 urlpatterns = [
     path("", views.inicio, name="inicio"),
     path("panel/", views.panel, name="panel"),
+    path("perfil/jugador/", views.perfil_jugador, name="perfil_jugador"),
+    path("perfil/apoderado/", views.perfil_apoderado, name="perfil_apoderado"),
+    path(
+        "perfil/apoderado/agregar-jugador/",
+        views.agregar_jugador_apoderado,
+        name="agregar_jugador_apoderado",
+    ),
     path("inscripcion/", views.inscripcion_publica, name="inscripcion"),
     path("inscripcion/gracias/", views.inscripcion_exito, name="inscripcion_exito"),
     path("gestion/solicitudes/", views.solicitudes_administracion, name="solicitudes_administracion"),

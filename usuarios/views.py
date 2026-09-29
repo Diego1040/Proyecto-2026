@@ -2,12 +2,25 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import Prefetch
 from django.shortcuts import render, redirect, get_object_or_404
 
 from django.views.decorators.http import require_POST
 
-from .forms import InscripcionJugadorForm, RechazoSolicitudForm
-from .models import Jugador, Apoderado, ApoderadoJugador, AlertaSalud, SolicitudInscripcion
+from .forms import (
+    InscripcionJugadorForm,
+    RechazoSolicitudForm,
+    TelefonoApoderadoForm,
+    TelefonoJugadorForm,
+)
+from .models import (
+    AlertaSalud,
+    Apoderado,
+    ApoderadoJugador,
+    HistorialCategoria,
+    Jugador,
+    SolicitudInscripcion,
+)
 from .services import crear_solicitud_inscripcion, aprobar_solicitud_inscripcion, rechazar_solicitud_inscripcion, marcar_solicitud_en_revision
 
 
@@ -148,25 +161,218 @@ def inicio(request):
 
 @login_required
 def panel(request):
-    """
-    Destino provisional despues del login.
-
-    Cuando existan las vistas por rol (apoderado, entrenador,
-    tesoreria, administracion) esta vista debe redirigir a la
-    que corresponda segun el perfil del usuario.
-    """
+    """Entrada general que presenta los accesos disponibles."""
     usuario = request.user
 
-    if usuario.is_staff:
-        perfil = "Administracion"
-    elif hasattr(usuario, "apoderado"):
-        perfil = "Apoderado"
-    elif hasattr(usuario, "jugador"):
-        perfil = "Jugador"
-    else:
-        perfil = "Sin perfil asignado"
+    tiene_perfil_jugador = hasattr(usuario, "jugador")
+    tiene_perfil_apoderado = hasattr(usuario, "apoderado")
 
-    return render(request, "paginas/panel.html", {"perfil": perfil})
+    perfiles = []
+
+    if usuario.is_staff:
+        perfiles.append("Administración")
+
+    if tiene_perfil_apoderado:
+        perfiles.append("Apoderado")
+
+    if tiene_perfil_jugador:
+        perfiles.append("Jugador")
+
+    return render(
+        request,
+        "paginas/panel.html",
+        {
+            "perfiles": perfiles,
+            "tiene_perfil_jugador": tiene_perfil_jugador,
+            "tiene_perfil_apoderado": tiene_perfil_apoderado,
+            "es_administracion": usuario.is_staff,
+        },
+    )
+
+
+@login_required
+def perfil_jugador(request):
+    try:
+        jugador_vinculado = request.user.jugador
+    except Jugador.DoesNotExist:
+        messages.error(
+            request,
+            "Tu cuenta no tiene un perfil de jugador asociado.",
+        )
+        return redirect("panel")
+
+    jugador = (
+        Jugador.objects
+        .select_related("categoria_actual")
+        .prefetch_related(
+            Prefetch(
+                "alertas_salud",
+                queryset=(
+                    AlertaSalud.objects
+                    .filter(activa=True)
+                    .order_by("tipo")
+                ),
+                to_attr="alertas_activas",
+            ),
+            Prefetch(
+                "historial_categorias",
+                queryset=(
+                    HistorialCategoria.objects
+                    .select_related(
+                        "categoria_anterior",
+                        "categoria_nueva",
+                        "cambiado_por",
+                    )
+                    .order_by("-fecha")
+                ),
+                to_attr="historial_categorias_cargado",
+            ),
+        )
+        .get(pk=jugador_vinculado.pk)
+    )
+
+    if request.method == "POST":
+        telefono_form = TelefonoJugadorForm(
+            request.POST,
+            instance=jugador,
+        )
+
+        if telefono_form.is_valid():
+            jugador_actualizado = telefono_form.save(commit=False)
+            jugador_actualizado.save(
+                update_fields=("telefono", "updated_at"),
+            )
+            messages.success(
+                request,
+                "Tu teléfono fue actualizado correctamente.",
+            )
+            return redirect("perfil_jugador")
+    else:
+        telefono_form = TelefonoJugadorForm(instance=jugador)
+
+    return render(
+        request,
+        "usuarios/perfil_jugador.html",
+        {
+            "jugador": jugador,
+            "telefono_form": telefono_form,
+        },
+    )
+
+
+@login_required
+def perfil_apoderado(request):
+    try:
+        apoderado = request.user.apoderado
+    except Apoderado.DoesNotExist:
+        messages.error(
+            request,
+            "Tu cuenta no tiene un perfil de apoderado asociado.",
+        )
+        return redirect("panel")
+
+    if request.method == "POST":
+        telefono_form = TelefonoApoderadoForm(
+            request.POST,
+            instance=apoderado,
+        )
+
+        if telefono_form.is_valid():
+            apoderado_actualizado = telefono_form.save(commit=False)
+            apoderado_actualizado.save(
+                update_fields=("telefono", "updated_at"),
+            )
+            messages.success(
+                request,
+                "Tu teléfono fue actualizado correctamente.",
+            )
+            return redirect("perfil_apoderado")
+    else:
+        telefono_form = TelefonoApoderadoForm(instance=apoderado)
+
+    vinculos = (
+        ApoderadoJugador.objects
+        .filter(
+            apoderado=apoderado,
+            activo=True,
+        )
+        .select_related(
+            "jugador",
+            "jugador__categoria_actual",
+        )
+        .prefetch_related(
+            Prefetch(
+                "jugador__solicitudes_inscripcion",
+                queryset=(
+                    SolicitudInscripcion.objects
+                    .order_by("-fecha_solicitud")
+                ),
+                to_attr="solicitudes_ordenadas",
+            ),
+        )
+        .order_by(
+            "-es_principal",
+            "jugador__apellidos",
+            "jugador__nombres",
+        )
+    )
+
+    return render(
+        request,
+        "usuarios/perfil_apoderado.html",
+        {
+            "apoderado": apoderado,
+            "telefono_form": telefono_form,
+            "vinculos": vinculos,
+        },
+    )
+
+
+@login_required
+def agregar_jugador_apoderado(request):
+    try:
+        apoderado = request.user.apoderado
+    except Apoderado.DoesNotExist:
+        messages.error(
+            request,
+            "Necesitas un perfil de apoderado para agregar jugadores.",
+        )
+        return redirect("panel")
+
+    if request.method == "POST":
+        form = InscripcionJugadorForm(
+            request.POST,
+            apoderado_existente=apoderado,
+        )
+
+        if form.is_valid():
+            try:
+                _crear_inscripcion_desde_form(
+                    form=form,
+                    solicitante=request.user,
+                    apoderado_existente=apoderado,
+                )
+            except ValidationError as exc:
+                _agregar_error_validacion(form, exc)
+            else:
+                messages.success(
+                    request,
+                    "La solicitud fue enviada correctamente.",
+                )
+                return redirect("perfil_apoderado")
+    else:
+        form = InscripcionJugadorForm(
+            apoderado_existente=apoderado,
+        )
+
+    return render(
+        request,
+        "usuarios/inscripcion_form.html",
+        {
+            "form": form,
+            "modo_apoderado": True,
+        },
+    )
 
 @user_passes_test(
     _es_personal_administrativo,

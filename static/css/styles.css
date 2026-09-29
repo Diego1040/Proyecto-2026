@@ -10,6 +10,10 @@
   --linea:#E4E2DE;
   --verde-fondo:#E2F1E9;
   --verde:#1D7A4F;
+  --ambar-fondo:#FFF4D6;
+  --ambar:#7A5A00;
+  --rojo-fondo:#FBE9E7;
+  --rojo:#A8322A;
   --ancho:1120px;
 }
 *{box-sizing:border-box}
@@ -164,7 +168,7 @@ footer a:hover{color:var(--naranja)}
 .acceso .pie-form a:hover{text-decoration:underline}
 
 /* panel provisional */
-.panel{padding:56px 0}
+.panel{padding:64px 0 76px}
 .panel .tarjeta{background:var(--blanco);border:1px solid var(--linea);border-radius:6px;padding:26px;max-width:560px}
 .panel dl{display:grid;grid-template-columns:auto 1fr;gap:10px 22px;margin:18px 0 0;font-size:.95rem}
 .panel dt{font-weight:600}
@@ -495,5 +499,371 @@ textarea{
 
   .datos-detalle dd{
     margin-bottom:8px;
+  }
+}
+
+/* ===== Paneles por perfil ===== */
+
+.wrap-panel{
+  max-width:1000px;
+}
+
+.cabecera-panel{
+  max-width:650px;
+}
+
+.cabecera-panel .bajada{
+  margin-top:10px;
+  color:var(--gris);
+  font-size:1.05rem;
+}
+
+.panel-cuenta{
+  margin-top:28px;
+}
+
+.panel .panel-cuenta{
+  max-width:none;
+  border-left:4px solid var(--naranja);
+}
+
+.cab-panel-cuenta{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:20px;
+}
+
+.cab-panel-cuenta h2{
+  font-size:1.65rem;
+}
+
+.panel .datos-cuenta{
+  grid-template-columns:minmax(115px,auto) minmax(0,1fr);
+  padding-top:18px;
+  border-top:1px solid var(--linea);
+}
+
+.panel-opciones{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+  gap:20px;
+  margin-top:20px;
+}
+
+.panel .opcion-panel{
+  max-width:none;
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  justify-content:space-between;
+  gap:22px;
+  min-height:245px;
+  border-top:3px solid var(--naranja);
+  transition:transform .15s,border-color .15s,box-shadow .15s;
+}
+
+.panel .opcion-panel:hover{
+  transform:translateY(-2px);
+  border-color:var(--naranja);
+  box-shadow:0 10px 26px rgba(23,23,26,.07);
+}
+
+.opcion-panel-contenido{
+  display:grid;
+  gap:10px;
+}
+
+.opcion-panel h2,
+.tarjeta-perfil h2,
+.tarjeta-jugador h2{
+  font-size:1.45rem;
+}
+
+.opcion-panel p:not(.etiqueta-seccion){
+  color:var(--gris);
+}
+
+.opcion-panel .boton{
+  align-self:flex-start;
+}
+
+.estado-vacio-panel{
+  margin-top:20px;
+}
+
+.panel-perfil h1{
+  font-size:clamp(2.2rem,5vw,3.5rem);
+}
+
+.panel-perfil .wrap{
+  max-width:1000px;
+}
+
+.panel-perfil .tarjeta{
+  background:var(--blanco);
+  border:1px solid var(--linea);
+  border-radius:8px;
+  box-shadow:0 5px 18px rgba(23,23,26,.035);
+}
+
+.cab-perfil{
+  align-items:flex-end;
+  padding-bottom:26px;
+  border-bottom:1px solid var(--linea);
+}
+
+.texto-secundario{
+  color:var(--gris);
+}
+
+.rejilla-perfil{
+  display:grid;
+  grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr);
+  gap:18px;
+}
+
+.tarjeta-perfil,
+.tarjeta-jugador{
+  padding:24px;
+}
+
+.tarjeta-jugador{
+  border-top:3px solid var(--naranja) !important;
+}
+
+.cab-tarjeta-perfil,
+.cab-tarjeta-jugador{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:18px;
+  padding-bottom:18px;
+  border-bottom:1px solid var(--linea);
+}
+
+.datos-perfil{
+  display:grid;
+  grid-template-columns:minmax(130px,.45fr) minmax(0,1fr);
+  gap:12px 20px;
+  margin:20px 0 0;
+}
+
+.datos-perfil dt{
+  font-weight:600;
+}
+
+.datos-perfil dd{
+  margin:0;
+  color:var(--gris);
+}
+
+.lista-perfil{
+  list-style:none;
+  display:grid;
+  gap:12px;
+  margin:18px 0 0;
+  padding:0;
+}
+
+.lista-perfil li{
+  display:grid;
+  gap:3px;
+  padding-top:12px;
+  border-top:1px solid var(--linea);
+}
+
+.lista-perfil li:first-child{
+  padding-top:0;
+  border-top:0;
+}
+
+.lista-perfil span{
+  color:var(--gris);
+  font-size:.92rem;
+}
+
+.historial-perfil{
+  margin-top:18px;
+}
+
+.tarjeta-contacto{
+  margin-top:18px;
+  margin-bottom:18px;
+}
+
+.cab-contacto{
+  display:grid;
+  grid-template-columns:minmax(220px,.8fr) minmax(300px,1.2fr);
+  gap:32px;
+  align-items:end;
+}
+
+.cab-contacto h2{
+  margin-bottom:6px;
+}
+
+.form-contacto{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:12px;
+  align-items:end;
+}
+
+.form-contacto .campo-contacto{
+  margin:0;
+}
+
+.form-contacto .boton{
+  border:0;
+  cursor:pointer;
+  font:inherit;
+  font-weight:600;
+  white-space:nowrap;
+}
+
+.estado-vacio-seccion{
+  display:grid;
+  gap:4px;
+  margin-top:18px;
+  padding:18px;
+  border:1px dashed var(--linea);
+  border-radius:6px;
+  background:var(--papel);
+}
+
+.tarjetas-jugadores{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  gap:22px;
+}
+
+.datos-jugador{
+  grid-template-columns:minmax(145px,.55fr) minmax(0,1fr);
+}
+
+.pill.estado-deportivo,
+.pill.estado-solicitud,
+.pill.neutra{
+  display:inline-flex;
+  align-items:center;
+  min-height:28px;
+  padding:5px 10px;
+}
+
+.pill.pendiente{
+  background:var(--ambar-fondo);
+  color:var(--ambar);
+}
+
+.pill.revision{
+  background:var(--naranja-suave);
+  color:var(--naranja-texto);
+}
+
+.pill.rechazada{
+  background:var(--rojo-fondo);
+  color:var(--rojo);
+}
+
+.pill.neutra{
+  background:#EFEEEB;
+  color:var(--gris);
+}
+
+.estado-solicitud-contenedor{
+  display:flex;
+  align-items:center;
+}
+
+.motivo-rechazo{
+  padding:10px 12px;
+  border-radius:5px;
+  background:var(--rojo-fondo);
+  color:var(--rojo) !important;
+}
+
+.estado-vacio{
+  max-width:620px;
+  display:grid;
+  gap:10px;
+}
+
+.volver-panel{
+  margin-top:24px;
+}
+
+@media (max-width:700px){
+  .panel{
+    padding:48px 0 60px;
+  }
+
+  .panel .tarjeta{
+    padding:20px;
+  }
+
+  .cab-panel-cuenta,
+  .cab-tarjeta-perfil,
+  .cab-tarjeta-jugador{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .cab-contacto{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:20px;
+  }
+
+  .panel .datos-cuenta{
+    grid-template-columns:1fr;
+  }
+
+  .panel .datos-cuenta dd{
+    margin-bottom:6px;
+  }
+
+  .panel .opcion-panel{
+    min-height:0;
+  }
+
+  .cab-perfil{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .rejilla-perfil{
+    grid-template-columns:1fr;
+  }
+
+  .datos-perfil{
+    grid-template-columns:1fr;
+  }
+
+  .datos-perfil dd{
+    margin-bottom:6px;
+  }
+
+  .form-contacto{
+    grid-template-columns:1fr;
+  }
+
+  .form-contacto .boton{
+    width:100%;
+    text-align:center;
+  }
+}
+
+@media (max-width:420px){
+  .panel-opciones,
+  .tarjetas-jugadores{
+    grid-template-columns:1fr;
+  }
+
+  .opcion-panel .boton,
+  .cab-perfil .boton,
+  .cab-perfil .boton-linea{
+    width:100%;
+    text-align:center;
   }
 }

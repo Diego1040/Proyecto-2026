@@ -4,19 +4,76 @@
 
 {% block contenido %}
 <section class="panel">
-  <div class="wrap">
-    <h1>Mi panel</h1>
-    <p class="bajada">Sesión iniciada correctamente.</p>
+  <div class="wrap wrap-panel">
+    <header class="cabecera-panel">
+      <p class="etiqueta-seccion">Cuenta</p>
+      <h1>Mi panel</h1>
+      <p class="bajada">Selecciona el espacio al que quieres ingresar.</p>
+    </header>
 
-    <div class="tarjeta">
-      <h3>Datos de la cuenta</h3>
-      <dl>
+    <div class="tarjeta panel-cuenta">
+      <div class="cab-panel-cuenta">
+        <div>
+          <p class="etiqueta-seccion">Sesión activa</p>
+          <h2>Datos de la cuenta</h2>
+        </div>
+        <span class="pill ok">Conectado</span>
+      </div>
+      <dl class="datos-cuenta">
         <dt>RUT</dt><dd>{{ user.rut }}</dd>
         <dt>Correo</dt><dd>{{ user.email|default:"sin registrar" }}</dd>
         <dt>Último ingreso</dt><dd>{{ user.last_login|date:"d/m/Y H:i"|default:"primer ingreso" }}</dd>
-        <dt>Perfil</dt><dd>{{ perfil }}</dd>
+        <dt>Perfiles</dt>
+        <dd>
+          {% if perfiles %}
+            {{ perfiles|join:", " }}
+          {% else %}
+            Sin perfil asignado
+          {% endif %}
+        </dd>
       </dl>
     </div>
+
+    <div class="panel-opciones">
+      {% if tiene_perfil_jugador %}
+        <article class="tarjeta opcion-panel">
+          <div class="opcion-panel-contenido">
+            <p class="etiqueta-seccion">Jugador</p>
+            <h2>Mi perfil deportivo</h2>
+            <p>Consulta tus datos, categoría, alertas activas e historial.</p>
+          </div>
+          <a class="boton" href="{% url 'perfil_jugador' %}">Ver perfil</a>
+        </article>
+      {% endif %}
+
+      {% if tiene_perfil_apoderado %}
+        <article class="tarjeta opcion-panel">
+          <div class="opcion-panel-contenido">
+            <p class="etiqueta-seccion">Apoderado</p>
+            <h2>Jugadores asociados</h2>
+            <p>Consulta tus vínculos activos o agrega otro jugador.</p>
+          </div>
+          <a class="boton" href="{% url 'perfil_apoderado' %}">Ver jugadores</a>
+        </article>
+      {% endif %}
+
+      {% if es_administracion %}
+        <article class="tarjeta opcion-panel">
+          <div class="opcion-panel-contenido">
+            <p class="etiqueta-seccion">Administración</p>
+            <h2>Solicitudes de inscripción</h2>
+            <p>Revisa y gestiona las solicitudes recibidas.</p>
+          </div>
+          <a class="boton" href="{% url 'solicitudes_administracion' %}">Gestionar solicitudes</a>
+        </article>
+      {% endif %}
+    </div>
+
+    {% if not perfiles %}
+      <div class="aviso estado-vacio-panel">
+        Tu cuenta todavía no tiene un perfil asociado.
+      </div>
+    {% endif %}
   </div>
 </section>
 {% endblock %}
