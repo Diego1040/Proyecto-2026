@@ -115,6 +115,9 @@ def asignar_categoria_automatica(
     temporada=None,
     fecha_referencia=None,
 ):
+    if tiene_excepcion_manual(jugador):
+        return jugador.categoria_actual
+
     nueva_categoria = obtener_categoria_automatica(
         fecha_nacimiento=jugador.fecha_nacimiento,
         rama=jugador.rama,
@@ -158,6 +161,17 @@ def marcar_solicitud_en_revision(*, solicitud):
     solicitud.save(update_fields=["estado"])
 
     return solicitud
+
+def tiene_excepcion_manual(jugador):
+    if jugador.pk is None:
+        return False
+
+    ultimo = jugador.historial_categorias.order_by("-fecha").first()
+
+    return (
+        ultimo is not None
+        and ultimo.tipo_cambio == HistorialCategoria.TipoCambio.EXCEPCION_MANUAL
+    )
 
 @transaction.atomic
 def aprobar_solicitud_inscripcion(*, solicitud, usuario):

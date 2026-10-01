@@ -4,20 +4,27 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.db.models import Q  # <<< NUEVO (HU-05)
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import InscripcionForm
 from .services import (
     asignar_categoria_automatica,
     aprobar_solicitud_inscripcion,
+    cambiar_categoria_manual,          
     marcar_solicitud_en_revision,
+    obtener_categoria_automatica,      
     rechazar_solicitud_inscripcion,
+    registrar_auditoria,               
 )
 from .models import (
     ApoderadoJugador,
+    Categoria,                         
+    HistorialCategoria,               
     Jugador,
     SolicitudInscripcion,
 )
+
 
 # =========================================================
 # ROLES
@@ -714,4 +721,138 @@ def activar_jugador(request):
         request,
         "registration/activar_jugador.html",
         datos,
+    )
+@login_required
+def categorias_jugadores(request):
+
+    usuario = request.user
+
+    if not es_administracion(usuario):
+        messages.error(
+            request,
+            "No tienes permiso para cambiar categorías."
+        )
+        return redirect("panel")
+
+    # -----------------------------------------------------
+    # REGISTRAR EXCEPCION MANUAL
+    # -----------------------------------------------------
+    if request.method == "POST":
+
+        jugador = get_object_or_404(
+            Jugador,
+            pk=request.POST.get("jugador_id"),
+        )
+        nueva_categoria = get_object_or_404(
+            Categoria,
+            pk=request.POST.get("categoria_id"),
+            activa=True,
+        )
+        motivo = request.POST.get("motivo", "")
+
+        categoria_anterior = jugador.categoria_actual
+
+        try:
+            with transaction.atomic():
+                cambiar_categoria_manual(
+                    jugador,
+                    nueva_categoria,
+                    usuario,
+                    motivo,
+                )
+                registrar_auditoria(
+                    usuario=usuario,
+                    accion="CATEGORIA_EXCEPCION_MANUAL",
+                    entidad="Jugador",
+                    entidad_id=jugador.pk,
+                    detalle={
+                        "categoria_anterior": (
+                            str(categoria_anterior)
+                            if categoria_anterior else None
+                        ),
+                        "categoria_nueva": str(nueva_categoria),
+                        "motivo": motivo.strip(),
+                    },
+                )
+
+            messages.success(
+                request,
+                f"{jugador.nombres} {jugador.apellidos} quedó en "
+                f"{nueva_categoria} (excepción manual)."
+            )
+
+        except ValidationError as error:
+            messages.error(request, " ".join(error.messages))
+
+        return redirect("categorias_jugadores")
+
+    # -----------------------------------------------------
+    # LISTADO DE JUGADORES
+    # -----------------------------------------------------
+    busqueda = request.GET.get("q", "").strip()
+
+    jugadores = (
+        Jugador.objects
+        .exclude(estado=Jugador.Estado.INACTIVO)
+        .select_related("categoria_actual")
+        .prefetch_related("historial_categorias")
+        .order_by("apellidos", "nombres")
+    )
+
+    if busqueda:
+        jugadores = jugadores.filter(
+            Q(nombres__icontains=busqueda)
+            | Q(apellidos__icontains=busqueda)
+            | Q(rut__icontains=busqueda)
+        )
+
+    filas = []
+
+    for jugador in jugadores:
+
+        try:
+            calculada = obtener_categoria_automatica(
+                fecha_nacimiento=jugador.fecha_nacimiento,
+                rama=jugador.rama,
+            )
+        except ValidationError:
+            calculada = None
+
+        historial = list(jugador.historial_categorias.all())
+        ultimo = historial[0] if historial else None
+
+        filas.append({
+            "jugador": jugador,
+            "calculada": calculada,
+            "es_excepcion": (
+                ultimo is not None
+                and ultimo.tipo_cambio
+                == HistorialCategoria.TipoCambio.EXCEPCION_MANUAL
+            ),
+            "motivo_excepcion": ultimo.motivo if ultimo else "",
+        })
+
+    categorias = Categoria.objects.filter(activa=True).order_by("orden")
+
+    cambios_recientes = (
+        HistorialCategoria.objects
+        .filter(tipo_cambio=HistorialCategoria.TipoCambio.EXCEPCION_MANUAL)
+        .select_related(
+            "jugador",
+            "categoria_anterior",
+            "categoria_nueva",
+            "cambiado_por",
+        )
+        .order_by("-fecha")[:10]
+    )
+
+    return render(
+        request,
+        "usuarios/categorias_jugadores.html",
+        {
+            "filas": filas,
+            "categorias": categorias,
+            "cambios_recientes": cambios_recientes,
+            "busqueda": busqueda,
+        },
     )

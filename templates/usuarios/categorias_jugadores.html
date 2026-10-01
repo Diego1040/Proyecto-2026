@@ -1,9 +1,10 @@
+{# >>> NUEVO (HU-05) - Miguel: archivo nuevo completo #}
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ayllu Basket — Validación de fichas</title>
+<title>Ayllu Basket — Categorías</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
@@ -80,6 +81,24 @@ textarea{background:var(--blanco);border:1px solid var(--linea);border-radius:5p
   .acciones{margin-left:0;width:100%}
   .acciones form,.acciones .btn{flex:1;width:100%}
 }
+
+/* >>> NUEVO (HU-05) - Miguel: estilos de la pantalla de categorias */
+.buscador{display:flex;gap:8px;margin-bottom:16px}
+.buscador input{flex:1;background:var(--blanco);border:1px solid var(--linea);border-radius:5px;padding:10px 12px;font:inherit}
+.fila-j{border-top:1px solid var(--linea);padding:16px}
+.fila-j:first-child{border-top:0}
+.fila-j .nom{font-weight:600}
+.fila-j .nom small{display:block;font-weight:400;color:var(--gris);font-size:.84rem}
+.fila-j .top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.cats{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.cambio{margin-top:14px;display:grid;gap:10px;grid-template-columns:1fr 2fr auto;align-items:end}
+select{background:var(--blanco);border:1px solid var(--linea);border-radius:5px;padding:10px 12px;font:inherit;width:100%}
+.nota{font-size:.84rem;color:var(--gris);margin-top:8px}
+.hist{font-size:.9rem}
+.hist .fila-j{padding:12px 16px}
+h2{font-family:"Barlow Condensed",system-ui,sans-serif;font-size:1.3rem;text-transform:uppercase;margin:28px 0 10px}
+@media(max-width:600px){.cambio{grid-template-columns:1fr}.cats{margin-left:0}}
+/* <<< FIN NUEVO (HU-05) */
 </style>
 </head>
 <body>
@@ -100,21 +119,16 @@ textarea{background:var(--blanco);border:1px solid var(--linea);border-radius:5p
 
 <nav class="tabs" aria-label="Secciones de administración">
   <div class="wrap">
-    <!-- >>> CAMBIO (HU-05) - Miguel: pestañas con enlace -->
-    <a class="tab activa" href="{% url 'validar_fichas' %}">
-      Fichas pendientes
-      {% if fichas %}<span class="badge">{{ fichas|length }}</span>{% endif %}
-    </a>
-    <a class="tab" href="{% url 'categorias_jugadores' %}">Categorías</a>
-    <!-- <<< FIN CAMBIO (HU-05) -->
+    <a class="tab" href="{% url 'validar_fichas' %}">Fichas pendientes</a>
+    <a class="tab activa" href="{% url 'categorias_jugadores' %}">Categorías</a>
   </div>
 </nav>
 
 <main><div class="wrap">
 
   <div class="cabecera">
-    <h1>Fichas pendientes</h1>
-    <p class="sub">Una ficha no validada no queda activa. El rechazo exige un motivo.</p>
+    <h1>Categorías</h1>
+    <p class="sub">La categoría se calcula sola por año de nacimiento. Aquí puedes registrar una excepción, que siempre exige un motivo.</p>
   </div>
 
   {% if messages %}
@@ -125,103 +139,93 @@ textarea{background:var(--blanco);border:1px solid var(--linea);border-radius:5p
     </div>
   {% endif %}
 
+  <form method="get" class="buscador">
+    <input type="search" name="q" value="{{ busqueda }}" placeholder="Buscar por nombre, apellido o RUT">
+    <button type="submit" class="btn gris chico">Buscar</button>
+  </form>
+
   <div class="tarjeta">
-    {% for ficha in fichas %}
-      {% with jugador=ficha.jugador solicitud=ficha.solicitud %}
-      <div class="ficha">
+    {% for fila in filas %}
+      {% with jugador=fila.jugador %}
+      <div class="fila-j">
         <div class="top">
           <span class="ini">{{ jugador.nombres|slice:":1" }}{{ jugador.apellidos|slice:":1" }}</span>
           <span class="nom">
             {{ jugador.nombres }} {{ jugador.apellidos }}
-            <small>{{ jugador.rut }} · nacimiento {{ jugador.fecha_nacimiento|date:"d/m/Y" }} · {{ jugador.get_rama_display }}</small>
+            <small>{{ jugador.rut }} · nacimiento {{ jugador.fecha_nacimiento|date:"d/m/Y" }} · {{ jugador.get_rama_display }} · {{ jugador.get_estado_display }}</small>
           </span>
 
-          <span class="acciones">
-            {% if solicitud.estado == "EN_REVISION" %}
-              <span class="pill esp">En revisión</span>
-            {% endif %}
-
-            <button type="button" class="btn peligro chico" data-rechazar>Rechazar</button>
-
-            <form method="post">
-              {% csrf_token %}
-              <input type="hidden" name="solicitud_id" value="{{ solicitud.pk }}">
-              <input type="hidden" name="accion" value="aprobar">
-              <button type="submit" class="btn chico">Aprobar</button>
-            </form>
-          </span>
-        </div>
-
-        <div class="detalle">
-          <div>
-            <span>Categoría calculada</span>
+          <span class="cats">
             {% if jugador.categoria_actual %}
-              {{ jugador.categoria_actual }}
+              <span class="pill cat">{{ jugador.categoria_actual }}</span>
             {% else %}
-              <span class="pill esp" style="display:inline-block">Sin categoría</span>
+              <span class="pill esp">Sin categoría</span>
             {% endif %}
-          </div>
-          <div>
-            <span>{% if ficha.parentesco %}{{ ficha.parentesco|capfirst }}{% else %}Apoderado{% endif %}</span>
-            {% if ficha.apoderado %}
-              {{ ficha.apoderado.nombres }} {{ ficha.apoderado.apellidos }}
-            {% else %}
-              Sin apoderado
+            {% if fila.es_excepcion %}
+              <span class="pill esp">Excepción manual</span>
             {% endif %}
-          </div>
-          <div>
-            <span>Teléfono de contacto</span>
-            {% if ficha.apoderado and ficha.apoderado.telefono %}
-              {{ ficha.apoderado.telefono }}
-            {% else %}
-              —
-            {% endif %}
-          </div>
-          <div>
-            <span>Procedencia</span>
-            {{ solicitud.get_procedencia_display }}{% if solicitud.club_anterior %} · {{ solicitud.club_anterior }}{% endif %}
-          </div>
-          <div>
-            <span>Alerta de salud</span>
-            {% if ficha.alertas %}{{ ficha.alertas|join:", " }}{% else %}Sin alertas{% endif %}
-          </div>
-          <div>
-            <span>Solicitud enviada</span>
-            {{ solicitud.fecha_solicitud|date:"d/m/Y H:i" }}
-          </div>
+            <button type="button" class="btn gris chico" data-abrir>Cambiar</button>
+          </span>
         </div>
 
-        <form method="post" class="rechazo oculto">
+        {% if fila.es_excepcion %}
+          <p class="nota">Motivo de la excepción: {{ fila.motivo_excepcion }}</p>
+        {% elif fila.calculada and fila.calculada != jugador.categoria_actual %}
+          <p class="nota">Por año de nacimiento le corresponde {{ fila.calculada }}.</p>
+        {% endif %}
+
+        <form method="post" class="cambio oculto">
           {% csrf_token %}
-          <input type="hidden" name="solicitud_id" value="{{ solicitud.pk }}">
-          <input type="hidden" name="accion" value="rechazar">
-          <label class="campo">Motivo del rechazo (obligatorio)
-            <textarea name="motivo" required placeholder="Ej: el RUT no coincide con el certificado de nacimiento."></textarea>
+          <input type="hidden" name="jugador_id" value="{{ jugador.pk }}">
+          <label class="campo">Nueva categoría
+            <select name="categoria_id" required>
+              {% for categoria in categorias %}
+                <option value="{{ categoria.pk }}" {% if categoria == jugador.categoria_actual %}selected{% endif %}>{{ categoria }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="campo">Motivo (obligatorio)
+            <textarea name="motivo" required placeholder="Ej: autorizado por el entrenador para jugar en la categoría superior."></textarea>
           </label>
           <div style="display:flex;gap:8px">
-            <button type="submit" class="btn peligro chico">Confirmar rechazo</button>
-            <button type="button" class="btn gris chico" data-cancelar>Cancelar</button>
+            <button type="submit" class="btn chico">Guardar</button>
+            <button type="button" class="btn gris chico" data-cerrar>Cancelar</button>
           </div>
         </form>
       </div>
       {% endwith %}
     {% empty %}
-      <p class="vacio">No hay fichas pendientes de revisión.</p>
+      <p class="vacio">{% if busqueda %}No hay jugadores que coincidan con "{{ busqueda }}".{% else %}No hay jugadores registrados.{% endif %}</p>
+    {% endfor %}
+  </div>
+
+  <h2>Últimas excepciones</h2>
+  <div class="tarjeta hist">
+    {% for cambio in cambios_recientes %}
+      <div class="fila-j">
+        <b>{{ cambio.jugador.nombres }} {{ cambio.jugador.apellidos }}</b>:
+        {{ cambio.categoria_anterior|default:"Sin categoría" }} → {{ cambio.categoria_nueva }}
+        <p class="nota">{{ cambio.fecha|date:"d/m/Y H:i" }} · por {{ cambio.cambiado_por }} · {{ cambio.motivo }}</p>
+      </div>
+    {% empty %}
+      <p class="vacio">Todavía no hay excepciones registradas.</p>
     {% endfor %}
   </div>
 
 </div></main>
 
 <script>
-// Mostrar u ocultar el formulario de rechazo de cada ficha
-document.querySelectorAll(".ficha").forEach(function (ficha) {
-  var caja = ficha.querySelector(".rechazo");
-  ficha.querySelector("[data-rechazar]").addEventListener("click", function () {
-    caja.classList.remove("oculto");
-    caja.querySelector("textarea").focus();
+// Mostrar u ocultar el formulario de cambio de cada jugador
+document.querySelectorAll(".fila-j").forEach(function (fila) {
+  var form = fila.querySelector(".cambio");
+  var abrir = fila.querySelector("[data-abrir]");
+  if (!form || !abrir) return;
+  abrir.addEventListener("click", function () {
+    form.classList.remove("oculto");
+    form.querySelector("textarea").focus();
   });
-  ficha.querySelector("[data-cancelar]").addEventListener("click", function () {
-    caja.classList.add("oculto");
+  fila.querySelector("[data-cerrar]").addEventListener("click", function () {
+    form.classList.add("oculto");
   });
 });
 </script>
