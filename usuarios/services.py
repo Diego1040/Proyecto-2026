@@ -52,6 +52,14 @@ def calcular_edad(fecha_nacimiento, fecha_referencia=None):
     )
 
 
+def obtener_parentesco_inicial(apoderado):
+    parentescos = list(
+        apoderado.vinculos_jugadores.filter(activo=True)
+        .order_by().values_list("parentesco", flat=True).distinct()[:2]
+    )
+    return parentescos[0] if len(parentescos) == 1 else ""
+
+
 def obtener_categoria_automatica(
     fecha_nacimiento,
     rama,
@@ -457,11 +465,12 @@ def rechazar_solicitud_inscripcion(
     usuario,
     motivo,
 ):
-    if usuario is None:
+    if usuario is None or not usuario.is_authenticated or not usuario.is_staff:
         raise ValidationError(
-            "Debe indicar el usuario que rechaza la solicitud."
+            "Debe indicar personal administrativo para rechazar la solicitud."
         )
 
+    solicitud = SolicitudInscripcion.objects.select_for_update().get(pk=solicitud.pk)
     if solicitud.estado != SolicitudInscripcion.Estado.EN_REVISION:
         raise ValidationError(
             "Solo una solicitud en revision puede ser rechazada."
@@ -470,6 +479,20 @@ def rechazar_solicitud_inscripcion(
     if not motivo or not motivo.strip():
         raise ValidationError(
             "Debe indicar el motivo del rechazo."
+        )
+
+    jugador = solicitud.jugador
+    if calcular_edad(jugador.fecha_nacimiento) >= 18:
+        correo = _validar_correo(jugador.email, "El correo del jugador adulto es obligatorio.")
+    else:
+        principales = list(
+            jugador.vinculos_apoderados.filter(activo=True, es_principal=True)
+            .select_related("apoderado")[:2]
+        )
+        if len(principales) != 1:
+            raise ValidationError("El menor necesita un único apoderado principal activo.")
+        correo = _validar_correo(
+            principales[0].apoderado.email, "El correo del apoderado es obligatorio.",
         )
 
     solicitud.estado = SolicitudInscripcion.Estado.RECHAZADA
@@ -492,7 +515,19 @@ def rechazar_solicitud_inscripcion(
         },
     )
 
+    motivo_rechazo = solicitud.motivo_rechazo
+    transaction.on_commit(
+        lambda: enviar_correo_rechazo(correo=correo, motivo=motivo_rechazo)
+    )
+
     return solicitud
+
+
+def enviar_correo_rechazo(*, correo, motivo):
+    asunto = render_to_string("registration/rechazo_subject.txt").strip()
+    cuerpo = render_to_string("registration/rechazo_email.txt", {"motivo": motivo})
+    send_mail(asunto, cuerpo, None, [correo])
+
 
 def categoria_anterior_id_igual(anterior, nueva):
     if anterior is None:

@@ -84,8 +84,9 @@
               <dt>Categoría</dt><dd>{{ vinculo.jugador.categoria_actual|default:"Sin asignar" }}</dd>
               <dt>Rama</dt><dd>{{ vinculo.jugador.get_rama_display }}</dd>
               <dt>Nacimiento</dt><dd>{{ vinculo.jugador.fecha_nacimiento|date:"d/m/Y" }}</dd>
-              <dt>Permiso de gestión</dt>
-              <dd>{% if vinculo.puede_gestionar %}Habilitado{% else %}Solo consulta{% endif %}</dd>
+              {% if not vinculo.puede_gestionar %}
+                <dt>Acceso</dt><dd>Solo consulta</dd>
+              {% endif %}
               {% with ultima=vinculo.jugador.solicitudes_ordenadas.0 %}
                 <dt>Estado de solicitud</dt>
                 <dd class="estado-solicitud-contenedor">

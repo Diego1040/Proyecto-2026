@@ -5,10 +5,14 @@ Ejecutar con:
     python manage.py test usuarios
 """
 from datetime import date
+from unittest.mock import patch
 
+from django.contrib.auth.models import AnonymousUser
+from django.core import mail
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
-from django.test import TestCase
+from django.db import transaction
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from .forms import InscripcionJugadorForm
@@ -24,7 +28,12 @@ from .models import (
     SolicitudInscripcion,
     Usuario,
 )
-from .services import calcular_edad, obtener_categoria_automatica
+from .services import (
+    calcular_edad,
+    marcar_solicitud_en_revision,
+    obtener_categoria_automatica,
+    rechazar_solicitud_inscripcion,
+)
 from .validators import normalizar_rut, validar_rut
 
 TEMPORADA = 2026
@@ -251,6 +260,54 @@ class PerfilesBloque13Test(TestCase):
         self.assertEqual(respuesta.status_code, 200)
         self.assertContains(respuesta, "Jugador Visible")
         self.assertNotContains(respuesta, "Jugador Oculto")
+        self.assertNotContains(respuesta, "Permiso de gestión")
+        self.assertNotContains(respuesta, "Habilitado")
+        self.assertNotContains(respuesta, "Solo consulta")
+        self.assertTrue(self.apoderado.vinculos_jugadores.get(activo=True).puede_gestionar)
+
+    def test_perfil_apoderado_muestra_solo_consulta_sin_cambiar_permiso(self):
+        vinculo = self.apoderado.vinculos_jugadores.get(activo=True)
+        vinculo.puede_gestionar = False
+        vinculo.save(update_fields=["puede_gestionar"])
+        self.client.force_login(self.usuario_apoderado)
+
+        respuesta = self.client.get(reverse("perfil_apoderado"))
+
+        self.assertContains(respuesta, "Solo consulta")
+        self.assertNotContains(respuesta, "Permiso de gestión")
+        vinculo.refresh_from_db()
+        self.assertFalse(vinculo.puede_gestionar)
+
+    def test_parentesco_inicial_considera_todos_y_solo_los_vinculos_activos(self):
+        self.client.force_login(self.usuario_apoderado)
+        casos = (
+            (True, False, "TUTOR", "MADRE"),
+            (True, True, "MADRE", "MADRE"),
+            (True, True, "TUTOR", ""),
+            (False, False, "TUTOR", ""),
+        )
+        for primero_activo, segundo_activo, segundo_parentesco, esperado in casos:
+            with self.subTest(caso=(primero_activo, segundo_activo, segundo_parentesco)):
+                self.apoderado.vinculos_jugadores.filter(jugador=self.jugador_vinculado).update(
+                    activo=primero_activo,
+                )
+                self.apoderado.vinculos_jugadores.filter(jugador=self.jugador_inactivo).update(
+                    activo=segundo_activo, parentesco=segundo_parentesco,
+                )
+                respuesta = self.client.get(reverse("agregar_jugador_apoderado"))
+                form = respuesta.context["form"]
+                self.assertEqual(form["parentesco"].value(), esperado)
+                self.assertFalse(form.fields["parentesco"].disabled)
+                self.assertNotIn("rut_apoderado", form.fields)
+                self.assertNotIn("email_apoderado", form.fields)
+
+    def test_post_invalido_conserva_parentesco_elegido_y_no_asume_uno_omitido(self):
+        self.client.force_login(self.usuario_apoderado)
+        for datos, esperado in (({"parentesco": "TUTOR"}, "TUTOR"), ({}, None)):
+            with self.subTest(datos=datos):
+                respuesta = self.client.post(reverse("agregar_jugador_apoderado"), datos)
+                self.assertEqual(respuesta.status_code, 200)
+                self.assertEqual(respuesta.context["form"]["parentesco"].value(), esperado)
 
     def test_perfiles_rechazan_una_cuenta_sin_el_perfil_requerido(self):
         self.client.force_login(self.usuario_apoderado)
@@ -294,6 +351,10 @@ class PerfilesBloque13Test(TestCase):
         solicitud = SolicitudInscripcion.objects.get(jugador=jugador)
 
         self.assertEqual(vinculo.apoderado, self.apoderado)
+        self.assertEqual(vinculo.parentesco, "PADRE")
+        self.apoderado.refresh_from_db()
+        self.assertEqual(self.apoderado.email, "ana@example.com")
+        self.assertEqual(self.apoderado.telefono, "+56911111111")
         self.assertEqual(
             solicitud.estado,
             SolicitudInscripcion.Estado.PENDIENTE,
@@ -604,6 +665,7 @@ class InscripcionPublicaSprint2Test(TestCase):
         )
 
 
+@override_settings(MAILERS={"default": {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}})
 class GestionSolicitudesSprint2Test(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -772,6 +834,13 @@ class GestionSolicitudesSprint2Test(TestCase):
         self.assertEqual(solicitud.revisado_por, self.staff)
         self.assertIsNotNone(solicitud.fecha_revision)
         self.assertEqual(jugador.estado, Jugador.Estado.PENDIENTE)
+        self.assertIsNone(jugador.usuario_id)
+        self.assertIsNone(solicitud.usuario_autorizado_id)
+        self.apoderado.refresh_from_db()
+        self.assertIsNone(self.apoderado.usuario_id)
+        self.assertEqual(Usuario.objects.count(), 2)
+        self.assertEqual(Jugador.objects.count(), 1)
+        self.assertEqual(SolicitudInscripcion.objects.count(), 1)
         self.assertTrue(
             Auditoria.objects.filter(
                 accion="SOLICITUD_RECHAZADA",
@@ -779,3 +848,224 @@ class GestionSolicitudesSprint2Test(TestCase):
                 usuario=self.staff,
             ).exists(),
         )
+
+    def test_lista_muestra_accion_por_estado_y_get_no_lo_cambia(self):
+        self.client.force_login(self.staff)
+        casos = (
+            (SolicitudInscripcion.Estado.PENDIENTE, "Tomar en revisión"),
+            (SolicitudInscripcion.Estado.EN_REVISION, "Continuar revisión"),
+            (SolicitudInscripcion.Estado.APROBADA, "Ver detalle"),
+            (SolicitudInscripcion.Estado.RECHAZADA, "Ver detalle"),
+        )
+        for estado, etiqueta in casos:
+            with self.subTest(estado=estado):
+                SolicitudInscripcion.objects.filter(pk=self.solicitud.pk).update(estado=estado)
+                listado = self.client.get(reverse("solicitudes_administracion"))
+                self.assertContains(listado, etiqueta)
+                if estado == SolicitudInscripcion.Estado.PENDIENTE:
+                    self.assertContains(
+                        listado,
+                        f'<form method="post" action="{reverse("solicitud_iniciar_revision", args=[self.solicitud.pk])}">',
+                    )
+                    self.assertContains(listado, 'name="csrfmiddlewaretoken"')
+                else:
+                    self.assertNotContains(listado, "Tomar en revisión")
+                    self.assertContains(listado, reverse("solicitud_detalle", args=[self.solicitud.pk]))
+                detalle = self.client.get(reverse("solicitud_detalle", args=[self.solicitud.pk]))
+                self.assertEqual(detalle.status_code, 200)
+                self.solicitud.refresh_from_db()
+                self.assertEqual(self.solicitud.estado, estado)
+
+    def test_get_de_acciones_no_cambia_estado(self):
+        self.client.force_login(self.staff)
+        for accion in ("solicitud_iniciar_revision", "solicitud_aprobar", "solicitud_rechazar"):
+            with self.subTest(accion=accion):
+                respuesta = self.client.get(reverse(accion, args=[self.solicitud.pk]))
+                self.assertEqual(respuesta.status_code, 405)
+        self.solicitud.refresh_from_db()
+        self.assertEqual(self.solicitud.estado, SolicitudInscripcion.Estado.PENDIENTE)
+        self.assertFalse(Auditoria.objects.exists())
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_tomar_revision_exige_csrf_y_abre_detalle(self):
+        cliente = Client(enforce_csrf_checks=True)
+        cliente.force_login(self.staff)
+        cliente.get(reverse("solicitudes_administracion"))
+        ruta = reverse("solicitud_iniciar_revision", args=[self.solicitud.pk])
+        self.assertEqual(cliente.post(ruta).status_code, 403)
+        self.solicitud.refresh_from_db()
+        self.assertEqual(self.solicitud.estado, SolicitudInscripcion.Estado.PENDIENTE)
+
+        respuesta = cliente.post(ruta, {"csrfmiddlewaretoken": cliente.cookies["csrftoken"].value})
+
+        self.assertRedirects(respuesta, reverse("solicitud_detalle", args=[self.solicitud.pk]))
+        self.solicitud.refresh_from_db()
+        self.assertEqual(self.solicitud.estado, SolicitudInscripcion.Estado.EN_REVISION)
+
+    def test_rechazo_envia_correo_al_principal_despues_del_commit_sin_datos_sensibles(self):
+        self.jugador.email = "menor@example.com"
+        self.jugador.peso_kg = 55
+        self.jugador.talla_cm = 170
+        self.jugador.save(update_fields=["email", "peso_kg", "talla_cm"])
+        self.solicitud.observaciones = "Antecedente privado de la solicitud"
+        self.solicitud.save(update_fields=["observaciones"])
+        AlertaSalud.objects.create(
+            jugador=self.jugador, tipo="Alergia privada", descripcion="Diagnóstico reservado",
+        )
+        secundario = Apoderado.objects.create(
+            rut="33333333-3", nombres="Otro", apellidos="Apoderado", email="otro@example.com",
+        )
+        ApoderadoJugador.objects.create(
+            apoderado=secundario, jugador=self.jugador, parentesco="TUTOR",
+        )
+        marcar_solicitud_en_revision(solicitud=self.solicitud)
+        self.client.force_login(self.staff)
+
+        with self.captureOnCommitCallbacks(execute=True) as callbacks:
+            respuesta = self.client.post(
+                reverse("solicitud_rechazar", args=[self.solicitud.pk]),
+                {"motivo": "  Antecedentes incompletos & pendientes  "},
+            )
+            self.assertEqual(respuesta.status_code, 302)
+            self.assertEqual(len(mail.outbox), 0)
+
+        self.assertEqual(len(callbacks), 1)
+        self.assertEqual(len(mail.outbox), 1)
+        correo = mail.outbox[0]
+        self.assertEqual(correo.to, ["patricia@example.com"])
+        self.assertIn("Antecedentes incompletos & pendientes", correo.body)
+        self.assertIn("contacta a la administración del club", correo.body)
+        texto = correo.subject + correo.body
+        for privado in (
+            "Alergia privada", "Diagnóstico reservado", "Antecedente privado de la solicitud",
+            self.jugador.rut, self.apoderado.rut, self.apoderado.telefono,
+            "peso", "talla", "menor@example.com", "/activar-cuenta/",
+        ):
+            self.assertNotIn(privado, texto)
+        self.assertEqual(AlertaSalud.objects.filter(jugador=self.jugador).count(), 1)
+
+    def test_rechazo_adulto_envia_a_jugador_y_no_al_apoderado(self):
+        self.jugador.fecha_nacimiento = date(1990, 3, 10)
+        self.jugador.email = "adulto@example.com"
+        self.jugador.save(update_fields=["fecha_nacimiento", "email"])
+        marcar_solicitud_en_revision(solicitud=self.solicitud)
+        with self.captureOnCommitCallbacks(execute=True) as callbacks:
+            rechazar_solicitud_inscripcion(
+                solicitud=self.solicitud, usuario=self.staff, motivo="Antecedentes incompletos",
+            )
+            self.assertEqual(len(mail.outbox), 0)
+        self.assertEqual(len(callbacks), 1)
+        self.assertEqual(mail.outbox[0].to, ["adulto@example.com"])
+        self.jugador.refresh_from_db()
+        self.solicitud.refresh_from_db()
+        self.assertEqual(self.jugador.estado, Jugador.Estado.PENDIENTE)
+        self.assertIsNone(self.jugador.usuario_id)
+        self.assertIsNone(self.solicitud.usuario_autorizado_id)
+        self.assertEqual(Usuario.objects.count(), 2)
+
+    def test_rechazo_no_modifica_cuenta_existente_del_apoderado(self):
+        self.apoderado.usuario = self.staff
+        self.apoderado.rut = self.staff.rut
+        self.apoderado.save(update_fields=["usuario", "rut"])
+        credenciales = (self.staff.password, self.staff.is_active, self.staff.email)
+        marcar_solicitud_en_revision(solicitud=self.solicitud)
+        with self.captureOnCommitCallbacks(execute=True):
+            rechazar_solicitud_inscripcion(
+                solicitud=self.solicitud, usuario=self.staff, motivo="Antecedentes incompletos",
+            )
+        self.staff.refresh_from_db()
+        self.apoderado.refresh_from_db()
+        self.solicitud.refresh_from_db()
+        self.assertEqual(credenciales, (self.staff.password, self.staff.is_active, self.staff.email))
+        self.assertEqual(self.apoderado.usuario_id, self.staff.pk)
+        self.assertIsNone(self.solicitud.usuario_autorizado_id)
+        self.assertEqual(Usuario.objects.count(), 2)
+
+    def test_rechazo_exige_personal_administrativo_en_servicio(self):
+        marcar_solicitud_en_revision(solicitud=self.solicitud)
+        for usuario in (None, AnonymousUser(), self.usuario_sin_permiso):
+            with self.subTest(usuario=usuario):
+                with self.captureOnCommitCallbacks(execute=True) as callbacks:
+                    with self.assertRaises(ValidationError):
+                        rechazar_solicitud_inscripcion(
+                            solicitud=self.solicitud, usuario=usuario, motivo="Antecedentes incompletos",
+                        )
+                self.assertEqual(callbacks, [])
+        self.solicitud.refresh_from_db()
+        self.assertEqual(self.solicitud.estado, SolicitudInscripcion.Estado.EN_REVISION)
+        self.assertFalse(Auditoria.objects.exists())
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_rechazo_invalido_no_registra_resolucion_ni_correo(self):
+        casos = (
+            (SolicitudInscripcion.Estado.PENDIENTE, "Motivo"),
+            (SolicitudInscripcion.Estado.APROBADA, "Motivo"),
+            (SolicitudInscripcion.Estado.EN_REVISION, "   "),
+        )
+        for estado, motivo in casos:
+            with self.subTest(estado=estado, motivo=motivo):
+                SolicitudInscripcion.objects.filter(pk=self.solicitud.pk).update(estado=estado)
+                with self.captureOnCommitCallbacks(execute=True) as callbacks:
+                    with self.assertRaises(ValidationError):
+                        rechazar_solicitud_inscripcion(
+                            solicitud=self.solicitud, usuario=self.staff, motivo=motivo,
+                        )
+                self.solicitud.refresh_from_db()
+                self.assertEqual(self.solicitud.estado, estado)
+                self.assertIsNone(self.solicitud.fecha_revision)
+                self.assertEqual(callbacks, [])
+        self.assertFalse(Auditoria.objects.exists())
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_rechazo_repetido_recarga_estado_y_no_duplica_correo_ni_auditoria(self):
+        marcar_solicitud_en_revision(solicitud=self.solicitud)
+        instancia_desactualizada = SolicitudInscripcion.objects.get(pk=self.solicitud.pk)
+        with self.captureOnCommitCallbacks(execute=True) as callbacks:
+            resolucion = rechazar_solicitud_inscripcion(
+                solicitud=self.solicitud, usuario=self.staff, motivo="Primer motivo",
+            )
+            with self.assertRaises(ValidationError):
+                rechazar_solicitud_inscripcion(
+                    solicitud=instancia_desactualizada, usuario=self.staff, motivo="Segundo motivo",
+                )
+        self.solicitud.refresh_from_db()
+        self.assertEqual(self.solicitud.motivo_rechazo, "Primer motivo")
+        self.assertEqual(self.solicitud.fecha_revision, resolucion.fecha_revision)
+        self.assertEqual(self.solicitud.revisado_por_id, self.staff.pk)
+        self.assertEqual(Auditoria.objects.filter(accion="SOLICITUD_RECHAZADA").count(), 1)
+        self.assertEqual(len(callbacks), 1)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_rollback_externo_descarta_rechazo_auditoria_y_correo(self):
+        marcar_solicitud_en_revision(solicitud=self.solicitud)
+        with self.captureOnCommitCallbacks(execute=True) as callbacks:
+            with self.assertRaises(ValidationError):
+                with transaction.atomic():
+                    rechazar_solicitud_inscripcion(
+                        solicitud=self.solicitud, usuario=self.staff, motivo="Antecedentes incompletos",
+                    )
+                    raise ValidationError("Cancelar transacción externa")
+        self.solicitud.refresh_from_db()
+        self.assertEqual(self.solicitud.estado, SolicitudInscripcion.Estado.EN_REVISION)
+        self.assertEqual(self.solicitud.motivo_rechazo, "")
+        self.assertIsNone(self.solicitud.revisado_por_id)
+        self.assertIsNone(self.solicitud.fecha_revision)
+        self.assertIsNone(self.solicitud.usuario_autorizado_id)
+        self.assertFalse(Auditoria.objects.exists())
+        self.assertEqual(callbacks, [])
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_error_en_auditoria_revierte_rechazo_sin_correo(self):
+        marcar_solicitud_en_revision(solicitud=self.solicitud)
+        with self.captureOnCommitCallbacks(execute=True) as callbacks:
+            with patch("usuarios.services.registrar_auditoria", side_effect=ValidationError("Error de auditoría")):
+                with self.assertRaises(ValidationError):
+                    rechazar_solicitud_inscripcion(
+                        solicitud=self.solicitud, usuario=self.staff, motivo="Antecedentes incompletos",
+                    )
+        self.solicitud.refresh_from_db()
+        self.assertEqual(self.solicitud.estado, SolicitudInscripcion.Estado.EN_REVISION)
+        self.assertEqual(self.solicitud.motivo_rechazo, "")
+        self.assertIsNone(self.solicitud.fecha_revision)
+        self.assertEqual(callbacks, [])
+        self.assertEqual(len(mail.outbox), 0)

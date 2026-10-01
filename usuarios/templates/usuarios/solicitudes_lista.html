@@ -63,12 +63,19 @@ Solicitudes — Administración — Ayllu Basket
                 {{ solicitud.fecha_solicitud|date:"d/m/Y H:i" }}
               </td>
               <td>
-                <a
-                  class="enlace"
-                  href="{% url 'solicitud_detalle' solicitud.pk %}"
-                >
-                  Revisar
-                </a>
+                {% if solicitud.estado == "PENDIENTE" %}
+                  <form method="post" action="{% url 'solicitud_iniciar_revision' solicitud.pk %}">
+                    {% csrf_token %}
+                    <button class="boton chico" type="submit">Tomar en revisión</button>
+                  </form>
+                {% else %}
+                  <a
+                    class="enlace"
+                    href="{% url 'solicitud_detalle' solicitud.pk %}"
+                  >
+                    {% if solicitud.estado == "EN_REVISION" %}Continuar revisión{% else %}Ver detalle{% endif %}
+                  </a>
+                {% endif %}
               </td>
             </tr>
           {% empty %}

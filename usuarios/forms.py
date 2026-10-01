@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils import timezone
 
 from .models import Usuario, Apoderado, Jugador
-from .services import calcular_edad
+from .services import calcular_edad, obtener_parentesco_inicial
 from .validators import validar_rut, normalizar_rut
 
 
@@ -302,6 +302,8 @@ class InscripcionJugadorForm(forms.Form):
         super().__init__(*args, **kwargs)
 
         if apoderado_existente is not None:
+            if not self.is_bound:
+                self.initial.setdefault("parentesco", obtener_parentesco_inicial(apoderado_existente))
             for nombre_campo in (
                 "rut_apoderado",
                 "nombres_apoderado",
@@ -539,6 +541,7 @@ class SolicitudActivacionForm(forms.Form):
 class RechazoSolicitudForm(forms.Form):
     motivo = forms.CharField(
         label="Motivo del rechazo",
+        help_text="Este motivo se enviará por correo. No incluyas información de salud ni otros datos sensibles.",
         widget=forms.Textarea(
             attrs={"rows": 4},
         ),

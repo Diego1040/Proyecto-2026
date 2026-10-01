@@ -194,7 +194,7 @@ Solicitud #{{ solicitud.pk }} — Ayllu Basket
         <form method="post" action="{% url 'solicitud_iniciar_revision' solicitud.pk %}">
           {% csrf_token %}
           <button class="boton" type="submit">
-            Marcar en revisión
+            Tomar en revisión
           </button>
         </form>
       {% endif %}
@@ -220,6 +220,7 @@ Solicitud #{{ solicitud.pk }} — Ayllu Basket
           <div class="campo">
             {{ rechazo_form.motivo.label_tag }}
             {{ rechazo_form.motivo }}
+            <span class="ayuda">{{ rechazo_form.motivo.help_text }}</span>
             {% for error in rechazo_form.motivo.errors %}
               <span class="yerro">
                 {{ error }}
