@@ -122,6 +122,14 @@ Inscripción — Ayllu Basket
           </div>
 
           <div class="campo">
+            {{ form.email.label_tag }}
+            {{ form.email }}
+            {% for error in form.email.errors %}
+              <span class="yerro">{{ error }}</span>
+            {% endfor %}
+          </div>
+
+          <div class="campo">
             {{ form.nombre_contacto_emergencia.label_tag }}
             {{ form.nombre_contacto_emergencia }}
 
@@ -193,6 +201,14 @@ Inscripción — Ayllu Basket
               {{ form.telefono_apoderado }}
 
               {% for error in form.telefono_apoderado.errors %}
+                <span class="yerro">{{ error }}</span>
+              {% endfor %}
+            </div>
+
+            <div class="campo">
+              {{ form.email_apoderado.label_tag }}
+              {{ form.email_apoderado }}
+              {% for error in form.email_apoderado.errors %}
                 <span class="yerro">{{ error }}</span>
               {% endfor %}
             </div>

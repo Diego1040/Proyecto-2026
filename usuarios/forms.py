@@ -63,6 +63,28 @@ class TelefonoApoderadoForm(forms.ModelForm):
         }
 
 
+class CorreoApoderadoForm(forms.ModelForm):
+    email = forms.EmailField(label="Correo de contacto")
+
+    class Meta:
+        model = Apoderado
+        fields = ("email",)
+
+    def __init__(self, *args, usuario=None, **kwargs):
+        self.usuario = usuario
+        super().__init__(*args, **kwargs)
+
+    def clean_email(self):
+        correo = self.cleaned_data["email"].strip()
+        if self.usuario and self.usuario.email:
+            if correo.casefold() != self.usuario.email.casefold():
+                raise forms.ValidationError(
+                    "El correo de contacto debe coincidir con el de tu cuenta. "
+                    "Para cambiar el correo de la cuenta, contacta a administración."
+                )
+        return correo
+
+
 class InscripcionJugadorForm(forms.Form):
     rut = forms.CharField(
         label="RUT del jugador",
@@ -99,6 +121,12 @@ class InscripcionJugadorForm(forms.Form):
         label="Telefono del jugador",
         max_length=20,
         required=False,
+    )
+
+    email = forms.EmailField(
+        label="Correo del jugador",
+        required=False,
+        widget=forms.EmailInput(attrs={"autocomplete": "email"}),
     )
 
     nombre_contacto_emergencia = forms.CharField(
@@ -188,6 +216,12 @@ class InscripcionJugadorForm(forms.Form):
         required=False,
     )
 
+    email_apoderado = forms.EmailField(
+        label="Correo del apoderado",
+        required=False,
+        widget=forms.EmailInput(attrs={"autocomplete": "email"}),
+    )
+
     parentesco = forms.ChoiceField(
         label="Parentesco",
         choices=[
@@ -273,6 +307,7 @@ class InscripcionJugadorForm(forms.Form):
                 "nombres_apoderado",
                 "apellidos_apoderado",
                 "telefono_apoderado",
+                "email_apoderado",
             ):
                 self.fields.pop(nombre_campo, None)
 
@@ -379,6 +414,7 @@ class InscripcionJugadorForm(forms.Form):
                         "telefono_apoderado",
                         "telefono del apoderado",
                     ),
+                    ("email_apoderado", "correo del apoderado"),
                     ("parentesco", "parentesco"),
                 )
 
@@ -427,6 +463,11 @@ class InscripcionJugadorForm(forms.Form):
                     )
 
             else:
+                if not self.apoderado_existente.email:
+                    self.add_error(
+                        None,
+                        "El apoderado debe tener un correo registrado antes de inscribir a un menor.",
+                    )
                 parentesco = (cleaned.get("parentesco") or "").strip()
 
                 if not parentesco:
@@ -436,6 +477,8 @@ class InscripcionJugadorForm(forms.Form):
                     )
 
         else:
+            if not cleaned.get("email"):
+                self.add_error("email", "El correo del jugador adulto es obligatorio.")
             telefono = (cleaned.get("telefono") or "").strip()
 
             nombre_emergencia = (cleaned.get("nombre_contacto_emergencia") or "").strip()
@@ -482,6 +525,16 @@ class InscripcionJugadorForm(forms.Form):
                     )
 
         return cleaned
+
+
+class SolicitudActivacionForm(forms.Form):
+    rut = forms.CharField(label="RUT", max_length=12)
+    email = forms.EmailField(label="Correo electrónico")
+
+    def clean_rut(self):
+        rut = normalizar_rut(self.cleaned_data["rut"])
+        validar_rut(rut)
+        return rut
 
 class RechazoSolicitudForm(forms.Form):
     motivo = forms.CharField(

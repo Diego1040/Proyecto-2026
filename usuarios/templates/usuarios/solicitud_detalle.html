@@ -36,6 +36,8 @@ Solicitud #{{ solicitud.pk }} — Ayllu Basket
         <dd>
           {{ solicitud.jugador.rut }}
         </dd>
+        <dt>Correo del jugador</dt>
+        <dd>{{ solicitud.jugador.email|default:"—" }}</dd>
         <dt>Fecha de nacimiento</dt>
         <dd>
           {{ solicitud.jugador.fecha_nacimiento|date:"d/m/Y" }}
@@ -111,6 +113,8 @@ Solicitud #{{ solicitud.pk }} — Ayllu Basket
             <dd>
               {{ vinculo.apoderado.telefono|default:"—" }}
             </dd>
+            <dt>Correo</dt>
+            <dd>{{ vinculo.apoderado.email|default:"—" }}</dd>
             <dt>Parentesco</dt>
             <dd>
               {{ vinculo.parentesco }}
@@ -240,6 +244,10 @@ Solicitud #{{ solicitud.pk }} — Ayllu Basket
           <dd>
             {{ solicitud.fecha_revision|date:"d/m/Y H:i" }}
           </dd>
+          {% if solicitud.usuario_autorizado %}
+            <dt>Cuenta autorizada</dt>
+            <dd>{{ solicitud.usuario_autorizado.rut }}</dd>
+          {% endif %}
         </dl>
       {% endif %}
 

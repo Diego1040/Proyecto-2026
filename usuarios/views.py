@@ -1,4 +1,5 @@
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.views import PasswordResetConfirmView, INTERNAL_RESET_SESSION_TOKEN
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -8,8 +9,10 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.http import require_POST
 
 from .forms import (
+    CorreoApoderadoForm,
     InscripcionJugadorForm,
     RechazoSolicitudForm,
+    SolicitudActivacionForm,
     TelefonoApoderadoForm,
     TelefonoJugadorForm,
 )
@@ -21,7 +24,15 @@ from .models import (
     Jugador,
     SolicitudInscripcion,
 )
-from .services import crear_solicitud_inscripcion, aprobar_solicitud_inscripcion, rechazar_solicitud_inscripcion, marcar_solicitud_en_revision
+from .services import (
+    aprobar_solicitud_inscripcion,
+    completar_activacion,
+    cuenta_puede_activarse,
+    crear_solicitud_inscripcion,
+    marcar_solicitud_en_revision,
+    rechazar_solicitud_inscripcion,
+    solicitar_activacion,
+)
 
 
 def _agregar_error_validacion(form, exc):
@@ -48,6 +59,7 @@ def _crear_inscripcion_desde_form(*,form, solicitante=None, apoderado_existente=
             fecha_nacimiento=datos["fecha_nacimiento"],
             rama=datos["rama"],
             telefono=(datos.get("telefono") or "").strip(),
+            email=(datos.get("email") or "").strip(),
             nombre_contacto_emergencia=(datos.get("nombre_contacto_emergencia")or "").strip(),
             telefono_contacto_emergencia=(datos.get("telefono_contacto_emergencia")or "").strip(),
             procedencia=datos["procedencia"],
@@ -67,6 +79,7 @@ def _crear_inscripcion_desde_form(*,form, solicitante=None, apoderado_existente=
                 nombres=(datos["nombres_apoderado"]).strip(),
                 apellidos=(datos["apellidos_apoderado"]).strip(),
                 telefono=(datos["telefono_apoderado"]).strip(),
+                email=(datos["email_apoderado"]).strip(),
             )
 
             apoderado.full_clean()
@@ -157,6 +170,38 @@ def inscripcion_exito(request):
 def inicio(request):
     """Portada publica del club."""
     return render(request, "paginas/inicio.html")
+
+
+def activar_cuenta(request):
+    if request.method == "POST":
+        form = SolicitudActivacionForm(request.POST)
+        if form.is_valid():
+            solicitar_activacion(
+                rut=form.cleaned_data["rut"],
+                correo=form.cleaned_data["email"],
+                request=request,
+            )
+            return redirect("activacion_enviada")
+    else:
+        form = SolicitudActivacionForm()
+    return render(request, "registration/activacion_solicitud.html", {"form": form})
+
+
+class ConfirmarActivacionView(PasswordResetConfirmView):
+    template_name = "registration/activacion_confirmar.html"
+
+    def get_user(self, uidb64):
+        cuenta = super().get_user(uidb64)
+        return cuenta if cuenta_puede_activarse(cuenta) else None
+
+    def form_valid(self, form):
+        try:
+            completar_activacion(cuenta=self.user, formulario=form)
+        except ValidationError:
+            self.validlink = False
+            return self.render_to_response(self.get_context_data())
+        self.request.session.pop(INTERNAL_RESET_SESSION_TOKEN, None)
+        return redirect("activacion_completa")
 
 
 @login_required
@@ -271,11 +316,24 @@ def perfil_apoderado(request):
         )
         return redirect("panel")
 
-    if request.method == "POST":
+    if request.method == "POST" and request.POST.get("accion") == "guardar_correo":
+        correo_form = CorreoApoderadoForm(
+            request.POST,
+            instance=apoderado,
+            usuario=request.user,
+        )
+        telefono_form = TelefonoApoderadoForm(instance=apoderado)
+        if correo_form.is_valid():
+            apoderado_actualizado = correo_form.save(commit=False)
+            apoderado_actualizado.save(update_fields=("email", "updated_at"))
+            messages.success(request, "Tu correo de contacto fue actualizado.")
+            return redirect("perfil_apoderado")
+    elif request.method == "POST":
         telefono_form = TelefonoApoderadoForm(
             request.POST,
             instance=apoderado,
         )
+        correo_form = CorreoApoderadoForm(instance=apoderado, usuario=request.user)
 
         if telefono_form.is_valid():
             apoderado_actualizado = telefono_form.save(commit=False)
@@ -289,6 +347,7 @@ def perfil_apoderado(request):
             return redirect("perfil_apoderado")
     else:
         telefono_form = TelefonoApoderadoForm(instance=apoderado)
+        correo_form = CorreoApoderadoForm(instance=apoderado, usuario=request.user)
 
     vinculos = (
         ApoderadoJugador.objects
@@ -323,6 +382,7 @@ def perfil_apoderado(request):
         {
             "apoderado": apoderado,
             "telefono_form": telefono_form,
+            "correo_form": correo_form,
             "vinculos": vinculos,
         },
     )
@@ -474,6 +534,7 @@ def solicitud_aprobar(request, pk):
         aprobar_solicitud_inscripcion(
             solicitud=solicitud,
             usuario=request.user,
+            request=request,
         )
     except ValidationError as exc:
         messages.error(

@@ -1,0 +1,6 @@
+Tu inscripción en Ayllu Basket fue aprobada.
+
+Para crear tu contraseña y activar tu cuenta, abre este enlace:
+{{ enlace }}
+
+Si no solicitaste esta inscripción, ignora este mensaje.

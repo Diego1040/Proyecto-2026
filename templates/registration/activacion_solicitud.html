@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block titulo %}Activar mi cuenta — Ayllu Basket{% endblock %}
+
+{% block contenido %}
+<section class="acceso">
+  <div class="wrap">
+    <h1>Activar mi cuenta</h1>
+    <p class="bajada">Si tu inscripción ya fue aprobada, solicita un enlace para crear tu contraseña.</p>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% for field in form %}
+        <div class="campo">
+          {{ field.label_tag }}
+          {{ field }}
+          {% for error in field.errors %}<span class="yerro">{{ error }}</span>{% endfor %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="boton">Enviar enlace</button>
+    </form>
+    <p class="pie-form"><a href="{% url 'login' %}">Volver al ingreso</a></p>
+  </div>
+</section>
+{% endblock %}

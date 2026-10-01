@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from django import forms
 
 from .forms import UsuarioChangeForm, UsuarioCreationForm
 from .models import (
@@ -16,9 +17,19 @@ from .models import (
 )
 
 
+class UsuarioPersonalCreationForm(UsuarioCreationForm):
+    def clean(self):
+        datos = super().clean()
+        if not datos.get("is_staff"):
+            raise forms.ValidationError(
+                "Las cuentas de jugadores y apoderados se crean al aprobar solicitudes."
+            )
+        return datos
+
+
 @admin.register(Usuario)
 class UsuarioAdmin(UserAdmin):
-    add_form = UsuarioCreationForm
+    add_form = UsuarioPersonalCreationForm
     form = UsuarioChangeForm
     model = Usuario
 
@@ -84,6 +95,7 @@ class UsuarioAdmin(UserAdmin):
                     "last_login",
                     "date_joined",
                     "updated_at",
+                    "activado_en",
                 )
             },
         ),
@@ -110,7 +122,16 @@ class UsuarioAdmin(UserAdmin):
         "last_login",
         "date_joined",
         "updated_at",
+        "activado_en",
     )
+
+    def get_readonly_fields(self, request, obj=None):
+        campos = super().get_readonly_fields(request, obj)
+        if obj is not None:
+            campos = (*campos, "is_staff", "is_superuser")
+            if not obj.is_staff:
+                return (*campos, "is_active")
+        return campos
 
 @admin.register(Categoria)
 class CategoriaAdmin(admin.ModelAdmin):
@@ -163,6 +184,7 @@ class ReglaCategoriaAdmin(admin.ModelAdmin):
 
 @admin.register(Jugador)
 class JugadorAdmin(admin.ModelAdmin):
+    readonly_fields = ("estado", "usuario")
     list_display = (
         "rut",
         "nombres",
@@ -202,6 +224,7 @@ class JugadorAdmin(admin.ModelAdmin):
 
 @admin.register(Apoderado)
 class ApoderadoAdmin(admin.ModelAdmin):
+    readonly_fields = ("usuario",)
     list_display = (
         "rut",
         "nombres",
@@ -284,12 +307,30 @@ class SolicitudInscripcionAdmin(admin.ModelAdmin):
     autocomplete_fields = (
         "jugador",
         "solicitante",
-        "revisado_por",
     )
 
     readonly_fields = (
         "fecha_solicitud",
+        "estado",
+        "revisado_por",
+        "fecha_revision",
+        "motivo_rechazo",
+        "usuario_autorizado",
     )
+
+    def get_readonly_fields(self, request, obj=None):
+        campos = super().get_readonly_fields(request, obj)
+        return (*campos, "jugador") if obj is not None else campos
+
+    def has_delete_permission(self, request, obj=None):
+        if obj is not None and obj.estado == SolicitudInscripcion.Estado.APROBADA:
+            return False
+        return super().has_delete_permission(request, obj)
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        actions.pop("delete_selected", None)
+        return actions
 
 @admin.register(HistorialCategoria)
 class HistorialCategoriaAdmin(admin.ModelAdmin):

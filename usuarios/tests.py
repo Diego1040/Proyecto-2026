@@ -165,6 +165,7 @@ class PerfilesBloque13Test(TestCase):
             nombres="Ana",
             apellidos="Apoderada",
             telefono="+56911111111",
+            email="ana@example.com",
         )
         cls.jugador_vinculado = Jugador.objects.create(
             rut="11111111-1",
@@ -204,7 +205,7 @@ class PerfilesBloque13Test(TestCase):
             rut="12345678-5",
             nombres="Perfil",
             apellidos="Jugador",
-            fecha_nacimiento=date(2012, 4, 20),
+            fecha_nacimiento=date(1990, 4, 20),
             rama=Jugador.Rama.DAMAS,
             procedencia=Jugador.Procedencia.INDEPENDIENTE,
         )
@@ -219,7 +220,7 @@ class PerfilesBloque13Test(TestCase):
             descripcion="Alerta inactiva",
             activa=False,
         )
-        categoria = Categoria.objects.get(nombre="U15 Damas")
+        categoria = Categoria.objects.get(nombre="T/C Damas")
         HistorialCategoria.objects.create(
             jugador=cls.jugador_con_cuenta,
             categoria_nueva=categoria,
@@ -241,7 +242,7 @@ class PerfilesBloque13Test(TestCase):
         self.assertContains(respuesta, "Perfil Jugador")
         self.assertContains(respuesta, "Alerta visible")
         self.assertNotContains(respuesta, "Alerta inactiva")
-        self.assertContains(respuesta, "U15 Damas")
+        self.assertContains(respuesta, "T/C Damas")
 
     def test_perfil_apoderado_muestra_solo_vinculos_activos(self):
         self.client.force_login(self.usuario_apoderado)
@@ -269,6 +270,7 @@ class PerfilesBloque13Test(TestCase):
                 "fecha_nacimiento": "2014-03-10",
                 "rama": Jugador.Rama.VARONES,
                 "telefono": "",
+                "email": "",
                 "nombre_contacto_emergencia": "",
                 "telefono_contacto_emergencia": "",
                 "procedencia": Jugador.Procedencia.INDEPENDIENTE,
@@ -377,6 +379,7 @@ class FormularioInscripcionSprint2Test(TestCase):
             "fecha_nacimiento": "1990-05-10",
             "rama": Jugador.Rama.DAMAS,
             "telefono": "+56912345678",
+            "email": "camila@example.com",
             "nombre_contacto_emergencia": "Contacto Adulto",
             "telefono_contacto_emergencia": "+56987654321",
             "procedencia": Jugador.Procedencia.INDEPENDIENTE,
@@ -387,6 +390,7 @@ class FormularioInscripcionSprint2Test(TestCase):
             "nombres_apoderado": "",
             "apellidos_apoderado": "",
             "telefono_apoderado": "",
+            "email_apoderado": "",
             "parentesco": "",
             "tiene_alerta_salud": "NO",
             "alerta_tipo": "",
@@ -402,6 +406,7 @@ class FormularioInscripcionSprint2Test(TestCase):
             self.datos_validos(
                 fecha_nacimiento="2012-05-10",
                 telefono="",
+                email="",
                 nombre_contacto_emergencia="",
                 telefono_contacto_emergencia="",
             ),
@@ -505,6 +510,7 @@ class InscripcionPublicaSprint2Test(TestCase):
             "fecha_nacimiento": "1990-03-10",
             "rama": Jugador.Rama.VARONES,
             "telefono": "+56911112222",
+            "email": "alex@example.com",
             "nombre_contacto_emergencia": "Contacto Emergencia",
             "telefono_contacto_emergencia": "+56933334444",
             "procedencia": Jugador.Procedencia.INDEPENDIENTE,
@@ -554,6 +560,7 @@ class InscripcionPublicaSprint2Test(TestCase):
             fecha_nacimiento="2012-03-10",
             rama=Jugador.Rama.DAMAS,
             telefono="",
+            email="",
             nombre_contacto_emergencia="",
             telefono_contacto_emergencia="",
             procedencia=Jugador.Procedencia.OTRO_CLUB,
@@ -562,6 +569,7 @@ class InscripcionPublicaSprint2Test(TestCase):
             nombres_apoderado="Andrea",
             apellidos_apoderado="Responsable",
             telefono_apoderado="+56955556666",
+            email_apoderado="andrea@example.com",
             parentesco="MADRE",
             tiene_alerta_salud="SI",
             alerta_tipo="Alergia",
@@ -617,6 +625,20 @@ class GestionSolicitudesSprint2Test(TestCase):
             rama=Jugador.Rama.VARONES,
             categoria_actual=categoria,
             procedencia=Jugador.Procedencia.INDEPENDIENTE,
+        )
+        cls.apoderado = Apoderado.objects.create(
+            rut="12345678-5",
+            nombres="Patricia",
+            apellidos="Responsable",
+            telefono="+56955556666",
+            email="patricia@example.com",
+        )
+        ApoderadoJugador.objects.create(
+            apoderado=cls.apoderado,
+            jugador=cls.jugador,
+            parentesco="MADRE",
+            es_principal=True,
+            puede_gestionar=True,
         )
         cls.solicitud = SolicitudInscripcion.objects.create(
             jugador=cls.jugador,

@@ -1,9 +1,26 @@
 from django.urls import path
+from django.views.generic import TemplateView
 
 from . import views
 
 urlpatterns = [
     path("", views.inicio, name="inicio"),
+    path("activar-cuenta/", views.activar_cuenta, name="activar_cuenta"),
+    path(
+        "activar-cuenta/enviada/",
+        TemplateView.as_view(template_name="registration/activacion_enviada.html"),
+        name="activacion_enviada",
+    ),
+    path(
+        "activar-cuenta/<uidb64>/<token>/",
+        views.ConfirmarActivacionView.as_view(),
+        name="confirmar_activacion",
+    ),
+    path(
+        "activar-cuenta/completa/",
+        TemplateView.as_view(template_name="registration/activacion_completa.html"),
+        name="activacion_completa",
+    ),
     path("panel/", views.panel, name="panel"),
     path("perfil/jugador/", views.perfil_jugador, name="perfil_jugador"),
     path("perfil/apoderado/", views.perfil_apoderado, name="perfil_apoderado"),

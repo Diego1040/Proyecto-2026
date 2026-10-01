@@ -88,6 +88,12 @@ class Usuario(AbstractUser):
         auto_now=True,
     )
 
+    activado_en = models.DateTimeField(
+        null=True,
+        blank=True,
+        editable=False,
+    )
+
     objects = UsuarioManager()
 
     USERNAME_FIELD = "rut"
@@ -235,6 +241,8 @@ class Jugador(models.Model):
         max_length=100,
     )
 
+    email = models.EmailField(blank=True, default="")
+
     fecha_nacimiento = models.DateField()
 
     rama = models.CharField(
@@ -381,8 +389,7 @@ class Jugador(models.Model):
 
 class Apoderado(models.Model):
     """
-    Apoderado utilizado exclusivamente para autenticación,
-    autorización y acceso al sistema.
+    Datos de la persona responsable de uno o más jugadores.
     """
     usuario = models.OneToOneField(
         settings.AUTH_USER_MODEL,
@@ -405,6 +412,8 @@ class Apoderado(models.Model):
     apellidos = models.CharField(
         max_length=100,
     )
+
+    email = models.EmailField(blank=True, default="")
 
     telefono = models.CharField(
         max_length=20,
@@ -584,6 +593,14 @@ class SolicitudInscripcion(models.Model):
         null=True,
         blank=True,
         related_name="solicitudes_revisadas",
+    )
+
+    usuario_autorizado = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="solicitudes_autorizadoras",
     )
 
     fecha_revision = models.DateTimeField(

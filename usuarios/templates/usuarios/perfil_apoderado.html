@@ -39,6 +39,31 @@
       </div>
     </article>
 
+    <article class="tarjeta tarjeta-perfil tarjeta-contacto">
+      <div class="cab-contacto">
+        <div>
+          <p class="etiqueta-seccion">Contacto</p>
+          <h2>Correo del apoderado</h2>
+          <p class="texto-secundario">Este correo se usa para las solicitudes de tus jugadores.</p>
+          {% if not user.email %}
+            <p class="texto-secundario">Tu cuenta no tiene correo de recuperación. Para registrarlo de forma segura, contacta a administración.</p>
+          {% endif %}
+        </div>
+        <form method="post" class="form-contacto" novalidate>
+          {% csrf_token %}
+          <input type="hidden" name="accion" value="guardar_correo">
+          <div class="campo campo-contacto">
+            {{ correo_form.email.label_tag }}
+            {{ correo_form.email }}
+            {% for error in correo_form.email.errors %}
+              <span class="yerro">{{ error }}</span>
+            {% endfor %}
+          </div>
+          <button class="boton" type="submit">Guardar correo</button>
+        </form>
+      </div>
+    </article>
+
     {% if vinculos %}
       <div class="tarjetas-jugadores">
         {% for vinculo in vinculos %}
