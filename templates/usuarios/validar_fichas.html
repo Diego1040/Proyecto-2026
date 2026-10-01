@@ -66,14 +66,15 @@ textarea{background:var(--blanco);border:1px solid var(--linea);border-radius:5p
 .ficha .nom small{display:block;font-weight:400;color:var(--gris);font-size:.84rem}
 .acciones{margin-left:auto;display:flex;gap:8px;align-items:center}
 .acciones form{margin:0}
-.detalle{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--linea);border:1px solid var(--linea);border-radius:6px;overflow:hidden;margin-top:14px}
+.detalle{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--linea);border:1px solid var(--linea);border-radius:6px;overflow:hidden;margin-top:14px}
 .detalle div{background:var(--blanco);padding:11px 13px}
 .detalle span{display:block;font-size:.78rem;color:var(--gris)}
 .rechazo{margin-top:14px;display:grid;gap:10px}
 .oculto{display:none}
 @media(max-width:600px){
+  @media(max-width:600px){
+  .detalle{grid-template-columns:repeat(2,1fr)}
   .acciones{margin-left:0;width:100%}
-  .acciones form,.acciones .btn{flex:1;width:100%}
 }
 </style>
 </head>
