@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import InscripcionForm
 from .services import (
@@ -18,7 +18,6 @@ from .models import (
     Jugador,
     SolicitudInscripcion,
 )
-
 
 # =========================================================
 # ROLES
