@@ -815,47 +815,42 @@ textarea{resize:vertical;min-height:78px}
 // categoría automática por año de nacimiento (HU-05)
 const fnac = document.getElementById("fnac");
 const catAuto = document.getElementById("cat-auto");
+const ramaSelect = document.querySelector('select[name="rama"]');
+
+function actualizarCategoria() {
+    if (!fnac.value) {
+        catAuto.value = "Se asignará automáticamente";
+        return;
+    }
+
+    // Se toma el año directo del texto "AAAA-MM-DD" para evitar
+    // errores de zona horaria con fechas como el 1 de enero.
+    const anioNacimiento = parseInt(fnac.value.slice(0, 4), 10);
+    const edad = new Date().getFullYear() - anioNacimiento;
+
+    const rama = ramaSelect && ramaSelect.value === "DAMAS" ? "Damas"
+               : ramaSelect && ramaSelect.value === "VARONES" ? "Varones"
+               : "";
+
+    let categoria;
+
+    if (edad < 6)        categoria = "Sin categoría para esta edad";
+    else if (edad <= 7)  categoria = "U7 Mixto";
+    else if (edad <= 9)  categoria = "U9 Mixto";
+    else if (edad <= 11) categoria = "U11 Mixto";
+    else if (edad <= 13) categoria = ("U13 " + rama).trim();
+    else if (edad <= 15) categoria = ("U15 " + rama).trim();
+    else if (edad <= 17) categoria = ("U17 " + rama).trim();
+    else                 categoria = ("Todo Competidor " + rama).trim();
+
+    catAuto.value = categoria;
+}
 
 if (fnac && catAuto) {
-    fnac.addEventListener("change", () => {
-
-        if (!fnac.value) {
-            catAuto.value = "Se asignará automáticamente";
-            return;
-        }
-
-        const nacimiento = new Date(fnac.value);
-        const hoy = new Date();
-
-        let edad = hoy.getFullYear() - nacimiento.getFullYear();
-
-        const mes = hoy.getMonth() - nacimiento.getMonth();
-
-        if (
-            mes < 0 ||
-            (mes === 0 && hoy.getDate() < nacimiento.getDate())
-        ) {
-            edad--;
-        }
-
-        let categoria;
-
-        if (edad <= 8) {
-            categoria = "Mini Basket";
-        } else if (edad <= 11) {
-            categoria = "U11";
-        } else if (edad <= 13) {
-            categoria = "U13";
-        } else if (edad <= 15) {
-            categoria = "U15";
-        } else if (edad <= 17) {
-            categoria = "U17";
-        } else {
-            categoria = "Adultos";
-        }
-
-        catAuto.value = categoria;
-    });
+    fnac.addEventListener("change", actualizarCategoria);
+    if (ramaSelect) {
+        ramaSelect.addEventListener("change", actualizarCategoria);
+    }
 }
 
 
