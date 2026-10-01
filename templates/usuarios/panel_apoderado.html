@@ -31,6 +31,8 @@ button{font:inherit}
 .barra b{font-family:"Barlow Condensed";font-size:1.2rem;text-transform:uppercase}
 .rol{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:.9rem;color:#B9B7B4}
 .avatar{width:30px;height:30px;border-radius:50%;background:#3A3A42;display:grid;place-items:center;font-size:.75rem;font-weight:600;color:#fff}
+.salir{background:none;border:1px solid #3A3A42;color:#fff;border-radius:5px;padding:5px 12px;cursor:pointer;font-size:.85rem}
+.salir:hover{background:#2A2A30}
 
 .tabs{background:var(--blanco);border-bottom:1px solid var(--linea);position:sticky;top:60px;z-index:19;overflow-x:auto}
 .tabs .wrap{display:flex;gap:4px}
@@ -103,7 +105,12 @@ textarea{resize:vertical;min-height:78px}
   <div class="wrap">
     <span class="escudo"></span>
     <b>Ayllu Basket</b>
-    <span class="rol">Apoderada <span class="avatar">CV</span></span>
+    <span class="rol">Apoderado <span class="avatar">{{ apoderado.nombres|first }}{{ apoderado.apellidos|first }}</span>
+  <form action="{% url 'logout' %}" method="post" style="margin:0">
+    {% csrf_token %}
+    <button type="submit" class="salir">Cerrar sesión</button>
+  </form>
+  </span>
   </div>
 </header>
 
