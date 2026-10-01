@@ -35,6 +35,15 @@ def calcular_edad(fecha_nacimiento, fecha_referencia=None):
         )
     )
 
+"""NUEVO AGREGADO"""
+def calcular_edad_deportiva(fecha_nacimiento, temporada):
+    if fecha_nacimiento.year > temporada:
+        raise ValidationError(
+            "La fecha de nacimiento no puede estar en el futuro."
+        )
+
+    return temporada - fecha_nacimiento.year
+"""FIN NUEVO AGREGADO"""
 
 def obtener_categoria_automatica(
     fecha_nacimiento,
@@ -56,10 +65,17 @@ def obtener_categoria_automatica(
             "La rama del jugador debe ser DAMAS o VARONES."
         )
 
-    edad = calcular_edad(
+    """NUEVO AGREGADO"""
+    if fecha_nacimiento > fecha_referencia:
+        raise ValidationError(
+            "La fecha de nacimiento no puede estar en el futuro."
+        )
+
+    edad = calcular_edad_deportiva(
         fecha_nacimiento,
-        fecha_referencia,
+        temporada,
     )
+    """FIN NUEVO AGREGADO"""
 
     reglas = (
         ReglaCategoria.objects

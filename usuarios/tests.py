@@ -12,11 +12,10 @@ from django.test import TestCase
 from django.urls import reverse
 
 from .models import Categoria, ReglaCategoria
-from .services import calcular_edad, obtener_categoria_automatica
+from .services import calcular_edad, calcular_edad_deportiva, obtener_categoria_automatica
 from .validators import normalizar_rut, validar_rut
 
 TEMPORADA = 2026
-
 
 class ValidadorRutTest(TestCase):
     def test_normaliza_puntos_guiones_y_minusculas(self):
@@ -121,6 +120,28 @@ class AsignacionCategoriaTest(TestCase):
     def test_rama_mixto_no_es_valida_para_un_jugador(self):
         with self.assertRaises(ValidationError):
             self.categoria_de(date(2012, 3, 10), Categoria.Rama.MIXTO)
+
+    """NUEVO AGREGADO"""
+
+    def test_edad_deportiva_es_por_anio_de_nacimiento(self):
+        self.assertEqual(calcular_edad_deportiva(date(2012, 1, 1), 2026), 14)
+        self.assertEqual(calcular_edad_deportiva(date(2012, 12, 31), 2026), 14)
+
+    def test_nacido_en_diciembre_queda_con_los_de_su_anio(self):
+        categoria = self.categoria_de(date(2012, 12, 20), Categoria.Rama.VARONES)
+        self.assertEqual(categoria.nombre, "U15 Varones")
+
+    def test_misma_categoria_todo_el_anio_de_nacimiento(self):
+        enero = self.categoria_de(date(2013, 1, 5), Categoria.Rama.DAMAS)
+        diciembre = self.categoria_de(date(2013, 12, 20), Categoria.Rama.DAMAS)
+        self.assertEqual(enero, diciembre)
+        self.assertEqual(enero.nombre, "U13 Damas")
+
+    def test_fecha_nacimiento_futura_lanza_error(self):
+        with self.assertRaises(ValidationError):
+            self.categoria_de(date(2026, 12, 1), Categoria.Rama.DAMAS)
+
+    """FIN NUEVO AGREGADO"""
 
 
 class PaginasTest(TestCase):

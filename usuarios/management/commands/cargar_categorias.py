@@ -18,18 +18,20 @@ from django.db import transaction
 
 from usuarios.models import Categoria, ReglaCategoria
 
+# AGREGO A U7 Y U9
 # (nombre, rama, orden, edad_min, edad_max)
 CATEGORIAS = [
-    ("Mini Mixto",             Categoria.Rama.MIXTO,    1,  6,    9),
-    ("U11 Mixto",              Categoria.Rama.MIXTO,    2, 10,   11),
-    ("U13 Damas",              Categoria.Rama.DAMAS,    3, 12,   13),
-    ("U13 Varones",            Categoria.Rama.VARONES,  4, 12,   13),
-    ("U15 Damas",              Categoria.Rama.DAMAS,    5, 14,   15),
-    ("U15 Varones",            Categoria.Rama.VARONES,  6, 14,   15),
-    ("U17 Damas",              Categoria.Rama.DAMAS,    7, 16,   17),
-    ("U17 Varones",            Categoria.Rama.VARONES,  8, 16,   17),
-    ("Todo Competidor Damas",  Categoria.Rama.DAMAS,    9, 18, None),
-    ("Todo Competidor Varones", Categoria.Rama.VARONES, 10, 18, None),
+    ("U7 Mixto",               Categoria.Rama.MIXTO,    1,  6,    7),
+    ("U9 Mixto",               Categoria.Rama.MIXTO,    2,  8,    9),
+    ("U11 Mixto",              Categoria.Rama.MIXTO,    3, 10,   11),
+    ("U13 Damas",              Categoria.Rama.DAMAS,    4, 12,   13),
+    ("U13 Varones",            Categoria.Rama.VARONES,  5, 12,   13),
+    ("U15 Damas",              Categoria.Rama.DAMAS,    6, 14,   15),
+    ("U15 Varones",            Categoria.Rama.VARONES,  7, 14,   15),
+    ("U17 Damas",              Categoria.Rama.DAMAS,    8, 16,   17),
+    ("U17 Varones",            Categoria.Rama.VARONES,  9, 16,   17),
+    ("Todo Competidor Damas",  Categoria.Rama.DAMAS,    10, 18, None),
+    ("Todo Competidor Varones", Categoria.Rama.VARONES, 11, 18, None),
 ]
 
 
@@ -78,10 +80,21 @@ class Command(BaseCommand):
             else:
                 actualizadas += 1
 
+        nombres_vigentes = [c[0] for c in CATEGORIAS]
+
+        obsoletas = Categoria.objects.exclude(nombre__in=nombres_vigentes).filter(activa=True)
+
+        desactivadas = obsoletas.count()
+
+        ReglaCategoria.objects.filter(categoria__in=obsoletas, temporada=temporada).update(activa=False)
+
+        obsoletas.update(activa=False)
+
         if opciones.get("verbosity", 1):
             self.stdout.write(
                 self.style.SUCCESS(
                     f"Temporada {temporada}: {creadas} categorias creadas, "
-                    f"{actualizadas} ya existian y quedaron actualizadas."
+                    f"{actualizadas} ya existian y quedaron actualizadas, "
+                    f"{desactivadas} categorias obsoletas desactivadas."
                 )
             )
