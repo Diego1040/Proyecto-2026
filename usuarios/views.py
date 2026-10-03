@@ -7,6 +7,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q  # <<< NUEVO (HU-05)
 from django.shortcuts import get_object_or_404, redirect, render
 from deportivo.permisos import es_entrenador  # NUEVO (HU-07)
+from deportivo.services import resumen_asistencia_mes  # NUEVO (HU-07)
 from .forms import InscripcionForm
 from .services import (
     asignar_categoria_automatica,
@@ -236,6 +237,8 @@ def panel(request):
                 .order_by("-fecha_solicitud")
                 .first()
             )
+
+            jugador.asistencia_mes = resumen_asistencia_mes(jugador)
 
         # -------------------------------------------------
         # RENDER DEL PANEL

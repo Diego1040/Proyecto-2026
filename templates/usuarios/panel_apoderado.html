@@ -200,8 +200,6 @@ textarea{resize:vertical;min-height:78px}
 
 <!---->
 
-
-
   <div class="datos">
 
     <div class="dato">
@@ -278,31 +276,37 @@ textarea{resize:vertical;min-height:78px}
     Consulta de asistencia a entrenamientos.
   </p>
 
+  {% with a=jugador.asistencia_mes %}
   <div class="datos">
 
     <div class="dato">
       <span>Asistencia del mes</span>
-      <b>Sin registros</b>
+      <b>{% if a.total %}{{ a.porcentaje }}%{% else %}Sin registros{% endif %}</b>
     </div>
 
     <div class="dato">
       <span>Entrenamientos</span>
-      <b>Sin registros</b>
+      <b>{% if a.total %}{{ a.total }}{% else %}Sin registros{% endif %}</b>
     </div>
 
     <div class="dato">
       <span>Presentes</span>
-      <b>--</b>
+      <b>{% if a.total %}{{ a.presentes }}{% else %}--{% endif %}</b>
     </div>
 
     <div class="dato">
       <span>Inasistencias</span>
-      <b>--</b>
+      <b>
+        {% if a.total %}
+          {{ a.ausentes|add:a.justificadas }}{% if a.justificadas %} ({{ a.justificadas }} justificada{{ a.justificadas|pluralize }}){% endif %}
+        {% else %}--{% endif %}
+      </b>
     </div>
 
   </div>
+  {% endwith %}
 
-</div>
+  </div>
 
 </div>
 

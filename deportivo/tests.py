@@ -148,3 +148,26 @@ class AsistenciaTest(TestCase):
         self.assertTrue(
             Auditoria.objects.filter(accion="ASISTENCIA_MODIFICADA_FUERA_DE_PLAZO").exists()
         )
+
+    def test_apoderado_ve_asistencia_del_mes(self):
+        from usuarios.models import Apoderado, ApoderadoJugador
+
+        apoderado = Apoderado.objects.create(
+            usuario=self.otro, rut="11111111-1",
+            nombres="Carolina", apellidos="Vergara", telefono="1",
+        )
+        ApoderadoJugador.objects.create(
+            apoderado=apoderado, jugador=self.tomas, parentesco="Madre",
+            es_principal=True, puede_gestionar=True, activo=True,
+        )
+
+        for estado in ["PRESENTE", "PRESENTE", "PRESENTE", "AUSENTE"]:
+            e = self.crear_entrenamiento()
+            Asistencia.objects.create(
+                entrenamiento=e, jugador=self.tomas,
+                estado=estado, registrado_por=self.entrenador,
+            )
+
+        self.client.force_login(self.otro)
+        respuesta = self.client.get(reverse("panel"))
+        self.assertContains(respuesta, "75%")

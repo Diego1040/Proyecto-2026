@@ -84,3 +84,31 @@ def registrar_asistencia(*, entrenamiento, usuario, estados, motivo=""):
         )
 
     return guardadas
+
+def resumen_asistencia_mes(jugador, hoy=None):
+    """
+    Asistencia del jugador en el mes actual.
+
+    Cuenta solo los entrenamientos en que se paso lista.
+    """
+    if hoy is None:
+        hoy = timezone.localdate()
+
+    registros = Asistencia.objects.filter(
+        jugador=jugador,
+        entrenamiento__fecha__year=hoy.year,
+        entrenamiento__fecha__month=hoy.month,
+    )
+
+    total = registros.count()
+    presentes = registros.filter(estado=Asistencia.Estado.PRESENTE).count()
+    justificadas = registros.filter(estado=Asistencia.Estado.JUSTIFICADO).count()
+    ausentes = registros.filter(estado=Asistencia.Estado.AUSENTE).count()
+
+    return {
+        "total": total,
+        "presentes": presentes,
+        "ausentes": ausentes,
+        "justificadas": justificadas,
+        "porcentaje": round(presentes * 100 / total) if total else None,
+    }
