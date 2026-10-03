@@ -37,9 +37,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
     # App del proyecto
     'usuarios.apps.UsuariosConfig',
+    'deportivo',
 ]
 
 AUTH_USER_MODEL = 'usuarios.Usuario'
