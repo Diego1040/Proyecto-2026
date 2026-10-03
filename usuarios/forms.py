@@ -5,7 +5,13 @@ from django.utils import timezone
 
 from .models import Usuario, Apoderado, Jugador
 from .services import calcular_edad, obtener_parentesco_inicial
-from .validators import validar_rut, normalizar_rut
+from .validators import (
+    ERROR_IDENTIDAD_INSCRIPCION,
+    normalizar_rut,
+    validar_identidad_perfil,
+    validar_relacion_apoderado_jugador,
+    validar_rut,
+)
 
 
 class UsuarioCreationForm(UserCreationForm):
@@ -320,9 +326,9 @@ class InscripcionJugadorForm(forms.Form):
         validar_rut(rut)
 
         if Jugador.objects.filter(rut=rut).exists():
-            raise forms.ValidationError(
-                "Ya existe un jugador registrado con este RUT."
-            )
+            raise forms.ValidationError(ERROR_IDENTIDAD_INSCRIPCION)
+
+        validar_identidad_perfil(Jugador(rut=rut))
 
         return rut
 
@@ -401,6 +407,21 @@ class InscripcionJugadorForm(forms.Form):
         cleaned["edad_calculada"] = edad
 
         if edad < 18:
+            rut_jugador = cleaned.get("rut")
+            rut_apoderado = (
+                self.apoderado_existente.rut
+                if self.apoderado_existente is not None
+                else cleaned.get("rut_apoderado")
+            )
+            if rut_jugador and rut_apoderado:
+                try:
+                    validar_relacion_apoderado_jugador(
+                        jugador=Jugador(rut=rut_jugador, fecha_nacimiento=fecha_nacimiento),
+                        apoderado=Apoderado(rut=rut_apoderado),
+                    )
+                except DjangoValidationError as exc:
+                    self.add_error(None, exc)
+
             if self.apoderado_existente is None:
                 campos_requeridos = (
                     ("rut_apoderado", "RUT del apoderado"),
@@ -434,21 +455,6 @@ class InscripcionJugadorForm(forms.Form):
 
                 rut_apoderado = cleaned.get("rut_apoderado")
 
-                rut_jugador = cleaned.get("rut")
-
-                if (
-                    rut_apoderado
-                    and rut_jugador
-                    and rut_apoderado == rut_jugador
-                ):
-                    self.add_error(
-                        "rut_apoderado",
-                        (
-                            "El jugador y el apoderado "
-                            "no pueden utilizar el mismo RUT."
-                        ),
-                    )
-
                 if (
                     rut_apoderado
                     and Apoderado.objects.filter(
@@ -457,12 +463,14 @@ class InscripcionJugadorForm(forms.Form):
                 ):
                     self.add_error(
                         "rut_apoderado",
-                        (
-                            "Ya existe un apoderado con este RUT. "
-                            "Por seguridad, debe iniciar sesion "
-                            "con esa cuenta para agregar otro jugador."
-                        ),
+                        ERROR_IDENTIDAD_INSCRIPCION,
                     )
+
+                if rut_apoderado:
+                    try:
+                        validar_identidad_perfil(Apoderado(rut=rut_apoderado))
+                    except DjangoValidationError as exc:
+                        self.add_error("rut_apoderado", exc)
 
             else:
                 if not self.apoderado_existente.email:

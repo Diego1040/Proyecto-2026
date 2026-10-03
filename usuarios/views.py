@@ -23,16 +23,19 @@ from .models import (
     HistorialCategoria,
     Jugador,
     SolicitudInscripcion,
+    Usuario,
 )
 from .services import (
     aprobar_solicitud_inscripcion,
     completar_activacion,
     cuenta_puede_activarse,
+    cuenta_puede_recuperarse,
     crear_solicitud_inscripcion,
     marcar_solicitud_en_revision,
     rechazar_solicitud_inscripcion,
     solicitar_activacion,
 )
+from .tokens import activacion_token_generator
 
 
 def _agregar_error_validacion(form, exc):
@@ -123,6 +126,9 @@ def _es_personal_administrativo(usuario):
     )
 
 def inscripcion_publica(request):
+    if request.user.is_authenticated:
+        return redirect("panel")
+
     if request.method == "POST":
         form = InscripcionJugadorForm(request.POST)
 
@@ -189,6 +195,7 @@ def activar_cuenta(request):
 
 class ConfirmarActivacionView(PasswordResetConfirmView):
     template_name = "registration/activacion_confirmar.html"
+    token_generator = activacion_token_generator
 
     def get_user(self, uidb64):
         cuenta = super().get_user(uidb64)
@@ -202,6 +209,23 @@ class ConfirmarActivacionView(PasswordResetConfirmView):
             return self.render_to_response(self.get_context_data())
         self.request.session.pop(INTERNAL_RESET_SESSION_TOKEN, None)
         return redirect("activacion_completa")
+
+
+class ConfirmarRecuperacionView(PasswordResetConfirmView):
+    def get_user(self, uidb64):
+        cuenta = super().get_user(uidb64)
+        return cuenta if cuenta_puede_recuperarse(cuenta) else None
+
+    @transaction.atomic
+    def form_valid(self, form):
+        cuenta = Usuario.objects.select_for_update().get(pk=self.user.pk)
+        token = self.request.session.get(INTERNAL_RESET_SESSION_TOKEN)
+        if not cuenta_puede_recuperarse(cuenta) or not self.token_generator.check_token(cuenta, token):
+            self.validlink = False
+            return self.render_to_response(self.get_context_data())
+        self.user = cuenta
+        form.user = cuenta
+        return super().form_valid(form)
 
 
 @login_required
@@ -508,7 +532,7 @@ def solicitud_iniciar_revision(request, pk):
     )
 
     try:
-        marcar_solicitud_en_revision(solicitud=solicitud)
+        marcar_solicitud_en_revision(solicitud=solicitud, usuario=request.user)
     except ValidationError as exc:
         messages.error(
             request,

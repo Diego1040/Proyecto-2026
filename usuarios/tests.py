@@ -29,6 +29,7 @@ from .models import (
     Usuario,
 )
 from .services import (
+    aprobar_solicitud_inscripcion,
     calcular_edad,
     marcar_solicitud_en_revision,
     obtener_categoria_automatica,
@@ -587,6 +588,44 @@ class InscripcionPublicaSprint2Test(TestCase):
         datos.update(cambios)
         return datos
 
+    def test_get_publico_redirige_usuario_autenticado_con_o_sin_perfil_apoderado(self):
+        usuario = Usuario.objects.create_user(rut="20347119-K")
+        self.client.force_login(usuario)
+        for es_apoderado in (False, True):
+            with self.subTest(es_apoderado=es_apoderado):
+                if es_apoderado:
+                    Apoderado.objects.create(
+                        usuario=usuario, rut=usuario.rut, nombres="Cuenta", apellidos="Existente",
+                        telefono="+56911111111", email="contacto@example.com",
+                    )
+                respuesta = self.client.get(reverse("inscripcion"))
+                self.assertRedirects(respuesta, reverse("panel"))
+                self.assertTemplateNotUsed(respuesta, "usuarios/inscripcion_form.html")
+                self.assertFalse(SolicitudInscripcion.objects.exists())
+                self.assertFalse(Jugador.objects.exists())
+
+    def test_post_publico_no_crea_inscripcion_para_usuario_autenticado_o_apoderado(self):
+        usuario = Usuario.objects.create_user(rut="20347119-K")
+        self.client.force_login(usuario)
+        for es_apoderado in (False, True):
+            with self.subTest(es_apoderado=es_apoderado):
+                if es_apoderado:
+                    Apoderado.objects.create(
+                        usuario=usuario, rut=usuario.rut, nombres="Cuenta", apellidos="Existente",
+                        telefono="+56911111111", email="contacto@example.com",
+                    )
+                apoderados_antes = Apoderado.objects.count()
+                respuesta = self.client.post(reverse("inscripcion"), self.datos_adulto())
+                self.assertRedirects(respuesta, reverse("panel"))
+                self.assertTemplateNotUsed(respuesta, "usuarios/inscripcion_form.html")
+                self.assertFalse(SolicitudInscripcion.objects.exists())
+                self.assertFalse(Jugador.objects.exists())
+                self.assertFalse(ApoderadoJugador.objects.exists())
+                self.assertFalse(AlertaSalud.objects.exists())
+                self.assertEqual(Apoderado.objects.count(), apoderados_antes)
+                self.assertEqual(Usuario.objects.count(), 1)
+                self.assertNotIn("ultima_solicitud_id", self.client.session)
+
     def test_inscripcion_publica_adulto_no_crea_apoderado(self):
         respuesta = self.client.post(
             reverse("inscripcion"),
@@ -918,7 +957,7 @@ class GestionSolicitudesSprint2Test(TestCase):
         ApoderadoJugador.objects.create(
             apoderado=secundario, jugador=self.jugador, parentesco="TUTOR",
         )
-        marcar_solicitud_en_revision(solicitud=self.solicitud)
+        marcar_solicitud_en_revision(solicitud=self.solicitud, usuario=self.staff)
         self.client.force_login(self.staff)
 
         with self.captureOnCommitCallbacks(execute=True) as callbacks:
@@ -948,7 +987,7 @@ class GestionSolicitudesSprint2Test(TestCase):
         self.jugador.fecha_nacimiento = date(1990, 3, 10)
         self.jugador.email = "adulto@example.com"
         self.jugador.save(update_fields=["fecha_nacimiento", "email"])
-        marcar_solicitud_en_revision(solicitud=self.solicitud)
+        marcar_solicitud_en_revision(solicitud=self.solicitud, usuario=self.staff)
         with self.captureOnCommitCallbacks(execute=True) as callbacks:
             rechazar_solicitud_inscripcion(
                 solicitud=self.solicitud, usuario=self.staff, motivo="Antecedentes incompletos",
@@ -968,7 +1007,7 @@ class GestionSolicitudesSprint2Test(TestCase):
         self.apoderado.rut = self.staff.rut
         self.apoderado.save(update_fields=["usuario", "rut"])
         credenciales = (self.staff.password, self.staff.is_active, self.staff.email)
-        marcar_solicitud_en_revision(solicitud=self.solicitud)
+        marcar_solicitud_en_revision(solicitud=self.solicitud, usuario=self.staff)
         with self.captureOnCommitCallbacks(execute=True):
             rechazar_solicitud_inscripcion(
                 solicitud=self.solicitud, usuario=self.staff, motivo="Antecedentes incompletos",
@@ -982,7 +1021,7 @@ class GestionSolicitudesSprint2Test(TestCase):
         self.assertEqual(Usuario.objects.count(), 2)
 
     def test_rechazo_exige_personal_administrativo_en_servicio(self):
-        marcar_solicitud_en_revision(solicitud=self.solicitud)
+        marcar_solicitud_en_revision(solicitud=self.solicitud, usuario=self.staff)
         for usuario in (None, AnonymousUser(), self.usuario_sin_permiso):
             with self.subTest(usuario=usuario):
                 with self.captureOnCommitCallbacks(execute=True) as callbacks:
@@ -1018,7 +1057,7 @@ class GestionSolicitudesSprint2Test(TestCase):
         self.assertEqual(len(mail.outbox), 0)
 
     def test_rechazo_repetido_recarga_estado_y_no_duplica_correo_ni_auditoria(self):
-        marcar_solicitud_en_revision(solicitud=self.solicitud)
+        marcar_solicitud_en_revision(solicitud=self.solicitud, usuario=self.staff)
         instancia_desactualizada = SolicitudInscripcion.objects.get(pk=self.solicitud.pk)
         with self.captureOnCommitCallbacks(execute=True) as callbacks:
             resolucion = rechazar_solicitud_inscripcion(
@@ -1037,7 +1076,7 @@ class GestionSolicitudesSprint2Test(TestCase):
         self.assertEqual(len(mail.outbox), 1)
 
     def test_rollback_externo_descarta_rechazo_auditoria_y_correo(self):
-        marcar_solicitud_en_revision(solicitud=self.solicitud)
+        marcar_solicitud_en_revision(solicitud=self.solicitud, usuario=self.staff)
         with self.captureOnCommitCallbacks(execute=True) as callbacks:
             with self.assertRaises(ValidationError):
                 with transaction.atomic():
@@ -1056,7 +1095,7 @@ class GestionSolicitudesSprint2Test(TestCase):
         self.assertEqual(len(mail.outbox), 0)
 
     def test_error_en_auditoria_revierte_rechazo_sin_correo(self):
-        marcar_solicitud_en_revision(solicitud=self.solicitud)
+        marcar_solicitud_en_revision(solicitud=self.solicitud, usuario=self.staff)
         with self.captureOnCommitCallbacks(execute=True) as callbacks:
             with patch("usuarios.services.registrar_auditoria", side_effect=ValidationError("Error de auditoría")):
                 with self.assertRaises(ValidationError):
@@ -1069,3 +1108,81 @@ class GestionSolicitudesSprint2Test(TestCase):
         self.assertIsNone(self.solicitud.fecha_revision)
         self.assertEqual(callbacks, [])
         self.assertEqual(len(mail.outbox), 0)
+
+    def test_revision_exige_actor_administrativo_en_servicio(self):
+        for usuario in (self.usuario_sin_permiso, self.staff):
+            if usuario == self.staff:
+                usuario.is_active = False
+            with self.subTest(usuario=usuario.pk):
+                with self.assertRaises(ValidationError):
+                    marcar_solicitud_en_revision(solicitud=self.solicitud, usuario=usuario)
+        self.solicitud.refresh_from_db()
+        self.assertEqual(self.solicitud.estado, SolicitudInscripcion.Estado.PENDIENTE)
+        self.assertFalse(Auditoria.objects.exists())
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_revision_rechaza_actor_ausente_o_anonimo_en_servicio(self):
+        for usuario in (None, AnonymousUser()):
+            with self.subTest(usuario=usuario):
+                with self.assertRaises(ValidationError):
+                    marcar_solicitud_en_revision(solicitud=self.solicitud, usuario=usuario)
+        self.solicitud.refresh_from_db()
+        self.assertEqual(self.solicitud.estado, SolicitudInscripcion.Estado.PENDIENTE)
+
+    def test_revision_confia_solo_en_estado_y_datos_persistidos(self):
+        self.solicitud.estado = SolicitudInscripcion.Estado.APROBADA
+        self.solicitud.observaciones = "Dato de una instancia desactualizada"
+        revisada = marcar_solicitud_en_revision(solicitud=self.solicitud, usuario=self.staff)
+        self.solicitud.refresh_from_db()
+        self.assertEqual(revisada.estado, SolicitudInscripcion.Estado.EN_REVISION)
+        self.assertEqual(self.solicitud.estado, SolicitudInscripcion.Estado.EN_REVISION)
+        self.assertEqual(self.solicitud.observaciones, "")
+
+    def test_revision_desactualizada_no_sobrescribe_otra_revision(self):
+        vieja = SolicitudInscripcion.objects.get(pk=self.solicitud.pk)
+        marcar_solicitud_en_revision(solicitud=self.solicitud, usuario=self.staff)
+        anterior = SolicitudInscripcion.objects.values().get(pk=self.solicitud.pk)
+        with self.assertRaises(ValidationError):
+            marcar_solicitud_en_revision(solicitud=vieja, usuario=self.staff)
+        self.assertEqual(SolicitudInscripcion.objects.values().get(pk=self.solicitud.pk), anterior)
+
+    def _datos_resolucion(self):
+        return {
+            "solicitud": SolicitudInscripcion.objects.values().get(pk=self.solicitud.pk),
+            "jugador": Jugador.objects.values().get(pk=self.jugador.pk),
+            "apoderado": Apoderado.objects.values().get(pk=self.apoderado.pk),
+            "vinculos": list(ApoderadoJugador.objects.order_by("pk").values()),
+            "usuarios": list(Usuario.objects.order_by("pk").values()),
+            "auditoria": list(Auditoria.objects.order_by("pk").values()),
+        }
+
+    def test_revision_desactualizada_preserva_aprobacion_y_cuenta_autorizada(self):
+        vieja = SolicitudInscripcion.objects.get(pk=self.solicitud.pk)
+        marcar_solicitud_en_revision(solicitud=self.solicitud, usuario=self.staff)
+        with self.captureOnCommitCallbacks(execute=True):
+            aprobar_solicitud_inscripcion(solicitud=self.solicitud, usuario=self.staff)
+        anterior = self._datos_resolucion()
+        self.assertIsNotNone(anterior["solicitud"]["usuario_autorizado_id"])
+        self.assertEqual(anterior["jugador"]["estado"], Jugador.Estado.ACTIVO)
+        cantidad_correos = len(mail.outbox)
+        with self.captureOnCommitCallbacks(execute=True) as callbacks:
+            with self.assertRaises(ValidationError):
+                marcar_solicitud_en_revision(solicitud=vieja, usuario=self.staff)
+        self.assertEqual(self._datos_resolucion(), anterior)
+        self.assertEqual(callbacks, [])
+        self.assertEqual(len(mail.outbox), cantidad_correos)
+
+    def test_revision_desactualizada_preserva_rechazo_y_todos_sus_datos(self):
+        vieja = SolicitudInscripcion.objects.get(pk=self.solicitud.pk)
+        marcar_solicitud_en_revision(solicitud=self.solicitud, usuario=self.staff)
+        with self.captureOnCommitCallbacks(execute=True):
+            rechazar_solicitud_inscripcion(solicitud=self.solicitud, usuario=self.staff, motivo="Falta documentación")
+        anterior = self._datos_resolucion()
+        self.assertEqual(anterior["solicitud"]["motivo_rechazo"], "Falta documentación")
+        cantidad_correos = len(mail.outbox)
+        with self.captureOnCommitCallbacks(execute=True) as callbacks:
+            with self.assertRaises(ValidationError):
+                marcar_solicitud_en_revision(solicitud=vieja, usuario=self.staff)
+        self.assertEqual(self._datos_resolucion(), anterior)
+        self.assertEqual(callbacks, [])
+        self.assertEqual(len(mail.outbox), cantidad_correos)

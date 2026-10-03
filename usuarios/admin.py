@@ -129,6 +129,8 @@ class UsuarioAdmin(UserAdmin):
         campos = super().get_readonly_fields(request, obj)
         if obj is not None:
             campos = (*campos, "is_staff", "is_superuser")
+            if Jugador.objects.filter(usuario=obj).exists() or Apoderado.objects.filter(usuario=obj).exists():
+                campos = (*campos, "rut")
             if not obj.is_staff:
                 return (*campos, "is_active")
         return campos

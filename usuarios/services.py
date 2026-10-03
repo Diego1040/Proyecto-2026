@@ -1,6 +1,5 @@
 from datetime import date
 
-from django.contrib.auth.tokens import default_token_generator
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
@@ -23,10 +22,24 @@ from .models import (
     SolicitudInscripcion,
     Usuario,
 )
-from .validators import normalizar_rut
+from .validators import (
+    normalizar_rut,
+    validar_identidad_perfil,
+    validar_relacion_apoderado_jugador,
+)
+from .tokens import activacion_token_generator
 
 
 ACTIVACION_REENVIO_ESPERA_SEGUNDOS = 300
+
+
+def _validar_identidad_inscripcion(jugador):
+    validar_identidad_perfil(jugador)
+    if jugador.pk is not None:
+        for vinculo in jugador.vinculos_apoderados.select_related("apoderado"):
+            validar_relacion_apoderado_jugador(jugador=jugador, apoderado=vinculo.apoderado)
+            if vinculo.activo:
+                validar_identidad_perfil(vinculo.apoderado)
 
 
 def calcular_edad(fecha_nacimiento, fecha_referencia=None):
@@ -183,6 +196,7 @@ def crear_solicitud_inscripcion(
     if edad >= 18:
         _validar_correo(jugador.email, "El correo del jugador adulto es obligatorio.")
     jugador.full_clean()
+    _validar_identidad_inscripcion(jugador)
 
     # Permite utilizar tanto un jugador nuevo como uno ya guardado.
     if jugador.pk is None:
@@ -235,7 +249,13 @@ def crear_solicitud_inscripcion(
     return solicitud
 
 @transaction.atomic
-def marcar_solicitud_en_revision(*, solicitud):
+def marcar_solicitud_en_revision(*, solicitud, usuario):
+    if usuario is None or not usuario.is_authenticated or not usuario.is_staff or not usuario.is_active:
+        raise ValidationError(
+            "Debe indicar personal administrativo para iniciar la revisión."
+        )
+
+    solicitud = SolicitudInscripcion.objects.select_for_update().get(pk=solicitud.pk)
     if solicitud.estado != SolicitudInscripcion.Estado.PENDIENTE:
         raise ValidationError(
             "Solo una solicitud pendiente puede pasar a revision."
@@ -268,6 +288,7 @@ def aprobar_solicitud_inscripcion(
         )
 
     jugador = Jugador.objects.select_for_update().get(pk=solicitud.jugador_id)
+    _validar_identidad_inscripcion(jugador)
 
     if jugador.categoria_actual_id is None:
         raise ValidationError(
@@ -336,6 +357,11 @@ def aprobar_solicitud_inscripcion(
         transaction.on_commit(
             lambda: enviar_enlace_activacion(cuenta.pk, request=request)
         )
+    else:
+        correo_aprobacion = _validar_correo(titular.email, "Debe indicar un correo.")
+        transaction.on_commit(
+            lambda: enviar_correo_aprobacion(correo=correo_aprobacion)
+        )
 
     return solicitud
 
@@ -353,6 +379,7 @@ def _validar_correo(correo, mensaje):
 
 def _preparar_cuenta(titular):
     """Solo se llama desde la aprobación, dentro de su transacción."""
+    validar_identidad_perfil(titular)
     correo = _validar_correo(titular.email, "Debe indicar un correo.")
     rut = normalizar_rut(titular.rut)
     cuenta = Usuario.objects.select_for_update().filter(rut=rut).first()
@@ -413,6 +440,10 @@ def cuenta_puede_activarse(cuenta):
     )
 
 
+def cuenta_puede_recuperarse(cuenta):
+    return bool(cuenta and cuenta.is_active and cuenta.has_usable_password())
+
+
 def solicitar_activacion(*, rut, correo, request=None):
     """No revela si la combinación consultada corresponde a una cuenta."""
     try:
@@ -438,7 +469,7 @@ def enviar_enlace_activacion(usuario_id, *, request=None, limitar_reenvio=False)
     ):
         return
     uidb64 = urlsafe_base64_encode(force_bytes(cuenta.pk))
-    token = default_token_generator.make_token(cuenta)
+    token = activacion_token_generator.make_token(cuenta)
     ruta = reverse("confirmar_activacion", kwargs={"uidb64": uidb64, "token": token})
     enlace = request.build_absolute_uri(ruta) if request is not None else ruta
     asunto = render_to_string("registration/activacion_subject.txt").strip()
@@ -526,6 +557,12 @@ def rechazar_solicitud_inscripcion(
 def enviar_correo_rechazo(*, correo, motivo):
     asunto = render_to_string("registration/rechazo_subject.txt").strip()
     cuerpo = render_to_string("registration/rechazo_email.txt", {"motivo": motivo})
+    send_mail(asunto, cuerpo, None, [correo])
+
+
+def enviar_correo_aprobacion(*, correo):
+    asunto = render_to_string("registration/aprobacion_subject.txt").strip()
+    cuerpo = render_to_string("registration/aprobacion_email.txt")
     send_mail(asunto, cuerpo, None, [correo])
 
 

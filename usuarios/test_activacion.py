@@ -13,10 +13,13 @@ from django.db import transaction
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 
 from .forms import InscripcionJugadorForm
-from .models import Apoderado, ApoderadoJugador, Auditoria, Categoria, Jugador, SolicitudInscripcion, Usuario
+from .models import AlertaSalud, Apoderado, ApoderadoJugador, Auditoria, Categoria, Jugador, SolicitudInscripcion, Usuario
 from .services import aprobar_solicitud_inscripcion, marcar_solicitud_en_revision
+from .tokens import activacion_token_generator
 
 
 @override_settings(MAILERS={"default": {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}})
@@ -56,7 +59,7 @@ class ActivacionCuentasTest(TestCase):
         return solicitud
 
     def aprobar(self, solicitud, *, request=None):
-        marcar_solicitud_en_revision(solicitud=solicitud)
+        marcar_solicitud_en_revision(solicitud=solicitud, usuario=self.staff)
         return aprobar_solicitud_inscripcion(
             solicitud=solicitud, usuario=self.staff,
             request=request or RequestFactory().get("/"),
@@ -105,7 +108,7 @@ class ActivacionCuentasTest(TestCase):
         self.assertIsNone(solicitud.usuario_autorizado)
         self.assertIsNone(solicitud.jugador.usuario)
         self.assertEqual(Usuario.objects.count(), 1)
-        marcar_solicitud_en_revision(solicitud=solicitud)
+        marcar_solicitud_en_revision(solicitud=solicitud, usuario=self.staff)
         solicitud.refresh_from_db()
         self.assertEqual(solicitud.estado, SolicitudInscripcion.Estado.EN_REVISION)
         self.assertEqual(Usuario.objects.count(), 1)
@@ -147,11 +150,16 @@ class ActivacionCuentasTest(TestCase):
         solicitud = self.solicitud()
         with self.captureOnCommitCallbacks(execute=True) as callbacks:
             aprobada = self.aprobar(solicitud)
+            self.assertEqual(len(mail.outbox), 0)
         cuenta.refresh_from_db()
         self.assertEqual(aprobada.usuario_autorizado_id, cuenta.pk)
         self.assertEqual(cuenta.password, clave)
         self.assertTrue(cuenta.is_active)
-        self.assertEqual(callbacks, [])
+        self.assertEqual(len(callbacks), 1)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["adulto@example.com"])
+        self.assertIn("cuenta habitual", mail.outbox[0].body)
+        self.assertNotIn("/activar-cuenta/", mail.outbox[0].body)
 
     def test_apoderado_activado_inscribe_otro_jugador_sin_reactivacion(self):
         cuenta = Usuario.objects.create_user(
@@ -177,11 +185,15 @@ class ActivacionCuentasTest(TestCase):
         self.assertEqual(apoderado.usuario_id, cuenta.pk)
         self.assertEqual(cuenta.password, clave)
         self.assertTrue(cuenta.is_active)
-        self.assertEqual(callbacks, [])
+        self.assertEqual(len(callbacks), 1)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["responsable@example.com"])
+        self.assertIn("cuenta habitual", mail.outbox[0].body)
+        self.assertNotIn("/activar-cuenta/", mail.outbox[0].body)
 
     def test_menor_sin_apoderado_principal_no_se_aprueba(self):
         solicitud = self.solicitud(nacimiento=date(2013, 3, 10), email="", principal=False)
-        marcar_solicitud_en_revision(solicitud=solicitud)
+        marcar_solicitud_en_revision(solicitud=solicitud, usuario=self.staff)
         with self.assertRaises(ValidationError):
             aprobar_solicitud_inscripcion(solicitud=solicitud, usuario=self.staff)
         solicitud.refresh_from_db()
@@ -192,7 +204,7 @@ class ActivacionCuentasTest(TestCase):
         solicitud = self.solicitud(
             nacimiento=date(2013, 3, 10), email="", correo_apoderado="",
         )
-        marcar_solicitud_en_revision(solicitud=solicitud)
+        marcar_solicitud_en_revision(solicitud=solicitud, usuario=self.staff)
         with self.assertRaises(ValidationError):
             aprobar_solicitud_inscripcion(solicitud=solicitud, usuario=self.staff)
         solicitud.refresh_from_db()
@@ -204,7 +216,7 @@ class ActivacionCuentasTest(TestCase):
         cuenta = Usuario.objects.create_user(
             rut="11111111-1", email="otro@example.com", password="ClaveExistente123!",
         )
-        marcar_solicitud_en_revision(solicitud=solicitud)
+        marcar_solicitud_en_revision(solicitud=solicitud, usuario=self.staff)
         with self.assertRaises(ValidationError):
             aprobar_solicitud_inscripcion(solicitud=solicitud, usuario=self.staff)
         solicitud.refresh_from_db()
@@ -228,7 +240,7 @@ class ActivacionCuentasTest(TestCase):
         )
         clave = cuenta.password
         solicitud = self.solicitud()
-        marcar_solicitud_en_revision(solicitud=solicitud)
+        marcar_solicitud_en_revision(solicitud=solicitud, usuario=self.staff)
         with self.assertRaises(ValidationError):
             aprobar_solicitud_inscripcion(solicitud=solicitud, usuario=self.staff)
         cuenta.refresh_from_db()
@@ -241,7 +253,7 @@ class ActivacionCuentasTest(TestCase):
         hoy = timezone.localdate()
         nacimiento = date(hoy.year - 18, hoy.month, hoy.day) + timedelta(days=1)
         solicitud = self.solicitud(nacimiento=nacimiento, email="")
-        marcar_solicitud_en_revision(solicitud=solicitud)
+        marcar_solicitud_en_revision(solicitud=solicitud, usuario=self.staff)
         with patch("usuarios.services.timezone.localdate", return_value=hoy + timedelta(days=1)):
             with self.assertRaises(ValidationError):
                 aprobar_solicitud_inscripcion(solicitud=solicitud, usuario=self.staff)
@@ -252,7 +264,7 @@ class ActivacionCuentasTest(TestCase):
 
     def test_error_tardio_revierte_todos_los_cambios(self):
         solicitud = self.solicitud()
-        marcar_solicitud_en_revision(solicitud=solicitud)
+        marcar_solicitud_en_revision(solicitud=solicitud, usuario=self.staff)
         with patch("usuarios.services.registrar_auditoria", side_effect=ValidationError("Fallo de auditoría")):
             with self.assertRaises(ValidationError):
                 aprobar_solicitud_inscripcion(solicitud=solicitud, usuario=self.staff)
@@ -271,7 +283,7 @@ class ActivacionCuentasTest(TestCase):
     def test_error_tardio_revierte_vinculo_del_apoderado(self):
         solicitud = self.solicitud(nacimiento=date(2013, 3, 10), email="")
         apoderado = solicitud.jugador.vinculos_apoderados.get().apoderado
-        marcar_solicitud_en_revision(solicitud=solicitud)
+        marcar_solicitud_en_revision(solicitud=solicitud, usuario=self.staff)
         with patch("usuarios.services.registrar_auditoria", side_effect=ValidationError("Fallo")):
             with self.assertRaises(ValidationError):
                 aprobar_solicitud_inscripcion(solicitud=solicitud, usuario=self.staff)
@@ -334,7 +346,7 @@ class ActivacionCuentasTest(TestCase):
         solicitud = self.solicitud()
         for estado in (SolicitudInscripcion.Estado.PENDIENTE, SolicitudInscripcion.Estado.EN_REVISION):
             if estado == SolicitudInscripcion.Estado.EN_REVISION:
-                marcar_solicitud_en_revision(solicitud=solicitud)
+                marcar_solicitud_en_revision(solicitud=solicitud, usuario=self.staff)
             with self.captureOnCommitCallbacks(execute=True):
                 self.client.post(reverse("activar_cuenta"), {
                     "rut": solicitud.jugador.rut, "email": solicitud.jugador.email,
@@ -365,7 +377,7 @@ class ActivacionCuentasTest(TestCase):
         invalido = self.client.get(ruta.replace(ruta.split("/")[-2], "invalido"))
         self.assertContains(invalido, "Enlace no disponible")
         with override_settings(PASSWORD_RESET_TIMEOUT=1):
-            with patch.object(default_token_generator, "_now", return_value=datetime.now() + timedelta(days=2)):
+            with patch.object(activacion_token_generator, "_now", return_value=datetime.now() + timedelta(days=2)):
                 vencido = self.client.get(ruta)
         self.assertContains(vencido, "Enlace no disponible")
         cuenta.refresh_from_db()
@@ -384,6 +396,102 @@ class ActivacionCuentasTest(TestCase):
 
     def test_login_muestra_activar_mi_cuenta(self):
         self.assertContains(self.client.get(reverse("login")), reverse("activar_cuenta"))
+
+    def test_token_nativo_de_recuperacion_no_activa_cuenta_pendiente(self):
+        cuenta, _ = self.enlace_aprobacion(self.solicitud())
+        token = default_token_generator.make_token(cuenta)
+        self.assertTrue(default_token_generator.check_token(cuenta, token))
+        self.assertFalse(activacion_token_generator.check_token(cuenta, token))
+        anterior = (cuenta.password, cuenta.is_active, cuenta.activado_en)
+        ruta = reverse("confirmar_activacion", kwargs={
+            "uidb64": urlsafe_base64_encode(force_bytes(cuenta.pk)), "token": token,
+        })
+        self.assertContains(self.client.get(ruta), "Enlace no disponible")
+        self.assertContains(self.client.post(ruta, {
+            "new_password1": "ClaveNuevaMuySegura123!", "new_password2": "ClaveNuevaMuySegura123!",
+        }), "Enlace no disponible")
+        cuenta.refresh_from_db()
+        self.assertEqual((cuenta.password, cuenta.is_active, cuenta.activado_en), anterior)
+
+    def test_token_emitido_de_activacion_no_funciona_en_recuperacion(self):
+        cuenta, ruta_activacion = self.enlace_aprobacion(self.solicitud())
+        token = ruta_activacion.split("/")[-2]
+        self.assertTrue(activacion_token_generator.check_token(cuenta, token))
+        self.assertFalse(default_token_generator.check_token(cuenta, token))
+        anterior = (cuenta.password, cuenta.is_active, cuenta.activado_en)
+        ruta = reverse("password_reset_confirm", kwargs={
+            "uidb64": urlsafe_base64_encode(force_bytes(cuenta.pk)), "token": token,
+        })
+        self.assertContains(self.client.get(ruta), "Enlace no disponible")
+        self.assertContains(self.client.post(ruta, {
+            "new_password1": "ClaveNuevaMuySegura123!", "new_password2": "ClaveNuevaMuySegura123!",
+        }), "Enlace no disponible")
+        cuenta.refresh_from_db()
+        self.assertEqual((cuenta.password, cuenta.is_active, cuenta.activado_en), anterior)
+
+    def test_notificacion_de_cuenta_activa_no_incluye_datos_sensibles(self):
+        cuenta = Usuario.objects.create_user(
+            rut="11111111-1", email="adulto@example.com", password="ClaveExistente123!",
+        )
+        credenciales = (cuenta.password, cuenta.email, cuenta.is_active, cuenta.activado_en)
+        solicitud = self.solicitud()
+        jugador = solicitud.jugador
+        jugador.peso_kg, jugador.talla_cm = 72, 180
+        jugador.save()
+        AlertaSalud.objects.create(jugador=jugador, tipo="AlergiaReservada", descripcion="Información médica reservada")
+        solicitud.observaciones = "ObservaciónReservada"
+        solicitud.save(update_fields=["observaciones"])
+        with self.captureOnCommitCallbacks(execute=True):
+            self.aprobar(solicitud)
+        cuenta.refresh_from_db()
+        self.assertEqual((cuenta.password, cuenta.email, cuenta.is_active, cuenta.activado_en), credenciales)
+        self.assertEqual(len(mail.outbox), 1)
+        texto = mail.outbox[0].subject + mail.outbox[0].body
+        self.assertIn("jugador", texto)
+        self.assertIn("aprobada", texto)
+        for reservado in (jugador.rut, jugador.nombres, jugador.apellidos, "AlergiaReservada",
+                          "Información médica reservada", "ObservaciónReservada", "peso", "talla", "/activar-cuenta/"):
+            self.assertNotIn(reservado, texto)
+
+    def test_rollback_descarta_notificacion_de_cuenta_activa(self):
+        cuenta = Usuario.objects.create_user(
+            rut="11111111-1", email="adulto@example.com", password="ClaveExistente123!",
+        )
+        clave = cuenta.password
+        solicitud = self.solicitud()
+        with self.captureOnCommitCallbacks(execute=True) as callbacks:
+            with self.assertRaises(ValidationError):
+                with transaction.atomic():
+                    self.aprobar(solicitud)
+                    raise ValidationError("Cancelar aprobación")
+        solicitud.refresh_from_db()
+        solicitud.jugador.refresh_from_db()
+        cuenta.refresh_from_db()
+        self.assertEqual(solicitud.estado, SolicitudInscripcion.Estado.PENDIENTE)
+        self.assertIsNone(solicitud.usuario_autorizado_id)
+        self.assertIsNone(solicitud.jugador.usuario_id)
+        self.assertEqual(cuenta.password, clave)
+        self.assertEqual(callbacks, [])
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertFalse(Auditoria.objects.exists())
+
+    def test_aprobacion_repetida_no_duplica_notificacion_de_cuenta_activa(self):
+        cuenta = Usuario.objects.create_user(
+            rut="11111111-1", email="adulto@example.com", password="ClaveExistente123!",
+        )
+        solicitud = self.solicitud()
+        marcar_solicitud_en_revision(solicitud=solicitud, usuario=self.staff)
+        vieja = SolicitudInscripcion.objects.get(pk=solicitud.pk)
+        with self.captureOnCommitCallbacks(execute=True) as callbacks:
+            aprobar_solicitud_inscripcion(solicitud=solicitud, usuario=self.staff)
+            anterior = SolicitudInscripcion.objects.values().get(pk=solicitud.pk)
+            with self.assertRaises(ValidationError):
+                aprobar_solicitud_inscripcion(solicitud=vieja, usuario=self.staff)
+            self.assertEqual(SolicitudInscripcion.objects.values().get(pk=solicitud.pk), anterior)
+        self.assertEqual(len(callbacks), 1)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, [cuenta.email])
+        self.assertEqual(Auditoria.objects.filter(accion="SOLICITUD_APROBADA").count(), 1)
 
     def test_admin_no_expone_transiciones_sensibles(self):
         solicitud = self.solicitud()
