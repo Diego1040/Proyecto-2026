@@ -1,0 +1,89 @@
+{# NUEVO (HU-07) - Miguel: archivo nuevo completo #}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<title>Ayllu Basket — Entrenamientos</title>
+{% include "deportivo/_estilos.html" %}
+<style>
+.entr{display:flex;align-items:center;gap:12px;padding:14px 16px;border-top:1px solid var(--linea);text-decoration:none}
+.entr:first-child{border-top:0}
+.entr:hover{background:#FAF9F7}
+.entr .info{flex:1;min-width:0}
+.entr .info b{display:block;font-weight:600}
+.entr .info small{color:var(--gris);font-size:.84rem}
+</style>
+</head>
+<body>
+{% include "deportivo/_barra.html" %}
+
+<main><div class="wrap">
+
+  <div class="cabecera">
+    <h1>Entrenamientos</h1>
+    <p class="sub">Crea el entrenamiento y pasa lista desde el celular.</p>
+  </div>
+
+  {% if messages %}
+    <div class="mensajes">
+      {% for mensaje in messages %}
+        <div class="mensaje {{ mensaje.tags }}">{{ mensaje }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if categorias %}
+    <form method="post" class="tarjeta pad" style="display:grid;gap:14px">
+      {% csrf_token %}
+      <div class="fila">
+        <label class="campo">Categoría
+          <select name="categoria_id" required>
+            {% for categoria in categorias %}
+              <option value="{{ categoria.pk }}">{{ categoria }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="campo">Fecha
+          <input type="date" name="fecha" value="{{ hoy|date:'Y-m-d' }}" required>
+        </label>
+      </div>
+      <div class="fila">
+        <label class="campo">Nombre
+          <input type="text" name="nombre" placeholder="Entrenamiento técnico" required>
+        </label>
+        <label class="campo">Duración (minutos)
+          <input type="number" name="duracion" value="90" min="1" required>
+        </label>
+      </div>
+      <div><button type="submit" class="btn">Crear y pasar lista</button></div>
+    </form>
+  {% else %}
+    <div class="aviso">
+      Todavía no tienes categorías asignadas. Pídele a Administración que te las asigne.
+    </div>
+  {% endif %}
+
+  <h2>Últimos entrenamientos</h2>
+  <div class="tarjeta">
+    {% for fila in filas %}
+      {% with e=fila.entrenamiento %}
+      <a class="entr" href="{% url 'deportivo:tomar_asistencia' e.pk %}">
+        <span class="info">
+          <b>{{ e.nombre }}</b>
+          <small>{{ e.fecha|date:"d/m/Y" }} · {{ e.duracion }} min</small>
+        </span>
+        <span class="pill cat">{{ e.categoria }}</span>
+        {% if fila.registradas %}
+          <span class="pill ok">{{ fila.presentes }}/{{ fila.registradas }}</span>
+        {% else %}
+          <span class="pill esp">Sin lista</span>
+        {% endif %}
+      </a>
+      {% endwith %}
+    {% empty %}
+      <p class="vacio">Todavía no hay entrenamientos.</p>
+    {% endfor %}
+  </div>
+
+</div></main>
+</body>
+</html>

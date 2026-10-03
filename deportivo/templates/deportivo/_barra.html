@@ -1,0 +1,24 @@
+{# NUEVO (HU-07) - Miguel: barra y pestañas, iguales a las de Administración #}
+<header class="barra">
+  <div class="wrap">
+    <span class="escudo"></span>
+    <b>Ayllu Basket</b>
+    <span class="rol">
+      {{ rol }}
+      <form action="{% url 'logout' %}" method="post" style="margin:0">
+        {% csrf_token %}
+        <button type="submit" class="salir">Cerrar sesión</button>
+      </form>
+    </span>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Secciones">
+  <div class="wrap">
+    {% if rol == "Administración" %}
+      <a class="tab" href="{% url 'validar_fichas' %}">Fichas pendientes</a>
+      <a class="tab" href="{% url 'categorias_jugadores' %}">Categorías</a>
+    {% endif %}
+    <a class="tab activa" href="{% url 'deportivo:entrenamientos' %}">Entrenamientos</a>
+  </div>
+</nav>

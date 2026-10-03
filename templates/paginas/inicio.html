@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block titulo %}Ayllu Basket — Club deportivo de Arica{% endblock %}
+
+{% block contenido %}
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <h1>Más que un club,<br>una comunidad</h1>
+      <p class="bajada">Formamos jugadores y personas en Arica, desde el mini basket hasta la categoría adulta.</p>
+      <a class="boton" href="#academia">Ver horarios de entrenamiento</a>
+      <div class="cifras">
+        <div class="cifra"><strong>+300</strong><span>Partidos jugados</span></div>
+        <div class="cifra"><strong>12</strong><span>Categorías formativas</span></div>
+      </div>
+    </div>
+    <div class="ph" data-ph="foto: equipo en círculo"></div>
+  </div>
+</section>
+
+<section class="seccion" id="encuentros">
+  <div class="wrap">
+    <div class="cab">
+      <h2>Próximos encuentros</h2>
+      <a class="enlace" href="#">Ver calendario completo</a>
+    </div>
+    <div class="partidos">
+      <a class="partido" href="#">
+        <div class="meta">
+          <span class="fecha"><svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>Sáb 26 oct · 16:30</span>
+          <span class="pill cat">U15 masculino</span>
+        </div>
+        <div class="equipo"><span class="dot"></span>Ayllu Basket<span class="vs">VS</span></div>
+        <div class="equipo"><span class="dot rival"></span>Cóndores Basket</div>
+        <div class="sede"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Coliseo Polideportivo Sur</div>
+      </a>
+      <a class="partido" href="#">
+        <div class="meta">
+          <span class="fecha"><svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>Dom 27 oct · 11:00</span>
+          <span class="pill cat">U17 femenino</span>
+        </div>
+        <div class="equipo"><span class="dot"></span>Ayllu Basket<span class="vs">VS</span></div>
+        <div class="equipo"><span class="dot rival"></span>Alianza del Valle</div>
+        <div class="sede"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Cancha Techada 1</div>
+      </a>
+      <a class="partido" href="#">
+        <div class="meta">
+          <span class="fecha">Finalizado</span>
+          <span class="pill ok">Victoria</span>
+        </div>
+        <div class="equipo"><span class="dot"></span>Ayllu Basket<span class="marcador">74</span></div>
+        <div class="equipo"><span class="dot rival"></span>Titanes BC<span class="marcador">59</span></div>
+        <div class="sede"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Liga Metropolitana</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="seccion" id="academia">
+  <div class="wrap">
+    <div class="cab">
+      <h2>Academia y categorías</h2>
+      <a class="enlace" href="#">Ver horarios completos</a>
+    </div>
+    <div class="cats">
+      <a class="cat" href="#">
+        <span class="ph" data-ph="foto: niño con balón"></span>
+        <span class="cuerpo">
+          <h3>Mini basket</h3>
+          <span class="edad">4 a 7 años</span>
+          <span class="horario"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Mar y jue · 16:30</span>
+        </span>
+      </a>
+      <a class="cat" href="#">
+        <span class="ph" data-ph="foto: niños entrenando"></span>
+        <span class="cuerpo">
+          <h3>U9 · U11</h3>
+          <span class="edad">8 a 11 años</span>
+          <span class="horario"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Mar y jue · 18:00</span>
+        </span>
+      </a>
+      <a class="cat destacada" href="#">
+        <span class="destaque">Más popular</span>
+        <span class="ph" data-ph="foto: juvenil driblando"></span>
+        <span class="cuerpo">
+          <h3>U13 · U15</h3>
+          <span class="edad">12 a 15 años</span>
+          <span class="horario"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Lun, mié y vie · 17:30</span>
+        </span>
+      </a>
+      <a class="cat" href="#">
+        <span class="ph" data-ph="foto: jugadora adulta"></span>
+        <span class="cuerpo">
+          <h3>U17 y mayores</h3>
+          <span class="edad">16 años en adelante</span>
+          <span class="horario"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Lun a jue · 19:30</span>
+        </span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="valores" id="club">
+  <div class="wrap">
+    <div>
+      <p class="cita">Disciplina hoy,<br>grandes historias mañana.</p>
+      <p class="cita-autor">Ayllu Basket · Arica, Chile</p>
+    </div>
+    <div class="rejilla">
+      <div class="valor">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>
+        <p>Deporte<br>con valores</p>
+      </div>
+      <div class="valor">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 20V13M12 20V8M19 20V4"/></svg>
+        <p>Desarrollo<br>integral</p>
+      </div>
+      <div class="valor">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3.2"/><path d="M3 19c0-3.2 2.7-5 6-5s6 1.8 6 5"/><path d="M16 7.5a3 3 0 0 1 0 5.6M18 19c0-2.4-1-4-2.5-4.6"/></svg>
+        <p>Comunidad<br>y familia</p>
+      </div>
+      <div class="valor">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 19l6-9 4 5 3-4 5 8z"/></svg>
+        <p>Arica<br>y su gente</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="seccion" id="noticias">
+  <div class="wrap">
+    <div class="cab">
+      <h2>Noticias del club</h2>
+      <a class="enlace" href="#">Ver todas</a>
+    </div>
+    <div class="noticias">
+      <a class="nota" href="#"><span class="ph" data-ph="foto"></span><time datetime="2024-10-12">12 octubre 2024</time><h3>Gran participación en el torneo regional</h3></a>
+      <a class="nota" href="#"><span class="ph" data-ph="foto"></span><time datetime="2024-10-05">5 octubre 2024</time><h3>Matrículas abiertas 2024</h3></a>
+      <a class="nota" href="#"><span class="ph" data-ph="foto"></span><time datetime="2024-09-28">28 septiembre 2024</time><h3>Ayllu sigue creciendo</h3></a>
+    </div>
+  </div>
+</section>
+
+<section class="seccion">
+  <div class="wrap logos">
+    <span class="logo"></span><span class="logo"></span><span class="logo"></span>
+    <span class="logo"></span><span class="logo"></span><span class="logo"></span>
+  </div>
+</section>
+{% endblock %}

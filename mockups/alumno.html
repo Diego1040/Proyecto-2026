@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ayllu Basket — Portal del jugador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --naranja:#E8552A;--naranja-hover:#CC4620;--naranja-suave:#FCEBE4;--naranja-texto:#9B3B14;
+  --tinta:#17171A;--papel:#F4F3F1;--blanco:#FFFFFF;--gris:#6E6E74;--linea:#E1DFDB;
+  --verde:#1D7A4F;--verde-fondo:#E2F1E9;--rojo:#B3261E;--rojo-fondo:#FBE9E7;
+  --ambar:#8A6A12;--ambar-fondo:#FFF6E3;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--papel);color:var(--tinta);font-family:"Barlow",system-ui,sans-serif;font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1,h2{font-family:"Barlow Condensed",system-ui,sans-serif;font-weight:700;margin:0;line-height:1.05;letter-spacing:-.01em}
+h1{font-size:1.9rem;text-transform:uppercase}
+h2{font-size:1.1rem;text-transform:none;font-weight:600;font-family:"Barlow",sans-serif}
+p{margin:0}
+button{font:inherit}
+:is(a,button,input,select,textarea):focus-visible{outline:2px solid var(--naranja);outline-offset:2px;border-radius:3px}
+.wrap{max-width:900px;margin:0 auto;padding:0 20px}
+
+.barra{background:var(--tinta);color:#fff;position:sticky;top:0;z-index:20}
+.barra .wrap{display:flex;align-items:center;gap:14px;height:60px}
+.escudo{width:32px;height:32px;border-radius:50%;background:var(--naranja);flex:none}
+.barra b{font-family:"Barlow Condensed";font-size:1.2rem;text-transform:uppercase}
+.rol{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:.9rem;color:#B9B7B4}
+.avatar{width:30px;height:30px;border-radius:50%;background:#3A3A42;display:grid;place-items:center;font-size:.75rem;font-weight:600;color:#fff}
+
+.tabs{background:var(--blanco);border-bottom:1px solid var(--linea);position:sticky;top:60px;z-index:19;overflow-x:auto}
+.tabs .wrap{display:flex;gap:4px}
+.tab{padding:14px 16px;border:0;background:none;color:var(--gris);font-weight:500;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent}
+.tab:hover{color:var(--tinta)}
+.tab[aria-selected="true"]{color:var(--tinta);border-bottom-color:var(--naranja);font-weight:600}
+.url{font-family:ui-monospace,Menlo,monospace;font-size:.78rem;color:var(--gris);padding:8px 0 0}
+
+main{padding:24px 0 70px}
+.cabecera{margin-bottom:20px}
+.sub{color:var(--gris);font-size:.95rem;margin-top:4px}
+.tarjeta{background:var(--blanco);border:1px solid var(--linea);border-radius:8px}
+.pad{padding:18px}
+.btn{background:var(--naranja);color:#fff;border:0;border-radius:5px;padding:11px 20px;font-weight:600;cursor:pointer}
+.btn:hover{background:var(--naranja-hover)}
+.btn.gris{background:var(--blanco);color:var(--tinta);border:1px solid var(--linea)}
+.btn.gris:hover{background:var(--papel)}
+.btn.chico{padding:8px 14px;font-size:.9rem}
+.pill{font-size:.75rem;font-weight:600;padding:3px 9px;border-radius:3px;white-space:nowrap;display:inline-block}
+.pill.ok{background:var(--verde-fondo);color:var(--verde)}
+.pill.no{background:var(--rojo-fondo);color:var(--rojo)}
+.pill.esp{background:var(--ambar-fondo);color:var(--ambar)}
+.pill.cat{background:var(--naranja-suave);color:var(--naranja-texto)}
+.pill.gris{background:#EDECEA;color:#4A4A4E}
+label.campo{display:grid;gap:5px;font-size:.85rem;color:var(--gris);font-weight:500}
+input,select,textarea{background:var(--blanco);border:1px solid var(--linea);border-radius:5px;padding:10px 12px;font:inherit;color:inherit;width:100%}
+textarea{resize:vertical;min-height:78px}
+.fila{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.aviso{display:flex;gap:10px;border-radius:6px;padding:12px 14px;font-size:.9rem;margin-bottom:18px;background:var(--ambar-fondo);border:1px solid #F0DEB4;color:#6B5312}
+
+.perfil{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.foto{width:64px;height:64px;border-radius:50%;background:#EDECEA;display:grid;place-items:center;font-weight:600;color:#4A4A4E;flex:none}
+.datos{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--linea);border-top:1px solid var(--linea);margin-top:18px}
+.dato{background:var(--blanco);padding:14px 16px}
+.dato span{display:block;font-size:.8rem;color:var(--gris)}
+.dato b{font-weight:600}
+
+.cuota{display:flex;align-items:center;gap:12px;padding:14px 16px;border-top:1px solid var(--linea);flex-wrap:wrap}
+.cuota:first-child{border-top:0}
+.mes{font-weight:600;min-width:120px}
+.mes small{display:block;font-weight:400;color:var(--gris);font-size:.82rem}
+.acc{margin-left:auto;display:flex;gap:8px;align-items:center}
+@media(max-width:560px){.fila{grid-template-columns:1fr}.acc{margin-left:0;width:100%}.acc .btn{flex:1}}
+
+.adjuntar{border:2px dashed var(--linea);border-radius:6px;padding:20px;text-align:center;cursor:pointer;display:block}
+.adjuntar:hover{border-color:var(--naranja)}
+.adjuntar input{display:none}
+.adjuntar b{display:block;font-weight:600;font-size:.95rem}
+.adjuntar small{color:var(--gris);font-size:.85rem}
+.archivo{display:flex;align-items:center;gap:10px;background:var(--papel);border:1px solid var(--linea);border-radius:6px;padding:10px 12px;font-size:.9rem}
+.archivo button{margin-left:auto;background:none;border:0;color:var(--rojo);cursor:pointer;font-size:.85rem}
+.privado{display:flex;gap:9px;font-size:.85rem;color:#4A2F74;background:#EEE8F7;border:1px solid #D6C9EC;border-radius:6px;padding:10px 12px}
+.oculto{display:none}
+</style>
+</head>
+<body>
+
+<header class="barra">
+  <div class="wrap">
+    <span class="escudo"></span>
+    <b>Ayllu Basket</b>
+    <span class="rol">Jugador <span class="avatar">RS</span></span>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Secciones del jugador">
+  <div class="wrap">
+    <button class="tab" role="tab" aria-selected="true" data-vista="perfil">Mi perfil</button>
+    <button class="tab" role="tab" aria-selected="false" data-vista="cuenta">Mi estado de cuenta</button>
+    <button class="tab" role="tab" aria-selected="false" data-vista="lesion">Reportar lesión</button>
+  </div>
+</nav>
+
+<main><div class="wrap">
+<p class="url" id="url">/jugador/perfil/</p>
+
+<!-- ===== MI PERFIL ===== -->
+<section id="v-perfil">
+  <div class="cabecera">
+    <h1>Mi perfil</h1>
+    <p class="sub">Categoría adulta · Todo Competidor. Administras tu propia ficha.</p>
+  </div>
+
+  <div class="tarjeta">
+    <div class="pad perfil">
+      <span class="foto">RS</span>
+      <div>
+        <h2 style="font-size:1.4rem">Rodrigo Sepúlveda Rivas</h2>
+        <p class="sub">Alero · #11 · Ingresó en enero 2025</p>
+      </div>
+      <span class="pill cat" style="margin-left:auto">Todo Competidor</span>
+    </div>
+    <div class="datos">
+      <div class="dato"><span>Asistencia del mes</span><b>76%</b></div>
+      <div class="dato"><span>Próximo entrenamiento</span><b>Lun 15 · 21:00</b></div>
+      <div class="dato"><span>Estado deportivo</span><b>Disponible</b></div>
+    </div>
+  </div>
+
+  <div class="tarjeta pad" style="margin-top:16px">
+    <h2>Mis datos</h2>
+    <p class="sub" style="margin-bottom:14px">Mantenlos al día. El club los usa para contactarte y para las nóminas de competencia.</p>
+    <div class="fila">
+      <label class="campo">Teléfono<input type="tel" value="+56 9 4471 2280"></label>
+      <label class="campo">Correo<input type="email" value="r.sepulveda@correo.cl"></label>
+    </div>
+    <div class="fila" style="margin-top:14px">
+      <label class="campo">Procedencia<input type="text" value="Arica"></label>
+      <label class="campo">RUT<input type="text" value="17.442.903-1" readonly style="color:var(--gris)"></label>
+    </div>
+    <button class="btn chico" style="margin-top:14px">Guardar cambios</button>
+  </div>
+
+  <div class="tarjeta pad" style="margin-top:16px">
+    <h2>Contacto de emergencia</h2>
+    <p class="sub" style="margin-bottom:14px">Obligatorio. Es a quien llama el club si te pasa algo en cancha.</p>
+    <div class="fila">
+      <label class="campo">Nombre<input type="text" value="Marcela Rivas"></label>
+      <label class="campo">Teléfono<input type="tel" value="+56 9 6103 7754"></label>
+    </div>
+    <label class="campo" style="margin-top:14px">Alergias o alertas médicas
+      <input type="text" placeholder="Opcional. Solo lo necesario para actuar en una urgencia.">
+    </label>
+    <button class="btn chico" style="margin-top:14px">Guardar</button>
+  </div>
+</section>
+
+<!-- ===== MI ESTADO DE CUENTA ===== -->
+<section id="v-cuenta" class="oculto">
+  <div class="cabecera">
+    <h1>Mi estado de cuenta</h1>
+    <p class="sub">La mensualidad se marca como pagada solo cuando el club confirma la transacción.</p>
+  </div>
+
+  <div class="tarjeta">
+    <div class="cuota">
+      <span class="mes">Septiembre 2026<small>$30.000</small></span>
+      <span class="pill no">Pendiente</span>
+      <span class="acc"><button class="btn chico" data-pagar>Pagar con Webpay</button></span>
+    </div>
+    <div class="cuota">
+      <span class="mes">Agosto 2026<small>$30.000</small></span>
+      <span class="pill esp">En verificación</span>
+      <span class="acc"><span class="sub" style="font-size:.85rem">Esperando confirmación</span></span>
+    </div>
+    <div class="cuota">
+      <span class="mes">Julio 2026<small>$30.000</small></span>
+      <span class="pill ok">Pagado</span>
+      <span class="acc"><button class="btn gris chico">Comprobante</button></span>
+    </div>
+  </div>
+  <p class="sub" style="margin-top:12px">Si pagaste en efectivo o por transferencia, Tesorería registra el pago y aparecerá aquí.</p>
+</section>
+
+<!-- ===== REPORTAR LESIÓN ===== -->
+<section id="v-lesion" class="oculto">
+  <div class="cabecera">
+    <h1>Reportar lesión</h1>
+    <p class="sub">El reporte queda pendiente hasta que el cuerpo técnico lo valide.</p>
+  </div>
+
+  <div class="aviso">
+    <span aria-hidden="true">&#9432;</span>
+    <span>Reportar una lesión no justifica automáticamente las inasistencias. Un entrenador debe revisarlo.</span>
+  </div>
+
+  <form class="tarjeta pad" onsubmit="return false" style="display:grid;gap:14px">
+    <div class="fila">
+      <label class="campo">Desde<input type="date" value="2026-09-14"></label>
+      <label class="campo">Hasta (estimado)<input type="date" value="2026-09-28"></label>
+    </div>
+    <label class="campo">¿Qué ocurrió?
+      <textarea placeholder="Sobrecarga en el gemelo derecho durante el partido del domingo."></textarea>
+    </label>
+
+    <div style="display:grid;gap:9px">
+      <span style="font-size:.85rem;color:var(--gris);font-weight:500">Certificado o imagen (opcional)</span>
+      <label class="adjuntar" id="zona">
+        <input type="file" id="archivo" accept="image/*,application/pdf">
+        <b>Adjuntar archivo</b>
+        <small>Foto o PDF · máximo 5 MB</small>
+      </label>
+      <div class="archivo oculto" id="adjunto">
+        <span aria-hidden="true">&#128206;</span>
+        <span id="nombre-archivo"></span>
+        <button type="button" id="quitar">Quitar</button>
+      </div>
+    </div>
+
+    <div class="privado">
+      <span aria-hidden="true">&#128274;</span>
+      <span>El archivo lo revisa únicamente Administración. Tu entrenador verá solo las fechas en que no estarás disponible, no el documento ni el diagnóstico.</span>
+    </div>
+
+    <button class="btn" type="submit" style="justify-self:start">Enviar reporte</button>
+  </form>
+
+  <div class="tarjeta" style="margin-top:16px">
+    <div class="cuota">
+      <span class="mes">14 – 28 sep<small>Sobrecarga en el gemelo</small></span>
+      <span class="pill gris">Certificado adjunto</span>
+      <span class="acc"><span class="pill esp">Pendiente de validación</span></span>
+    </div>
+    <div class="cuota">
+      <span class="mes">7 – 21 abr<small>Contractura lumbar</small></span>
+      <span class="acc"><span class="pill gris">Validado y cerrado</span></span>
+    </div>
+  </div>
+</section>
+</div></main>
+
+<script>
+// adjunto del reporte de lesión
+const inputArchivo = document.getElementById("archivo");
+inputArchivo.addEventListener("change", () => {
+  const f = inputArchivo.files[0];
+  if(!f) return;
+  if(f.size > 5 * 1024 * 1024){
+    document.getElementById("nombre-archivo").textContent = "El archivo supera los 5 MB";
+  } else {
+    document.getElementById("nombre-archivo").textContent =
+      f.name + " · " + Math.round(f.size/1024) + " KB";
+  }
+  document.getElementById("adjunto").classList.remove("oculto");
+  document.getElementById("zona").classList.add("oculto");
+});
+document.getElementById("quitar").addEventListener("click", () => {
+  inputArchivo.value = "";
+  document.getElementById("adjunto").classList.add("oculto");
+  document.getElementById("zona").classList.remove("oculto");
+});
+
+document.querySelectorAll("[data-pagar]").forEach(b =>
+  b.addEventListener("click", () => {
+    b.textContent = "Redirigiendo a Webpay…";
+    setTimeout(()=>b.textContent="Pagar con Webpay", 1800);
+  }));
+
+const rutas = {
+  perfil:"/jugador/perfil/",
+  cuenta:"/jugador/estado-cuenta/",
+  lesion:"/jugador/lesiones/"
+};
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => {
+  const v = t.dataset.vista;
+  document.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-selected", x===t?"true":"false"));
+  Object.keys(rutas).forEach(k => document.getElementById("v-"+k).classList.toggle("oculto", k!==v));
+  document.getElementById("url").textContent = rutas[v];
+  window.scrollTo({top:0});
+}));
+</script>
+</body>
+</html>

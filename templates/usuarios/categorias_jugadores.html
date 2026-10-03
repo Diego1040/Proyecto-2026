@@ -1,0 +1,235 @@
+{# >>> NUEVO (HU-05) - Miguel: archivo nuevo completo #}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ayllu Basket — Categorías</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --naranja:#E8552A;--naranja-hover:#CC4620;--naranja-suave:#FCEBE4;--naranja-texto:#9B3B14;
+  --tinta:#17171A;--papel:#F4F3F1;--blanco:#FFFFFF;--gris:#6E6E74;--linea:#E1DFDB;
+  --verde:#1D7A4F;--verde-fondo:#E2F1E9;--rojo:#B3261E;--rojo-fondo:#FBE9E7;
+  --ambar:#8A6A12;--ambar-fondo:#FFF6E3;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--papel);color:var(--tinta);font-family:"Barlow",system-ui,sans-serif;font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1{font-family:"Barlow Condensed",system-ui,sans-serif;font-weight:700;margin:0;font-size:1.9rem;text-transform:uppercase;letter-spacing:-.01em;line-height:1.05}
+p{margin:0}
+button{font:inherit}
+:is(a,button,input,select,textarea):focus-visible{outline:2px solid var(--naranja);outline-offset:2px;border-radius:3px}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px}
+
+.barra{background:var(--tinta);color:#fff;position:sticky;top:0;z-index:20}
+.barra .wrap{display:flex;align-items:center;gap:14px;height:60px}
+.escudo{width:32px;height:32px;border-radius:50%;background:var(--naranja);flex:none}
+.barra b{font-family:"Barlow Condensed";font-size:1.2rem;text-transform:uppercase}
+.rol{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:.9rem;color:#B9B7B4}
+.salir{background:none;border:1px solid #3A3A42;color:#fff;border-radius:5px;padding:5px 12px;cursor:pointer;font-size:.85rem}
+.salir:hover{background:#2A2A30}
+
+.tabs{background:var(--blanco);border-bottom:1px solid var(--linea);position:sticky;top:60px;z-index:19;overflow-x:auto}
+.tabs .wrap{display:flex;gap:4px}
+/* >>> CAMBIO (HU-05) - Miguel: pestañas con enlace */
+.tab{padding:14px 16px;color:var(--gris);font-weight:500;white-space:nowrap;border-bottom:2px solid transparent;display:flex;align-items:center;gap:7px;text-decoration:none}
+.tab:hover{color:var(--tinta)}
+.tab.activa{color:var(--tinta);font-weight:600;border-bottom-color:var(--naranja)}
+/* <<< FIN CAMBIO (HU-05) */
+.badge{background:var(--naranja);color:#fff;font-size:.72rem;font-weight:600;border-radius:9px;padding:1px 7px}
+
+main{padding:28px 0 70px}
+.cabecera{margin-bottom:20px}
+.sub{color:var(--gris);font-size:.95rem;margin-top:4px}
+.tarjeta{background:var(--blanco);border:1px solid var(--linea);border-radius:8px}
+.vacio{padding:28px 18px;text-align:center;color:var(--gris)}
+.btn{background:var(--naranja);color:#fff;border:0;border-radius:5px;padding:11px 20px;font-weight:600;cursor:pointer}
+.btn:hover{background:var(--naranja-hover)}
+.btn.gris{background:var(--blanco);color:var(--tinta);border:1px solid var(--linea)}
+.btn.gris:hover{background:var(--papel)}
+.btn.peligro{background:var(--blanco);color:var(--rojo);border:1px solid #E8C4C0}
+.btn.peligro:hover{background:var(--rojo-fondo)}
+.btn.chico{padding:8px 14px;font-size:.9rem}
+.pill{font-size:.75rem;font-weight:600;padding:3px 9px;border-radius:3px;display:inline-block;white-space:nowrap}
+.pill.esp{background:var(--ambar-fondo);color:var(--ambar)}
+.pill.cat{background:var(--naranja-suave);color:var(--naranja-texto)}
+label.campo{display:grid;gap:5px;font-size:.85rem;color:var(--gris);font-weight:500}
+textarea{background:var(--blanco);border:1px solid var(--linea);border-radius:5px;padding:10px 12px;font:inherit;color:inherit;width:100%;resize:vertical;min-height:72px}
+
+.mensajes{display:grid;gap:8px;margin-bottom:18px}
+.mensaje{border-radius:6px;padding:12px 14px;font-size:.92rem;border:1px solid}
+.mensaje.success{background:var(--verde-fondo);border-color:#BFDFCD;color:var(--verde)}
+.mensaje.error{background:var(--rojo-fondo);border-color:#E8C4C0;color:var(--rojo)}
+
+.ficha{border-top:1px solid var(--linea);padding:16px}
+.ficha:first-child{border-top:0}
+.ficha .top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ini{width:38px;height:38px;border-radius:50%;background:#EDECEA;display:grid;place-items:center;font-size:.8rem;font-weight:600;color:#4A4A4E;flex:none}
+.ficha .nom{font-weight:600}
+.ficha .nom small{display:block;font-weight:400;color:var(--gris);font-size:.84rem}
+.acciones{margin-left:auto;display:flex;gap:8px;align-items:center}
+.acciones form{margin:0}
+.detalle{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--linea);border:1px solid var(--linea);border-radius:6px;overflow:hidden;margin-top:14px}
+.detalle div{background:var(--blanco);padding:11px 13px}
+.detalle span{display:block;font-size:.78rem;color:var(--gris)}
+.rechazo{margin-top:14px;display:grid;gap:10px}
+.oculto{display:none}
+@media(max-width:600px){
+  .detalle{grid-template-columns:repeat(2,1fr)}
+  .acciones{margin-left:0;width:100%}
+  .acciones form,.acciones .btn{flex:1;width:100%}
+}
+
+/* >>> NUEVO (HU-05) - Miguel: estilos de la pantalla de categorias */
+.buscador{display:flex;gap:8px;margin-bottom:16px}
+.buscador input{flex:1;background:var(--blanco);border:1px solid var(--linea);border-radius:5px;padding:10px 12px;font:inherit}
+.fila-j{border-top:1px solid var(--linea);padding:16px}
+.fila-j:first-child{border-top:0}
+.fila-j .nom{font-weight:600}
+.fila-j .nom small{display:block;font-weight:400;color:var(--gris);font-size:.84rem}
+.fila-j .top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.cats{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.cambio{margin-top:14px;display:grid;gap:10px;grid-template-columns:1fr 2fr auto;align-items:end}
+.cambio.oculto{display:none}
+select{background:var(--blanco);border:1px solid var(--linea);border-radius:5px;padding:10px 12px;font:inherit;width:100%}
+.nota{font-size:.84rem;color:var(--gris);margin-top:8px}
+.hist{font-size:.9rem}
+.hist .fila-j{padding:12px 16px}
+h2{font-family:"Barlow Condensed",system-ui,sans-serif;font-size:1.3rem;text-transform:uppercase;margin:28px 0 10px}
+@media(max-width:600px){.cambio{grid-template-columns:1fr}.cats{margin-left:0}}
+/* <<< FIN NUEVO (HU-05) */
+</style>
+</head>
+<body>
+
+<header class="barra">
+  <div class="wrap">
+    <span class="escudo"></span>
+    <b>Ayllu Basket</b>
+    <span class="rol">
+      Administración
+      <form action="{% url 'logout' %}" method="post" style="margin:0">
+        {% csrf_token %}
+        <button type="submit" class="salir">Cerrar sesión</button>
+      </form>
+    </span>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Secciones de administración">
+  <div class="wrap">
+    <a class="tab" href="{% url 'validar_fichas' %}">Fichas pendientes</a>
+    <a class="tab activa" href="{% url 'categorias_jugadores' %}">Categorías</a>
+  </div>
+</nav>
+
+<main><div class="wrap">
+
+  <div class="cabecera">
+    <h1>Categorías</h1>
+    <p class="sub">La categoría se calcula sola por año de nacimiento. Aquí puedes registrar una excepción, que siempre exige un motivo.</p>
+  </div>
+
+  {% if messages %}
+    <div class="mensajes">
+      {% for mensaje in messages %}
+        <div class="mensaje {{ mensaje.tags }}">{{ mensaje }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <form method="get" class="buscador">
+    <input type="search" name="q" value="{{ busqueda }}" placeholder="Buscar por nombre, apellido o RUT">
+    <button type="submit" class="btn gris chico">Buscar</button>
+  </form>
+
+  <div class="tarjeta">
+    {% for fila in filas %}
+      {% with jugador=fila.jugador %}
+      <div class="fila-j">
+        <div class="top">
+          <span class="ini">{{ jugador.nombres|slice:":1" }}{{ jugador.apellidos|slice:":1" }}</span>
+          <span class="nom">
+            {{ jugador.nombres }} {{ jugador.apellidos }}
+            <small>{{ jugador.rut }} · nacimiento {{ jugador.fecha_nacimiento|date:"d/m/Y" }} · {{ jugador.get_rama_display }} · {{ jugador.get_estado_display }}</small>
+          </span>
+
+          <span class="cats">
+            {% if jugador.categoria_actual %}
+              <span class="pill cat">{{ jugador.categoria_actual }}</span>
+            {% else %}
+              <span class="pill esp">Sin categoría</span>
+            {% endif %}
+            {% if fila.es_excepcion %}
+              <span class="pill esp">Excepción manual</span>
+            {% endif %}
+            <button type="button" class="btn gris chico" data-abrir>Cambiar</button>
+          </span>
+        </div>
+
+        {% if fila.es_excepcion %}
+          <p class="nota">Motivo de la excepción: {{ fila.motivo_excepcion }}</p>
+        {% elif fila.calculada and fila.calculada != jugador.categoria_actual %}
+          <p class="nota">Por año de nacimiento le corresponde {{ fila.calculada }}.</p>
+        {% endif %}
+
+        <form method="post" class="cambio oculto">
+          {% csrf_token %}
+          <input type="hidden" name="jugador_id" value="{{ jugador.pk }}">
+          <label class="campo">Nueva categoría
+            <select name="categoria_id" required>
+              {% for categoria in categorias %}
+                <option value="{{ categoria.pk }}" {% if categoria == jugador.categoria_actual %}selected{% endif %}>{{ categoria }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="campo">Motivo (obligatorio)
+            <textarea name="motivo" required placeholder="Ej: autorizado por el entrenador para jugar en la categoría superior."></textarea>
+          </label>
+          <div style="display:flex;gap:8px">
+            <button type="submit" class="btn chico">Guardar</button>
+            <button type="button" class="btn gris chico" data-cerrar>Cancelar</button>
+          </div>
+        </form>
+      </div>
+      {% endwith %}
+    {% empty %}
+      <p class="vacio">{% if busqueda %}No hay jugadores que coincidan con "{{ busqueda }}".{% else %}No hay jugadores registrados.{% endif %}</p>
+    {% endfor %}
+  </div>
+
+  <h2>Últimas excepciones</h2>
+  <div class="tarjeta hist">
+    {% for cambio in cambios_recientes %}
+      <div class="fila-j">
+        <b>{{ cambio.jugador.nombres }} {{ cambio.jugador.apellidos }}</b>:
+        {{ cambio.categoria_anterior|default:"Sin categoría" }} → {{ cambio.categoria_nueva }}
+        <p class="nota">{{ cambio.fecha|date:"d/m/Y H:i" }} · por {{ cambio.cambiado_por }} · {{ cambio.motivo }}</p>
+      </div>
+    {% empty %}
+      <p class="vacio">Todavía no hay excepciones registradas.</p>
+    {% endfor %}
+  </div>
+
+</div></main>
+
+<script>
+// Mostrar u ocultar el formulario de cambio de cada jugador
+document.querySelectorAll(".fila-j").forEach(function (fila) {
+  var form = fila.querySelector(".cambio");
+  var abrir = fila.querySelector("[data-abrir]");
+  if (!form || !abrir) return;
+  abrir.addEventListener("click", function () {
+    form.classList.remove("oculto");
+    form.querySelector("textarea").focus();
+  });
+  fila.querySelector("[data-cerrar]").addEventListener("click", function () {
+    form.classList.add("oculto");
+  });
+});
+</script>
+
+</body>
+</html>
