@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Q  # <<< NUEVO (HU-05)
 from django.shortcuts import get_object_or_404, redirect, render
-
+from deportivo.permisos import es_entrenador  # NUEVO (HU-07)
 from .forms import InscripcionForm
 from .services import (
     asignar_categoria_automatica,
@@ -256,6 +256,9 @@ def panel(request):
     # =====================================================
     if es_administracion(usuario):
         return redirect("validar_fichas")
+
+    if es_entrenador(usuario):
+        return redirect("deportivo:entrenamientos")
 
     # =====================================================
     # ADMINISTRACIÓN (superusuario / staff de Django)

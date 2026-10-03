@@ -14,7 +14,7 @@ class Entrenamiento(models.Model):
     creado_en = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-fecha']
+        ordering = ['-fecha', '-creado_en']
 
     def __str__(self):
         return f"{self.nombre} - {self.categoria.nombre} - {self.fecha:%d-%m-%Y}"
