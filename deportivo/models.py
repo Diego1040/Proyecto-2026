@@ -40,3 +40,14 @@ class Asistencia(models.Model):
 
     def __str__(self):
         return f"{self.jugador.nombres} - {self.entrenamiento.nombre} - {self.get_estado_display()}"
+
+class PerfilEntrenador(models.Model):
+    usuario = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='perfil_entrenador')
+    categorias = models.ManyToManyField(Categoria, blank=True, related_name='entrenadores')
+
+    class Meta:
+        verbose_name = 'Perfil de Entrenador'
+        verbose_name_plural = 'Perfiles de Entrenadores'
+
+    def __str__(self):
+        return f"Entrenador: {self.usuario.username}"
