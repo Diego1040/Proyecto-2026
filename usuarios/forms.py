@@ -6,7 +6,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 
 from .models import Jugador
-from .validators import normalizar_rut, validar_rut
+from .validators import normalizar_rut, validar_identidad_perfil, validar_rut
 
 
 class UsuarioCreationForm(UserCreationForm):
@@ -155,6 +155,7 @@ class InscripcionForm(forms.Form):
                 "Ya existe un jugador registrado con este RUT."
             )
 
+        validar_identidad_perfil(Jugador(rut=rut))
         return rut
 
     def clean_fecha_nacimiento(self):

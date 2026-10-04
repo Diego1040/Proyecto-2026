@@ -4,7 +4,12 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
-from .validators import normalizar_rut, validar_rut
+from .validators import (
+    normalizar_rut,
+    validar_identidad_perfil,
+    validar_relacion_apoderado_jugador,
+    validar_rut,
+)
 
 
 class UsuarioManager(BaseUserManager):
@@ -16,6 +21,12 @@ class UsuarioManager(BaseUserManager):
     """
 
     use_in_migrations = True
+
+    def get_by_natural_key(self, rut):
+        return super().get_by_natural_key(normalizar_rut(rut))
+
+    async def aget_by_natural_key(self, rut):
+        return await super().aget_by_natural_key(normalizar_rut(rut))
 
     def create_user(self, rut, password=None, **extra_fields):
         if not rut:
@@ -88,6 +99,12 @@ class Usuario(AbstractUser):
         auto_now=True,
     )
 
+    activado_en = models.DateTimeField(
+        null=True,
+        blank=True,
+        editable=False,
+    )
+
     objects = UsuarioManager()
 
     USERNAME_FIELD = "rut"
@@ -105,10 +122,43 @@ class Usuario(AbstractUser):
             self.rut = normalizar_rut(self.rut)
             validar_rut(self.rut)
 
+        self._validar_rut_vinculado()
+
+    def _validar_rut_vinculado(self, using=None):
+        if self._state.adding:
+            return
+
+        alias = using or self._state.db
+        ruts_perfiles = [
+            *Jugador.objects.using(alias).filter(
+                usuario_id=self.pk,
+            ).values_list("rut", flat=True),
+            *Apoderado.objects.using(alias).filter(
+                usuario_id=self.pk,
+            ).values_list("rut", flat=True),
+        ]
+        if not ruts_perfiles:
+            return
+
+        rut_original = type(self).objects.using(alias).values_list(
+            "rut", flat=True,
+        ).get(pk=self.pk)
+        if normalizar_rut(rut_original) != self.rut or any(
+            normalizar_rut(rut) != self.rut for rut in ruts_perfiles
+        ):
+            raise ValidationError({
+                "rut": (
+                    "El RUT de una cuenta vinculada no se puede modificar. "
+                    "Solicita una corrección administrativa de identidad."
+                ),
+            })
+
     def save(self, *args, **kwargs):
         if self.rut:
             self.rut = normalizar_rut(self.rut)
+            validar_rut(self.rut)
 
+        self._validar_rut_vinculado(using=kwargs.get("using"))
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -235,6 +285,8 @@ class Jugador(models.Model):
         max_length=100,
     )
 
+    email = models.EmailField(blank=True, default="")
+
     fecha_nacimiento = models.DateField()
 
     rama = models.CharField(
@@ -243,6 +295,16 @@ class Jugador(models.Model):
     )
 
     telefono = models.CharField(
+        max_length=20,
+        blank=True,
+    )
+
+    nombre_contacto_emergencia = models.CharField(
+        max_length=150,
+        blank=True,
+    )
+
+    telefono_contacto_emergencia = models.CharField(
         max_length=20,
         blank=True,
     )
@@ -336,7 +398,7 @@ class Jugador(models.Model):
         
         if (
             self.usuario
-            and self.usuario.rut != self.rut
+            and normalizar_rut(self.usuario.rut) != self.rut
         ):
             errores["usuario"] = (
                 "El RUT de la cuenta debe coincidir "
@@ -362,17 +424,19 @@ class Jugador(models.Model):
         if errores:
             raise ValidationError(errores)
 
+        validar_identidad_perfil(self)
+
     def save(self, *args, **kwargs):
         if self.rut:
             self.rut = normalizar_rut(self.rut)
             validar_rut(self.rut)
 
+        validar_identidad_perfil(self)
         super().save(*args, **kwargs)
 
 class Apoderado(models.Model):
     """
-    Apoderado utilizado exclusivamente para autenticación,
-    autorización y acceso al sistema.
+    Datos de la persona responsable de uno o más jugadores.
     """
     usuario = models.OneToOneField(
         settings.AUTH_USER_MODEL,
@@ -395,6 +459,8 @@ class Apoderado(models.Model):
     apellidos = models.CharField(
         max_length=100,
     )
+
+    email = models.EmailField(blank=True, default="")
 
     telefono = models.CharField(
         max_length=20,
@@ -424,7 +490,7 @@ class Apoderado(models.Model):
 
         if (
             self.usuario
-            and self.usuario.rut != self.rut
+            and normalizar_rut(self.usuario.rut) != self.rut
         ):
             raise ValidationError({
                 "usuario": (
@@ -433,11 +499,14 @@ class Apoderado(models.Model):
                 )
             })
 
+        validar_identidad_perfil(self)
+
     def save(self, *args, **kwargs):
         if self.rut:
             self.rut = normalizar_rut(self.rut)
             validar_rut(self.rut)
 
+        validar_identidad_perfil(self)
         super().save(*args, **kwargs)
 
 class ApoderadoJugador(models.Model):
@@ -490,6 +559,12 @@ class ApoderadoJugador(models.Model):
     def clean(self):
         super().clean()
 
+        if self.jugador_id and self.apoderado_id:
+            validar_relacion_apoderado_jugador(
+                jugador=self.jugador,
+                apoderado=self.apoderado,
+            )
+
         errores = {}
 
         if self.es_principal and not self.activo:
@@ -518,6 +593,13 @@ class ApoderadoJugador(models.Model):
 
         if errores:
             raise ValidationError(errores)
+
+    def save(self, *args, **kwargs):
+        validar_relacion_apoderado_jugador(
+            jugador=self.jugador,
+            apoderado=self.apoderado,
+        )
+        super().save(*args, **kwargs)
 
 class SolicitudInscripcion(models.Model):
     class Estado(models.TextChoices):
@@ -574,6 +656,14 @@ class SolicitudInscripcion(models.Model):
         null=True,
         blank=True,
         related_name="solicitudes_revisadas",
+    )
+
+    usuario_autorizado = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="solicitudes_autorizadoras",
     )
 
     fecha_revision = models.DateTimeField(
