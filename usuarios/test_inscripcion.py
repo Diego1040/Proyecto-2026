@@ -400,27 +400,39 @@ class InscripcionPublicaSprint2Test(TestCase):
         solicitud.refresh_from_db()
         self.assertEqual(solicitud.estado, SolicitudInscripcion.Estado.EN_REVISION)
 
-        respuesta = self.client.post(reverse("solicitud_aprobar", args=[solicitud.pk]))
+        with self.captureOnCommitCallbacks(execute=True):
+            respuesta = self.client.post(reverse("solicitud_aprobar", args=[solicitud.pk]))
         self.assertRedirects(respuesta, detalle)
         solicitud.refresh_from_db()
         solicitud.jugador.refresh_from_db()
         self.assertEqual(solicitud.estado, SolicitudInscripcion.Estado.APROBADA)
         self.assertEqual(solicitud.usuario_autorizado_id, cuenta.pk)
         self.assertEqual(solicitud.jugador.estado, Jugador.Estado.ACTIVO)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["nuevo@example.com"])
+        self.assertNotIn("/activar-cuenta/", mail.outbox[0].body)
 
     def test_error_al_guardar_cuenta_revierte_contacto_del_apoderado(self):
         cuenta = Usuario.objects.create_user(rut="12345678-5", email="responsable@example.com")
         apoderado = self.apoderado_existente(usuario=cuenta)
+        jugador = Jugador.objects.create(
+            usuario=cuenta, rut=cuenta.rut, nombres="Patricia", apellidos="Responsable",
+            fecha_nacimiento=date(1990, 3, 10), rama="DAMAS", email=cuenta.email,
+        )
         anterior = Apoderado.objects.values().get(pk=apoderado.pk)
         self.client.force_login(cuenta)
-        with patch("usuarios.models.Usuario.save", side_effect=ValidationError("Error controlado")):
-            with self.assertRaises(ValidationError):
-                self.client.post(reverse("panel"), {
-                    "accion": "contacto", "telefono": "+56977778888", "email": "nuevo@example.com",
-                })
-        cuenta.refresh_from_db()
-        self.assertEqual(cuenta.email, "responsable@example.com")
-        self.assertEqual(Apoderado.objects.values().get(pk=apoderado.pk), anterior)
+        anterior_cuenta = Usuario.objects.values().get(pk=cuenta.pk)
+        anterior_jugador = Jugador.objects.values().get(pk=jugador.pk)
+        for modelo in ("Usuario", "Jugador"):
+            with self.subTest(escritura=modelo):
+                with patch(f"usuarios.models.{modelo}.save", side_effect=ValidationError("Error controlado")):
+                    with self.assertRaises(ValidationError):
+                        self.client.post(reverse("panel"), {
+                            "accion": "contacto", "telefono": "+56977778888", "email": "nuevo@example.com",
+                        })
+                self.assertEqual(Usuario.objects.values().get(pk=cuenta.pk), anterior_cuenta)
+                self.assertEqual(Apoderado.objects.values().get(pk=apoderado.pk), anterior)
+                self.assertEqual(Jugador.objects.values().get(pk=jugador.pk), anterior_jugador)
 
     def test_agregar_jugador_exige_perfil_y_no_autoriza_otro_apoderado(self):
         cuenta = Usuario.objects.create_user(rut="20347119-K")
@@ -492,7 +504,9 @@ class InscripcionPublicaSprint2Test(TestCase):
         self.assertEqual(aprobada.usuario_autorizado_id, cuenta_adulta.pk)
         anterior = ApoderadoJugador.objects.values().get(pk=vinculo.pk)
         self.client.force_login(cuenta_adulta)
-        self.assertRedirects(self.client.get(reverse("panel")), reverse("panel_jugador"))
+        self.assertContains(self.client.get(reverse("panel")), reverse("perfil_jugador"))
+        self.assertRedirects(self.client.get(reverse("panel_jugador")), reverse("perfil_jugador"))
+        self.assertEqual(self.client.get(reverse("perfil_jugador")).status_code, 200)
         self.assertEqual(ApoderadoJugador.objects.values().get(pk=vinculo.pk), anterior)
 
     def test_no_asume_parentesco_omitido_en_post_autenticado(self):

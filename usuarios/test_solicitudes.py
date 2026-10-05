@@ -192,7 +192,7 @@ class PreparacionCuentasTest(TestCase):
         self.assertEqual(solicitud.jugador.estado, Jugador.Estado.PENDIENTE)
         self.assertEqual(Usuario.objects.count(), 1)
 
-    def test_reutiliza_cuenta_adulta_sin_cambiar_credenciales_ni_enviar_correo(self):
+    def test_reutiliza_cuenta_adulta_sin_cambiar_credenciales_y_notifica_sin_activacion(self):
         cuenta = Usuario.objects.create_user(
             rut="11111111-1", email="adulto@example.com", password="ClaveExistente123!",
             activado_en=timezone.now(),
@@ -202,8 +202,11 @@ class PreparacionCuentasTest(TestCase):
             aprobada = self.aprobar(self.solicitud())
         self.assertEqual(aprobada.usuario_autorizado_id, cuenta.pk)
         self.assertEqual(Usuario.objects.values().get(pk=cuenta.pk), anterior)
-        self.assertEqual(callbacks, [])
-        self.assertEqual(len(mail.outbox), 0)
+        self.assertEqual(len(callbacks), 1)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, [cuenta.email])
+        self.assertIn("cuenta habitual", mail.outbox[0].body)
+        self.assertNotIn("/activar-cuenta/", mail.outbox[0].body)
 
     def test_reutiliza_cuenta_pendiente_sin_activarla(self):
         cuenta = Usuario.objects.create_user(rut="11111111-1", email="adulto@example.com", is_active=False)

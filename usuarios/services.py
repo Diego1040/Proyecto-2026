@@ -1,10 +1,16 @@
 from datetime import date
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
+from django.core.mail import send_mail
 from django.core.validators import validate_email
 from deportivo.permisos import es_administracion
 from django.db.models import Q
 from django.utils import timezone
 from django.db import transaction
+from django.template.loader import render_to_string
+from django.urls import reverse
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 
 from .models import (
     Apoderado,
@@ -22,6 +28,10 @@ from .validators import (
     ERROR_IDENTIDAD_INSCRIPCION, normalizar_rut, validar_identidad_perfil,
     validar_relacion_apoderado_jugador, validar_reutilizacion_apoderado,
 )
+from .tokens import activacion_token_generator
+
+
+ACTIVACION_REENVIO_ESPERA_SEGUNDOS = 300
 
 
 def calcular_edad(fecha_nacimiento, fecha_referencia=None):
@@ -200,6 +210,7 @@ def aprobar_solicitud_inscripcion(
     *,
     solicitud,
     usuario,
+    request=None,
 ):
     if usuario is None or not es_administracion(usuario) or not usuario.is_active:
         raise ValidationError(
@@ -280,6 +291,12 @@ def aprobar_solicitud_inscripcion(
         },
     )
 
+    if cuenta_puede_activarse(cuenta):
+        transaction.on_commit(lambda: enviar_enlace_activacion(cuenta.pk, request=request))
+    else:
+        correo = _validar_correo(titular.email, "Debe indicar un correo.")
+        transaction.on_commit(lambda: enviar_correo_aprobacion(correo=correo))
+
     return solicitud
 
 @transaction.atomic
@@ -324,6 +341,24 @@ def rechazar_solicitud_inscripcion(
             "estado_nuevo": "RECHAZADA",
         },
     )
+
+    jugador = solicitud.jugador
+    if calcular_edad(jugador.fecha_nacimiento) >= 18:
+        correo = jugador.email
+    else:
+        principales = list(jugador.vinculos_apoderados.filter(
+            activo=True, es_principal=True, puede_gestionar=True,
+        ).select_related("apoderado")[:2])
+        correo = principales[0].apoderado.email if len(principales) == 1 else ""
+    # El rechazo de solicitudes históricas sin contacto sigue conservando su trazabilidad.
+    if correo:
+        try:
+            correo = _validar_correo(correo, "Debe indicar un correo.")
+        except ValidationError:
+            correo = ""
+    if correo:
+        motivo_rechazo = solicitud.motivo_rechazo
+        transaction.on_commit(lambda: enviar_correo_rechazo(correo=correo, motivo=motivo_rechazo))
 
     return solicitud
 
@@ -641,3 +676,77 @@ def inscribir_jugador(*, datos, solicitante=None, apoderado_existente=None):
         detalle={"jugador_id": jugador.pk, "estado_nuevo": "PENDIENTE"},
     )
     return solicitud
+
+
+def cuenta_puede_activarse(cuenta):
+    return bool(
+        cuenta
+        and not cuenta.is_active
+        and cuenta.activado_en is None
+        and not cuenta.has_usable_password()
+        and cuenta.solicitudes_autorizadoras.filter(
+            estado=SolicitudInscripcion.Estado.APROBADA,
+        ).exists()
+    )
+
+
+def cuenta_puede_recuperarse(cuenta):
+    return bool(cuenta and cuenta.is_active and cuenta.has_usable_password())
+
+
+def solicitar_activacion(*, rut, correo, request=None):
+    """No revela si la combinación consultada corresponde a una cuenta."""
+    try:
+        rut = normalizar_rut(rut)
+    except (TypeError, ValueError):
+        return
+    cuenta = Usuario.objects.filter(rut=rut, email__iexact=correo.strip()).first()
+    if cuenta_puede_activarse(cuenta):
+        transaction.on_commit(
+            lambda: enviar_enlace_activacion(
+                cuenta.pk, request=request, limitar_reenvio=True,
+            )
+        )
+
+
+def enviar_enlace_activacion(usuario_id, *, request=None, limitar_reenvio=False):
+    cuenta = Usuario.objects.get(pk=usuario_id)
+    if not cuenta_puede_activarse(cuenta):
+        return
+    if limitar_reenvio and not cache.add(
+        f"activacion-reenvio:{cuenta.pk}", True,
+        timeout=ACTIVACION_REENVIO_ESPERA_SEGUNDOS,
+    ):
+        return
+    uidb64 = urlsafe_base64_encode(force_bytes(cuenta.pk))
+    token = activacion_token_generator.make_token(cuenta)
+    ruta = reverse("confirmar_activacion", kwargs={"uidb64": uidb64, "token": token})
+    enlace = request.build_absolute_uri(ruta) if request is not None else ruta
+    asunto = render_to_string("registration/activacion_subject.txt").strip()
+    cuerpo = render_to_string("registration/activacion_email.txt", {"enlace": enlace})
+    send_mail(asunto, cuerpo, None, [cuenta.email])
+
+
+@transaction.atomic
+def completar_activacion(*, cuenta, formulario, token):
+    cuenta = Usuario.objects.select_for_update().get(pk=cuenta.pk)
+    if not cuenta_puede_activarse(cuenta) or not activacion_token_generator.check_token(cuenta, token):
+        raise ValidationError("Este enlace de activación ya no está disponible.")
+    formulario.user = cuenta
+    formulario.save(commit=False)
+    cuenta.is_active = True
+    cuenta.activado_en = timezone.now()
+    cuenta.save(update_fields=["password", "is_active", "activado_en", "updated_at"])
+    return cuenta
+
+
+def enviar_correo_rechazo(*, correo, motivo):
+    asunto = render_to_string("registration/rechazo_subject.txt").strip()
+    cuerpo = render_to_string("registration/rechazo_email.txt", {"motivo": motivo})
+    send_mail(asunto, cuerpo, None, [correo])
+
+
+def enviar_correo_aprobacion(*, correo):
+    asunto = render_to_string("registration/aprobacion_subject.txt").strip()
+    cuerpo = render_to_string("registration/aprobacion_email.txt")
+    send_mail(asunto, cuerpo, None, [correo])

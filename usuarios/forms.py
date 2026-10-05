@@ -549,3 +549,41 @@ class RechazoSolicitudForm(forms.Form):
             )
 
         return motivo
+
+
+class TelefonoJugadorForm(forms.ModelForm):
+    class Meta:
+        model = Jugador
+        fields = ("telefono",)
+        labels = {
+            "telefono": "Teléfono",
+        }
+        widgets = {
+            "telefono": forms.TextInput(
+                attrs={
+                    "autocomplete": "tel",
+                    "placeholder": "+56 9 XXXX XXXX",
+                },
+            ),
+        }
+
+
+class ContactoApoderadoForm(forms.ModelForm):
+    class Meta:
+        model = Apoderado
+        fields = ("telefono", "email")
+        labels = {"telefono": "Teléfono", "email": "Correo de contacto"}
+        widgets = {
+            "telefono": forms.TextInput(attrs={"autocomplete": "tel"}),
+            "email": forms.EmailInput(attrs={"autocomplete": "email"}),
+        }
+
+
+class SolicitudActivacionForm(forms.Form):
+    rut = forms.CharField(label="RUT", max_length=12)
+    email = forms.EmailField(label="Correo electrónico")
+
+    def clean_rut(self):
+        rut = normalizar_rut(self.cleaned_data["rut"])
+        validar_rut(rut)
+        return rut

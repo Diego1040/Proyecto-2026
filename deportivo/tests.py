@@ -56,10 +56,10 @@ class AsistenciaTest(TestCase):
             creado_por=self.entrenador,
         )
 
-    def test_entrenador_va_directo_a_entrenamientos(self):
+    def test_panel_ofrece_acceso_a_entrenamientos(self):
         self.client.force_login(self.entrenador)
         respuesta = self.client.get(reverse("panel"))
-        self.assertRedirects(respuesta, reverse("deportivo:entrenamientos"), fetch_redirect_response=False)
+        self.assertContains(respuesta, reverse("deportivo:entrenamientos"))
 
     def test_usuario_sin_rol_no_entra(self):
         self.client.force_login(self.otro)
@@ -169,5 +169,6 @@ class AsistenciaTest(TestCase):
             )
 
         self.client.force_login(self.otro)
-        respuesta = self.client.get(reverse("panel"))
+        self.assertContains(self.client.get(reverse("panel")), reverse("perfil_apoderado"))
+        respuesta = self.client.get(reverse("perfil_apoderado"))
         self.assertContains(respuesta, "75%")

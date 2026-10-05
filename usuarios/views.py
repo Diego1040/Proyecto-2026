@@ -1,13 +1,17 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.views import PasswordResetConfirmView, INTERNAL_RESET_SESSION_TOKEN
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.views.decorators.http import require_GET, require_POST
-from django.db.models import Q  # <<< NUEVO (HU-05)
+from django.db.models import Prefetch, Q  # <<< NUEVO (HU-05)
 from django.shortcuts import get_object_or_404, redirect, render
 from deportivo.permisos import es_administracion, es_entrenador  # NUEVO (HU-07)
 from deportivo.services import resumen_asistencia_mes  # NUEVO (HU-07)
-from .forms import InscripcionJugadorForm, RechazoSolicitudForm
+from .forms import (
+    ContactoApoderadoForm, InscripcionJugadorForm, RechazoSolicitudForm,
+    SolicitudActivacionForm, TelefonoJugadorForm,
+)
 from .services import (
     inscribir_jugador,
     aprobar_solicitud_inscripcion,
@@ -16,15 +20,22 @@ from .services import (
     obtener_categoria_automatica,      
     rechazar_solicitud_inscripcion,
     registrar_auditoria,               
+    completar_activacion,
+    cuenta_puede_activarse,
+    cuenta_puede_recuperarse,
+    solicitar_activacion,
 )
 from .models import (
+    AlertaSalud,
     Apoderado,
     ApoderadoJugador,
     Categoria,                         
     HistorialCategoria,               
     Jugador,
     SolicitudInscripcion,
+    Usuario,
 )
+from .tokens import activacion_token_generator
 
 
 # =========================================================
@@ -38,136 +49,42 @@ def inicio(request):
     return render(request, "paginas/inicio.html")
 
 
-def obtener_jugador_adulto(usuario):
-    """
-    Devuelve el jugador asociado a la cuenta cuando tiene 18 años o más.
-    Si la cuenta no está asociada a un jugador adulto, devuelve None.
-    """
-    jugador = getattr(usuario, "jugador", None)
-
-    if (
-        jugador is not None
-        and jugador.edad is not None
-        and jugador.edad >= 18
-    ):
-        return jugador
-
-    return None
-
 @login_required
 def panel(request):
+    """Presenta todos los accesos disponibles sin elegir un perfil exclusivo."""
     usuario = request.user
+    # Compatibilidad con el formulario de contacto del panel anterior.
+    if request.method == "POST" and request.POST.get("accion") == "contacto":
+        return perfil_apoderado(request)
+    if request.method == "POST" and request.POST.get("accion") == "inscripcion":
+        return redirect("agregar_jugador_apoderado")
 
-    # ==========================================================
-    # JUGADOR ADULTO
-    # ==========================================================
-    jugador_adulto = obtener_jugador_adulto(usuario)
+    tiene_jugador = hasattr(usuario, "jugador")
+    tiene_apoderado = hasattr(usuario, "apoderado")
+    administracion = es_administracion(usuario)
+    entrenador = es_entrenador(usuario)
+    perfiles = []
+    if tiene_jugador:
+        perfiles.append("Jugador")
+    if tiene_apoderado:
+        perfiles.append("Apoderado")
+    if administracion:
+        perfiles.append("Administración")
+    if entrenador:
+        perfiles.append("Entrenador")
+    return render(request, "paginas/panel.html", {
+        "perfiles": perfiles,
+        "tiene_perfil_jugador": tiene_jugador,
+        "tiene_perfil_apoderado": tiene_apoderado,
+        "es_administracion": administracion,
+        "es_entrenador": entrenador,
+    })
 
-    if jugador_adulto is not None:
 
-        return redirect("panel_jugador")
-
-    if hasattr(usuario, "apoderado"):
-
-        apoderado = usuario.apoderado
-
-        # -------------------------------------------------
-        # GUARDAR DATOS DE CONTACTO
-        # -------------------------------------------------
-        if (
-            request.method == "POST"
-            and request.POST.get("accion") == "contacto"
-        ):
-
-            telefono = request.POST.get("telefono", "").strip()
-            email = request.POST.get("email", "").strip()
-
-            with transaction.atomic():
-                apoderado.telefono = telefono
-                apoderado.email = email
-                apoderado.save(update_fields=["telefono", "email", "updated_at"])
-
-                usuario.email = email
-                usuario.save(update_fields=["email"])
-
-            messages.success(
-                request,
-                "Tus datos de contacto fueron actualizados correctamente."
-            )
-
-            return redirect("panel")
-
-        if request.method == "POST" and request.POST.get("accion") == "inscripcion":
-            return redirect("agregar_jugador_apoderado")
-
-        # -------------------------------------------------
-        # OBTENER TODOS LOS JUGADORES DEL APODERADO
-        # -------------------------------------------------
-        vinculos = (
-            apoderado.vinculos_jugadores
-            .filter(activo=True)
-            .select_related("jugador", "jugador__categoria_actual")
-            .order_by("-es_principal", "-created_at")
-        )
-
-        jugadores = [vinculo.jugador for vinculo in vinculos]
-
-        # Ultima solicitud de cada jugador, para mostrar si fue
-        # rechazada y el motivo (HU-03)
-        for jugador in jugadores:
-            jugador.ultima_solicitud = (
-                jugador.solicitudes_inscripcion
-                .order_by("-fecha_solicitud")
-                .first()
-            )
-
-            jugador.asistencia_mes = resumen_asistencia_mes(jugador)
-
-        # -------------------------------------------------
-        # RENDER DEL PANEL
-        # -------------------------------------------------
-        return render(
-            request,
-            "usuarios/panel_apoderado.html",
-            {
-                "perfil": "Apoderado",
-                "apoderado": apoderado,
-                "jugadores": jugadores,
-            },
-        )
-
-    # =====================================================
-    # ADMINISTRACIÓN DEL CLUB (HU-03)
-    # =====================================================
-    if es_administracion(usuario):
-        return redirect("validar_fichas")
-
-    if es_entrenador(usuario):
-        return redirect("deportivo:entrenamientos")
-
-    # =====================================================
-    # ADMINISTRACIÓN (superusuario / staff de Django)
-    # =====================================================
-    if usuario.is_staff:
-
-        return render(
-            request,
-            "paginas/panel.html",
-            {
-                "perfil": "Administración",
-            },
-        )
-
-    # =====================================================
-    # OTROS USUARIOS
-    # =====================================================
-    return render(
-        request,
-        "paginas/panel.html",
-        {
-            "perfil": "Jugador",
-        },
-    )
+@login_required
+@require_GET
+def panel_jugador(request):
+    return redirect("perfil_jugador")
 
 
 # =========================================================
@@ -180,54 +97,6 @@ def validar_fichas(request):
         messages.error(request, "No tienes permiso para revisar solicitudes.")
         return redirect("panel")
     return redirect("solicitudes_administracion")
-
-
-
-@login_required
-def panel_jugador(request):
-    """Portal personal para jugadores mayores de edad."""
-
-    usuario = request.user
-    jugador = obtener_jugador_adulto(usuario)
-
-    # Si la cuenta no corresponde a un jugador adulto,
-    # vuelve al panel normal.
-    if jugador is None:
-        return redirect("panel")
-
-    # ==========================================================
-    # ACTUALIZAR DATOS PERSONALES
-    # ==========================================================
-    if (
-        request.method == "POST"
-        and request.POST.get("accion") == "datos"
-    ):
-        telefono = request.POST.get("telefono", "").strip()
-        email = request.POST.get("email", "").strip()
-
-        jugador.telefono = telefono
-        jugador.save(update_fields=["telefono"])
-
-        usuario.email = email
-        usuario.save(update_fields=["email"])
-
-        messages.success(
-            request,
-            "Tus datos fueron actualizados correctamente.",
-        )
-
-        return redirect("panel_jugador")
-
-    return render(
-        request,
-        "usuarios/panel_jugador.html",
-        {
-            "perfil": "Jugador",
-            "jugador": jugador,
-        },
-    )
-
-
 
 
 @login_required
@@ -576,6 +445,7 @@ def solicitud_aprobar(request, pk):
         aprobar_solicitud_inscripcion(
             solicitud=solicitud,
             usuario=request.user,
+            request=request,
         )
     except IntegrityError:
         messages.error(request, "No fue posible preparar la cuenta. Solicita revisión de identidad.")
@@ -634,4 +504,203 @@ def solicitud_rechazar(request, pk):
     return redirect(
         "solicitud_detalle",
         pk=pk,
+    )
+
+
+def activar_cuenta(request):
+    if request.method == "POST":
+        form = SolicitudActivacionForm(request.POST)
+        if form.is_valid():
+            solicitar_activacion(
+                rut=form.cleaned_data["rut"],
+                correo=form.cleaned_data["email"],
+                request=request,
+            )
+            return redirect("activacion_enviada")
+    else:
+        form = SolicitudActivacionForm()
+    return render(request, "registration/activacion_solicitud.html", {"form": form})
+
+
+class ConfirmarActivacionView(PasswordResetConfirmView):
+    template_name = "registration/activacion_confirmar.html"
+    token_generator = activacion_token_generator
+
+    def get_user(self, uidb64):
+        cuenta = super().get_user(uidb64)
+        return cuenta if cuenta_puede_activarse(cuenta) else None
+
+    def form_valid(self, form):
+        try:
+            completar_activacion(
+                cuenta=self.user, formulario=form,
+                token=self.request.session.get(INTERNAL_RESET_SESSION_TOKEN),
+            )
+        except ValidationError:
+            self.validlink = False
+            return self.render_to_response(self.get_context_data())
+        self.request.session.pop(INTERNAL_RESET_SESSION_TOKEN, None)
+        return redirect("activacion_completa")
+
+
+class ConfirmarRecuperacionView(PasswordResetConfirmView):
+    def get_user(self, uidb64):
+        cuenta = super().get_user(uidb64)
+        return cuenta if cuenta_puede_recuperarse(cuenta) else None
+
+    @transaction.atomic
+    def form_valid(self, form):
+        cuenta = Usuario.objects.select_for_update().get(pk=self.user.pk)
+        token = self.request.session.get(INTERNAL_RESET_SESSION_TOKEN)
+        if not cuenta_puede_recuperarse(cuenta) or not self.token_generator.check_token(cuenta, token):
+            self.validlink = False
+            return self.render_to_response(self.get_context_data())
+        self.user = cuenta
+        form.user = cuenta
+        return super().form_valid(form)
+
+
+@login_required
+def perfil_jugador(request):
+    try:
+        jugador_vinculado = request.user.jugador
+    except Jugador.DoesNotExist:
+        messages.error(
+            request,
+            "Tu cuenta no tiene un perfil de jugador asociado.",
+        )
+        return redirect("panel")
+
+    jugador = (
+        Jugador.objects
+        .select_related("categoria_actual")
+        .prefetch_related(
+            Prefetch(
+                "alertas_salud",
+                queryset=(
+                    AlertaSalud.objects
+                    .filter(activa=True)
+                    .order_by("tipo")
+                ),
+                to_attr="alertas_activas",
+            ),
+            Prefetch(
+                "historial_categorias",
+                queryset=(
+                    HistorialCategoria.objects
+                    .select_related(
+                        "categoria_anterior",
+                        "categoria_nueva",
+                        "cambiado_por",
+                    )
+                    .order_by("-fecha")
+                ),
+                to_attr="historial_categorias_cargado",
+            ),
+        )
+        .get(pk=jugador_vinculado.pk)
+    )
+
+    if request.method == "POST":
+        telefono_form = TelefonoJugadorForm(
+            request.POST,
+            instance=jugador,
+        )
+
+        if telefono_form.is_valid():
+            jugador_actualizado = telefono_form.save(commit=False)
+            jugador_actualizado.save(
+                update_fields=("telefono", "updated_at"),
+            )
+            messages.success(
+                request,
+                "Tu teléfono fue actualizado correctamente.",
+            )
+            return redirect("perfil_jugador")
+    else:
+        telefono_form = TelefonoJugadorForm(instance=jugador)
+
+    jugador.asistencia_mes = resumen_asistencia_mes(jugador)
+
+    return render(
+        request,
+        "usuarios/perfil_jugador.html",
+        {
+            "jugador": jugador,
+            "telefono_form": telefono_form,
+        },
+    )
+
+
+@login_required
+def perfil_apoderado(request):
+    try:
+        apoderado = request.user.apoderado
+    except Apoderado.DoesNotExist:
+        messages.error(
+            request,
+            "Tu cuenta no tiene un perfil de apoderado asociado.",
+        )
+        return redirect("panel")
+
+    contacto_form = ContactoApoderadoForm(
+        request.POST if request.method == "POST" else None,
+        instance=apoderado,
+    )
+    if request.method == "POST" and contacto_form.is_valid():
+        with transaction.atomic():
+            jugador = Jugador.objects.select_for_update().filter(usuario=request.user).first()
+            usuario = Usuario.objects.select_for_update().get(pk=request.user.pk)
+            correo_anterior = usuario.email
+            apoderado = contacto_form.save(commit=False)
+            apoderado.save(update_fields=["telefono", "email", "updated_at"])
+            usuario.email = apoderado.email
+            usuario.save(update_fields=["email"])
+            if (
+                jugador is not None and correo_anterior
+                and jugador.email.casefold() == correo_anterior.casefold()
+            ):
+                jugador.email = usuario.email
+                jugador.save(update_fields=["email"])
+        messages.success(request, "Tus datos de contacto fueron actualizados correctamente.")
+        return redirect("panel" if request.resolver_match.url_name == "panel" else "perfil_apoderado")
+
+    vinculos = (
+        ApoderadoJugador.objects
+        .filter(
+            apoderado=apoderado,
+            activo=True,
+        )
+        .select_related(
+            "jugador",
+            "jugador__categoria_actual",
+        )
+        .prefetch_related(
+            Prefetch(
+                "jugador__solicitudes_inscripcion",
+                queryset=(
+                    SolicitudInscripcion.objects
+                    .order_by("-fecha_solicitud")
+                ),
+                to_attr="solicitudes_ordenadas",
+            ),
+        )
+        .order_by(
+            "-es_principal",
+            "jugador__apellidos",
+            "jugador__nombres",
+        )
+    )
+
+    for vinculo in vinculos:
+        vinculo.jugador.asistencia_mes = resumen_asistencia_mes(vinculo.jugador)
+
+    return render(
+        request,
+        "usuarios/perfil_apoderado.html",
+        {
+            "apoderado": apoderado,
+            "contacto_form": contacto_form,
+            "vinculos": vinculos,
+        },
     )
