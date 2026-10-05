@@ -1,15 +1,26 @@
 from datetime import date
 from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
+from deportivo.permisos import es_administracion
 from django.db.models import Q
 from django.utils import timezone
 from django.db import transaction
 
 from .models import (
+    Apoderado,
+    ApoderadoJugador,
+    AlertaSalud,
+    Usuario,
     Categoria, 
     ReglaCategoria,
     HistorialCategoria,
     Jugador,
     SolicitudInscripcion,
+)
+
+from .validators import (
+    ERROR_IDENTIDAD_INSCRIPCION, normalizar_rut, validar_identidad_perfil,
+    validar_relacion_apoderado_jugador, validar_reutilizacion_apoderado,
 )
 
 
@@ -150,7 +161,13 @@ def asignar_categoria_automatica(
 
 
 @transaction.atomic
-def marcar_solicitud_en_revision(*, solicitud):
+def marcar_solicitud_en_revision(*, solicitud, usuario):
+    if usuario is None or not es_administracion(usuario) or not usuario.is_active:
+        raise ValidationError(
+            "Debe indicar personal administrativo para iniciar la revisión."
+        )
+
+    solicitud = SolicitudInscripcion.objects.select_for_update().get(pk=solicitud.pk)
     if solicitud.estado != SolicitudInscripcion.Estado.PENDIENTE:
         raise ValidationError(
             "Solo una solicitud pendiente puede pasar a revision."
@@ -160,6 +177,11 @@ def marcar_solicitud_en_revision(*, solicitud):
     solicitud.full_clean()
     solicitud.save(update_fields=["estado"])
 
+    registrar_auditoria(
+        usuario=usuario, accion="SOLICITUD_EN_REVISION",
+        entidad="SolicitudInscripcion", entidad_id=solicitud.pk,
+        detalle={"estado_anterior": "PENDIENTE", "estado_nuevo": "EN_REVISION"},
+    )
     return solicitud
 
 def tiene_excepcion_manual(jugador):
@@ -174,18 +196,26 @@ def tiene_excepcion_manual(jugador):
     )
 
 @transaction.atomic
-def aprobar_solicitud_inscripcion(*, solicitud, usuario):
-    if usuario is None:
+def aprobar_solicitud_inscripcion(
+    *,
+    solicitud,
+    usuario,
+):
+    if usuario is None or not es_administracion(usuario) or not usuario.is_active:
         raise ValidationError(
-            "Debe indicar el usuario que aprueba la solicitud."
+            "Debe indicar personal administrativo para aprobar la solicitud."
         )
 
+    solicitud = SolicitudInscripcion.objects.select_for_update().select_related(
+        "jugador",
+    ).get(pk=solicitud.pk)
     if solicitud.estado != SolicitudInscripcion.Estado.EN_REVISION:
         raise ValidationError(
             "Solo una solicitud en revision puede ser aprobada."
         )
 
-    jugador = solicitud.jugador
+    jugador = Jugador.objects.select_for_update().get(pk=solicitud.jugador_id)
+    _validar_identidad_inscripcion(jugador)
 
     if jugador.categoria_actual_id is None:
         raise ValidationError(
@@ -193,13 +223,40 @@ def aprobar_solicitud_inscripcion(*, solicitud, usuario):
             "antes de aprobar la solicitud."
         )
 
+    edad = calcular_edad(jugador.fecha_nacimiento)
+    if edad >= 18:
+        titular = jugador
+        _validar_correo(titular.email, "El correo del jugador adulto es obligatorio.")
+        if jugador.usuario_id and jugador.usuario.rut != jugador.rut:
+            raise ValidationError("La cuenta del jugador tiene otro RUT.")
+    else:
+        principales = list(
+            ApoderadoJugador.objects.select_for_update().select_related("apoderado")
+            .filter(jugador=jugador, activo=True, es_principal=True, puede_gestionar=True)[:2]
+        )
+        if len(principales) != 1:
+            raise ValidationError("El menor necesita un único apoderado principal que pueda gestionar.")
+        titular = principales[0].apoderado
+        _validar_correo(titular.email, "El correo del apoderado es obligatorio.")
+        if jugador.usuario_id:
+            raise ValidationError("Este flujo no autoriza una cuenta propia para un menor.")
+
     solicitud.estado = SolicitudInscripcion.Estado.APROBADA
     solicitud.revisado_por = usuario
     solicitud.fecha_revision = timezone.now()
     solicitud.motivo_rechazo = ""
-
     solicitud.full_clean()
-    solicitud.save()
+    solicitud.save(update_fields=["estado", "revisado_por", "fecha_revision", "motivo_rechazo"])
+
+    cuenta = _preparar_cuenta(titular)
+
+    if titular.usuario_id != cuenta.pk:
+        titular.usuario = cuenta
+        titular.full_clean()
+        titular.save(update_fields=["usuario", "updated_at"])
+
+    solicitud.usuario_autorizado = cuenta
+    solicitud.save(update_fields=["usuario_autorizado"])
 
     jugador.estado = Jugador.Estado.ACTIVO
 
@@ -208,6 +265,7 @@ def aprobar_solicitud_inscripcion(*, solicitud, usuario):
 
     jugador.full_clean()
     jugador.save()
+    solicitud.jugador = jugador
 
     registrar_auditoria(
         usuario=usuario,
@@ -218,18 +276,25 @@ def aprobar_solicitud_inscripcion(*, solicitud, usuario):
             "jugador_id": jugador.pk,
             "estado_anterior": "EN_REVISION",
             "estado_nuevo": "APROBADA",
+            "usuario_autorizado_id": cuenta.pk,
         },
     )
 
     return solicitud
 
 @transaction.atomic
-def rechazar_solicitud_inscripcion(*, solicitud, usuario, motivo):
-    if usuario is None:
+def rechazar_solicitud_inscripcion(
+    *,
+    solicitud,
+    usuario,
+    motivo,
+):
+    if usuario is None or not es_administracion(usuario) or not usuario.is_active:
         raise ValidationError(
-            "Debe indicar el usuario que rechaza la solicitud."
+            "Debe indicar personal administrativo para rechazar la solicitud."
         )
 
+    solicitud = SolicitudInscripcion.objects.select_for_update().get(pk=solicitud.pk)
     if solicitud.estado != SolicitudInscripcion.Estado.EN_REVISION:
         raise ValidationError(
             "Solo una solicitud en revision puede ser rechazada."
@@ -336,3 +401,243 @@ def registrar_auditoria(
         entidad_id=entidad_id,
         detalle=detalle,
     )
+
+def _validar_identidad_inscripcion(jugador):
+    validar_identidad_perfil(jugador)
+    if jugador.pk is not None:
+        for vinculo in jugador.vinculos_apoderados.select_related("apoderado"):
+            validar_relacion_apoderado_jugador(jugador=jugador, apoderado=vinculo.apoderado)
+            if vinculo.activo:
+                validar_identidad_perfil(vinculo.apoderado)
+
+def obtener_parentesco_inicial(apoderado):
+    parentescos = list(
+        apoderado.vinculos_jugadores.filter(activo=True)
+        .order_by().values_list("parentesco", flat=True).distinct()[:2]
+    )
+    return parentescos[0] if len(parentescos) == 1 else ""
+
+@transaction.atomic
+def crear_solicitud_inscripcion(
+    *,
+    jugador,
+    solicitante=None,
+    consentimiento,
+    observaciones="",
+    temporada=None,
+    fecha_referencia=None,
+):
+    """
+    Crea una solicitud de inscripcion para un jugador
+
+    - Valida al jugador.
+    - Comprueba apoderado activo si es menor de edad
+    - Asigna categoria automaticamente
+    - Crea la solicitud en estado pendiente
+    """
+
+    if fecha_referencia is None:
+        fecha_referencia = timezone.localdate()
+
+    edad = calcular_edad(jugador.fecha_nacimiento, fecha_referencia)
+    if edad >= 18:
+        _validar_correo(jugador.email, "El correo del jugador adulto es obligatorio.")
+        if not all((jugador.telefono.strip(), jugador.nombre_contacto_emergencia.strip(),
+                    jugador.telefono_contacto_emergencia.strip())):
+            raise ValidationError("El adulto debe indicar teléfono y contacto de emergencia.")
+    jugador.full_clean()
+    _validar_identidad_inscripcion(jugador)
+
+    # Permite utilizar tanto un jugador nuevo como uno ya guardado.
+    if jugador.pk is None:
+        jugador.save()
+
+    if edad < 18:
+        tiene_apoderado = (
+            jugador.vinculos_apoderados
+            .filter(activo=True)
+            .exists()
+        )
+
+        if not tiene_apoderado:
+            raise ValidationError(
+                "Un jugador menor de edad debe tener "
+                "al menos un apoderado activo."
+            )
+
+        principales = list(jugador.vinculos_apoderados.select_for_update().filter(
+            activo=True, es_principal=True, puede_gestionar=True,
+        ).select_related("apoderado")[:2])
+        if len(principales) != 1:
+            raise ValidationError("El menor debe tener un único apoderado principal que pueda gestionar.")
+        _validar_correo(principales[0].apoderado.email, "El correo del apoderado es obligatorio.")
+
+    categoria = asignar_categoria_automatica(
+        jugador=jugador,
+        temporada=temporada,
+        fecha_referencia=fecha_referencia,
+    )
+
+    if categoria is None:
+        raise ValidationError(
+            "No existe una categoría aplicable "
+            "para el jugador."
+        )
+
+    solicitud = SolicitudInscripcion(
+        jugador=jugador,
+        solicitante=solicitante,
+        procedencia=jugador.procedencia,
+        club_anterior=jugador.club_anterior,
+        observaciones=observaciones.strip(),
+        consentimiento=consentimiento,
+    )
+
+    solicitud.full_clean()
+    solicitud.save()
+
+    return solicitud
+
+def _validar_correo(correo, mensaje):
+    correo = (correo or "").strip()
+    if not correo:
+        raise ValidationError(mensaje)
+    try:
+        validate_email(correo)
+    except ValidationError as exc:
+        raise ValidationError("Debe indicar un correo válido.") from exc
+    return correo
+
+def _preparar_cuenta(titular):
+    """Solo se llama desde la aprobación, dentro de su transacción."""
+    validar_identidad_perfil(titular)
+    correo = _validar_correo(titular.email, "Debe indicar un correo.")
+    rut = normalizar_rut(titular.rut)
+    cuenta = Usuario.objects.select_for_update().filter(rut=rut).first()
+    if cuenta is None:
+        if titular.usuario_id:
+            raise ValidationError("El perfil ya está vinculado a otra cuenta.")
+        cuenta = Usuario.objects.create_user(
+            rut=rut, email=correo, is_active=False,
+            first_name=titular.nombres, last_name=titular.apellidos,
+        )
+        return cuenta
+
+    if titular.usuario_id and titular.usuario_id != cuenta.pk:
+        raise ValidationError("El perfil ya está vinculado a otra cuenta.")
+
+    if isinstance(titular, Jugador):
+        ocupado = Jugador.objects.filter(usuario=cuenta).exclude(pk=titular.pk).exists()
+    else:
+        ocupado = Apoderado.objects.filter(usuario=cuenta).exclude(pk=titular.pk).exists()
+    if ocupado:
+        raise ValidationError("La cuenta ya está asociada a otra persona del mismo perfil.")
+
+    if cuenta.is_staff or cuenta.is_superuser or es_administracion(cuenta):
+        if titular.usuario_id != cuenta.pk:
+            raise ValidationError("El RUT corresponde a una cuenta administrativa; revise la identidad.")
+
+    if cuenta.email and cuenta.email.casefold() != correo.casefold():
+        raise ValidationError("El RUT ya tiene una cuenta con otro correo; revise la identidad.")
+
+    if cuenta.is_active and cuenta.has_usable_password():
+        if not cuenta.email:
+            if isinstance(titular, Apoderado) and titular.usuario_id == cuenta.pk:
+                return cuenta
+            raise ValidationError("La cuenta existente no tiene correo registrado; revise la identidad.")
+        return cuenta
+
+    if cuenta.activado_en is not None or cuenta.has_usable_password():
+        raise ValidationError("La cuenta está deshabilitada y no puede reactivarse por inscripción.")
+
+    if cuenta.is_active:
+        raise ValidationError("La cuenta existente está activa sin contraseña; revise su estado.")
+
+    if not cuenta.email:
+        cuenta.email = correo
+        cuenta.save(update_fields=["email", "updated_at"])
+    return cuenta
+
+
+@transaction.atomic
+def inscribir_jugador(*, datos, solicitante=None, apoderado_existente=None):
+    edad = calcular_edad(datos["fecha_nacimiento"])
+    if apoderado_existente is not None and (
+        solicitante is None or not solicitante.is_authenticated or not solicitante.is_active
+        or apoderado_existente.usuario_id != solicitante.pk
+    ):
+        raise ValidationError(ERROR_IDENTIDAD_INSCRIPCION)
+
+    jugador = Jugador(
+        rut=datos["rut"],
+        nombres=datos["nombres"].strip(),
+        apellidos=datos["apellidos"].strip(),
+        fecha_nacimiento=datos["fecha_nacimiento"],
+        rama=datos["rama"],
+        telefono=(datos.get("telefono") or "").strip(),
+        email=(datos.get("email") or "").strip(),
+        nombre_contacto_emergencia=(datos.get("nombre_contacto_emergencia")or "").strip(),
+        telefono_contacto_emergencia=(datos.get("telefono_contacto_emergencia")or "").strip(),
+        procedencia=datos["procedencia"],
+        club_anterior=(datos.get("club_anterior") or "").strip(),
+        peso_kg=datos.get("peso_kg"),
+        talla_cm=datos.get("talla_cm"),
+    )
+
+    jugador.full_clean()
+    jugador.save()
+
+    apoderado = apoderado_existente
+
+    if edad < 18 and apoderado is None:
+        rut = normalizar_rut(datos["rut_apoderado"])
+        apoderado = Apoderado.objects.select_for_update().filter(rut=rut).first()
+        if apoderado is not None:
+            validar_reutilizacion_apoderado(apoderado, datos)
+        else:
+            apoderado = Apoderado(
+                rut=rut, nombres=datos["nombres_apoderado"].strip(),
+                apellidos=datos["apellidos_apoderado"].strip(),
+                telefono=datos["telefono_apoderado"].strip(),
+                email=datos["email_apoderado"].strip(),
+            )
+        apoderado.full_clean()
+        if apoderado.pk is None:
+            apoderado.save()
+
+    if apoderado is not None:
+        vinculo = ApoderadoJugador(
+            apoderado=apoderado,
+            jugador=jugador,
+            parentesco=(datos.get("parentesco") or "").strip(),
+            es_principal=True,
+            puede_gestionar=True,
+            activo=True,
+        )
+
+        vinculo.full_clean()
+        vinculo.save()
+
+    alerta_tipo = (datos.get("alerta_tipo") or "").strip()
+
+    alerta_descripcion = (datos.get("alerta_descripcion") or "").strip()
+
+    if alerta_tipo and alerta_descripcion:
+        alerta = AlertaSalud(jugador=jugador,tipo=alerta_tipo,descripcion=alerta_descripcion,)
+
+        alerta.full_clean()
+        alerta.save()
+
+    solicitud = crear_solicitud_inscripcion(
+        jugador=jugador,
+        solicitante=solicitante,
+        consentimiento=datos["consentimiento"],
+        observaciones=(datos.get("observaciones") or "").strip(),
+    )
+
+    registrar_auditoria(
+        usuario=solicitante, accion="SOLICITUD_CREADA",
+        entidad="SolicitudInscripcion", entidad_id=solicitud.pk,
+        detalle={"jugador_id": jugador.pk, "estado_nuevo": "PENDIENTE"},
+    )
+    return solicitud

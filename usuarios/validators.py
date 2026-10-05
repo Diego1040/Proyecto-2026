@@ -110,3 +110,13 @@ def validar_relacion_apoderado_jugador(*, jugador, apoderado):
         or (jugador.usuario_id and jugador.usuario_id == apoderado.usuario_id)
     ):
         raise ValidationError(ERROR_IDENTIDAD_INSCRIPCION)
+
+
+def validar_reutilizacion_apoderado(apoderado, datos):
+    """Un perfil público sin cuenta se reutiliza sin modificar su identidad."""
+    if apoderado.usuario_id or any(
+        getattr(apoderado, campo).strip().casefold()
+        != (datos.get(f"{campo}_apoderado") or "").strip().casefold()
+        for campo in ("nombres", "apellidos", "telefono", "email")
+    ):
+        raise ValidationError(ERROR_IDENTIDAD_INSCRIPCION)

@@ -285,7 +285,20 @@ class SolicitudInscripcionAdmin(admin.ModelAdmin):
 
     readonly_fields = (
         "fecha_solicitud",
+        "estado",
+        "revisado_por",
+        "fecha_revision",
+        "motivo_rechazo",
+        "usuario_autorizado",
+        "jugador",
     )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        # Las solicitudes y sus resoluciones se conservan para trazabilidad.
+        return False
 
 @admin.register(HistorialCategoria)
 class HistorialCategoriaAdmin(admin.ModelAdmin):

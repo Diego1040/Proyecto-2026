@@ -1,16 +1,15 @@
 from django.contrib import messages
-from django.contrib.auth import get_user_model, login
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.views.decorators.http import require_GET, require_POST
 from django.db.models import Q  # <<< NUEVO (HU-05)
 from django.shortcuts import get_object_or_404, redirect, render
-from deportivo.permisos import es_entrenador  # NUEVO (HU-07)
+from deportivo.permisos import es_administracion, es_entrenador  # NUEVO (HU-07)
 from deportivo.services import resumen_asistencia_mes  # NUEVO (HU-07)
-from .forms import InscripcionForm
+from .forms import InscripcionJugadorForm, RechazoSolicitudForm
 from .services import (
-    asignar_categoria_automatica,
+    inscribir_jugador,
     aprobar_solicitud_inscripcion,
     cambiar_categoria_manual,          
     marcar_solicitud_en_revision,
@@ -19,6 +18,7 @@ from .services import (
     registrar_auditoria,               
 )
 from .models import (
+    Apoderado,
     ApoderadoJugador,
     Categoria,                         
     HistorialCategoria,               
@@ -30,15 +30,7 @@ from .models import (
 # =========================================================
 # ROLES
 # =========================================================
-def es_administracion(usuario):
-    """
-    Indica si el usuario pertenece al rol Administracion del club.
 
-    Por ahora el rol se maneja con el grupo de Django
-    "Administración". Si el equipo decide otra forma de manejar
-    roles, solo hay que cambiar esta funcion.
-    """
-    return usuario.groups.filter(name="Administración").exists()
 
 
 def inicio(request):
@@ -73,16 +65,6 @@ def panel(request):
 
     if jugador_adulto is not None:
 
-        # Al usar su propia cuenta, se desactiva la gestión activa
-        # del apoderado sobre este jugador, conservando el historial.
-        ApoderadoJugador.objects.filter(
-            jugador=jugador_adulto,
-            activo=True,
-        ).update(
-            activo=False,
-            puede_gestionar=False,
-        )
-
         return redirect("panel_jugador")
 
     if hasattr(usuario, "apoderado"):
@@ -100,11 +82,13 @@ def panel(request):
             telefono = request.POST.get("telefono", "").strip()
             email = request.POST.get("email", "").strip()
 
-            apoderado.telefono = telefono
-            apoderado.save()
+            with transaction.atomic():
+                apoderado.telefono = telefono
+                apoderado.email = email
+                apoderado.save(update_fields=["telefono", "email", "updated_at"])
 
-            usuario.email = email
-            usuario.save(update_fields=["email"])
+                usuario.email = email
+                usuario.save(update_fields=["email"])
 
             messages.success(
                 request,
@@ -113,109 +97,8 @@ def panel(request):
 
             return redirect("panel")
 
-        # -------------------------------------------------
-        # FORMULARIO HU-01
-        # -------------------------------------------------
-        form = InscripcionForm()
-
-        if (
-            request.method == "POST"
-            and request.POST.get("accion") == "inscripcion"
-        ):
-
-            form = InscripcionForm(request.POST)
-
-            print("===================================")
-            print("HU-01: POST RECIBIDO")
-            print(request.POST)
-            print("FORMULARIO VALIDO:", form.is_valid())
-            print("ERRORES:", form.errors)
-            print("===================================")
-
-            if form.is_valid():
-
-                datos = form.cleaned_data
-
-                try:
-
-                    with transaction.atomic():
-
-                        # ---------------------------------
-                        # 1. CREAR JUGADOR
-                        # ---------------------------------
-                        jugador = Jugador.objects.create(
-                         rut=datos["rut"],
-                         nombres=datos["nombres"],
-                         apellidos=datos["apellidos"],
-                         fecha_nacimiento=datos["fecha_nacimiento"],
-                         rama=datos["rama"],
-                         peso_kg=datos["peso_kg"],
-                         talla_cm=datos["talla_cm"],
-                         estado=Jugador.Estado.PENDIENTE,
-                         procedencia=datos["procedencia"],
-                         club_anterior=datos["club_anterior"],
-                        )
-
-                        # Asignar categoria segun edad y rama
-                        asignar_categoria_automatica(jugador)
-
-                        # ---------------------------------
-                        # 2. RELACIONAR APODERADO - JUGADOR
-                        # ---------------------------------
-                        ApoderadoJugador.objects.create(
-                            apoderado=apoderado,
-                            jugador=jugador,
-                            parentesco=datos["parentesco"],
-                            es_principal=True,
-                            puede_gestionar=True,
-                            activo=True,
-                        )
-
-                        # ---------------------------------
-                        # 3. CREAR SOLICITUD
-                        # ---------------------------------
-                        SolicitudInscripcion.objects.create(
-                            jugador=jugador,
-                            solicitante=usuario,
-                            estado=SolicitudInscripcion.Estado.PENDIENTE,
-                            procedencia=datos["procedencia"],
-                            club_anterior=datos["club_anterior"],
-                            consentimiento=datos["consentimiento"],
-                        )
-
-                    messages.success(
-                        request,
-                        (
-                            f"La solicitud de inscripción de "
-                            f"{jugador.nombres} {jugador.apellidos} "
-                            "fue enviada correctamente y quedó "
-                            "pendiente de revisión."
-                        )
-                    )
-
-                    return redirect("panel")
-
-                except Exception as error:
-
-                    print("===================================")
-                    print("ERROR AL GUARDAR HU-01")
-                    print(error)
-                    print("===================================")
-
-                    messages.error(
-                        request,
-                        (
-                            "No fue posible guardar la inscripción. "
-                            "Revisa los datos e inténtalo nuevamente."
-                        )
-                    )
-
-            else:
-
-                messages.error(
-                    request,
-                    "No se pudo enviar la inscripción. Revisa los campos indicados."
-                )
+        if request.method == "POST" and request.POST.get("accion") == "inscripcion":
+            return redirect("agregar_jugador_apoderado")
 
         # -------------------------------------------------
         # OBTENER TODOS LOS JUGADORES DEL APODERADO
@@ -250,7 +133,6 @@ def panel(request):
                 "perfil": "Apoderado",
                 "apoderado": apoderado,
                 "jugadores": jugadores,
-                "form": form,
             },
         )
 
@@ -292,118 +174,12 @@ def panel(request):
 # HU-03 · VALIDACIÓN DE FICHAS
 # =========================================================
 @login_required
+@require_GET
 def validar_fichas(request):
-
-    usuario = request.user
-
-    if not es_administracion(usuario):
-        messages.error(
-            request,
-            "No tienes permiso para validar fichas de inscripción."
-        )
+    if not es_administracion(request.user):
+        messages.error(request, "No tienes permiso para revisar solicitudes.")
         return redirect("panel")
-
-    # -----------------------------------------------------
-    # APROBAR O RECHAZAR
-    # -----------------------------------------------------
-    if request.method == "POST":
-
-        solicitud = get_object_or_404(
-            SolicitudInscripcion.objects.select_related("jugador"),
-            pk=request.POST.get("solicitud_id"),
-        )
-        accion = request.POST.get("accion")
-        motivo = request.POST.get("motivo", "")
-        jugador = solicitud.jugador
-
-        try:
-            with transaction.atomic():
-
-                # Si nadie la ha revisado aun, pasa a "en revision"
-                if solicitud.estado == SolicitudInscripcion.Estado.PENDIENTE:
-                    marcar_solicitud_en_revision(solicitud=solicitud)
-
-                if accion == "aprobar":
-                    aprobar_solicitud_inscripcion(
-                        solicitud=solicitud,
-                        usuario=usuario,
-                    )
-                    messages.success(
-                        request,
-                        f"Ficha de {jugador.nombres} {jugador.apellidos} "
-                        "aprobada. El jugador quedó activo."
-                    )
-
-                elif accion == "rechazar":
-                    rechazar_solicitud_inscripcion(
-                        solicitud=solicitud,
-                        usuario=usuario,
-                        motivo=motivo,
-                    )
-                    messages.success(
-                        request,
-                        f"Ficha de {jugador.nombres} {jugador.apellidos} "
-                        "rechazada."
-                    )
-
-                else:
-                    raise ValidationError("Acción no válida.")
-
-        except ValidationError as error:
-            messages.error(request, " ".join(error.messages))
-
-        return redirect("validar_fichas")
-
-    # -----------------------------------------------------
-    # LISTADO DE FICHAS POR REVISAR
-    # -----------------------------------------------------
-    solicitudes = (
-        SolicitudInscripcion.objects
-        .filter(
-            estado__in=[
-                SolicitudInscripcion.Estado.PENDIENTE,
-                SolicitudInscripcion.Estado.EN_REVISION,
-            ]
-        )
-        .select_related("jugador", "jugador__categoria_actual")
-        .prefetch_related(
-            "jugador__vinculos_apoderados__apoderado",
-            "jugador__alertas_salud",
-        )
-        .order_by("fecha_solicitud")
-    )
-
-    fichas = []
-
-    for solicitud in solicitudes:
-        jugador = solicitud.jugador
-
-        vinculo = next(
-            (v for v in jugador.vinculos_apoderados.all() if v.activo),
-            None,
-        )
-
-        alertas = [
-            alerta.descripcion
-            for alerta in jugador.alertas_salud.all()
-            if alerta.activa
-        ]
-
-        fichas.append({
-            "solicitud": solicitud,
-            "jugador": jugador,
-            "apoderado": vinculo.apoderado if vinculo else None,
-            "parentesco": vinculo.parentesco if vinculo else "",
-            "alertas": alertas,
-        })
-
-    return render(
-        request,
-        "usuarios/validar_fichas.html",
-        {
-            "fichas": fichas,
-        },
-    )
+    return redirect("solicitudes_administracion")
 
 
 
@@ -418,17 +194,6 @@ def panel_jugador(request):
     # vuelve al panel normal.
     if jugador is None:
         return redirect("panel")
-
-    # El jugador adulto administra su propia ficha.
-    # Se desactiva la gestión activa del apoderado,
-    # pero se conserva el historial.
-    ApoderadoJugador.objects.filter(
-        jugador=jugador,
-        activo=True,
-    ).update(
-        activo=False,
-        puede_gestionar=False,
-    )
 
     # ==========================================================
     # ACTUALIZAR DATOS PERSONALES
@@ -464,270 +229,7 @@ def panel_jugador(request):
 
 
 
-def activar_jugador(request):
-    """
-    Permite que un jugador mayor de edad cree y active
-    su propia cuenta sin intervención del administrador.
-    """
 
-    if request.user.is_authenticated:
-        jugador_actual = obtener_jugador_adulto(request.user)
-
-        if jugador_actual is not None:
-            return redirect("panel_jugador")
-
-    datos = {
-        "rut": "",
-        "fecha_nacimiento": "",
-    }
-
-    if request.method == "POST":
-
-        rut = request.POST.get("rut", "").strip()
-        fecha_nacimiento = request.POST.get(
-            "fecha_nacimiento",
-            "",
-        ).strip()
-
-        password1 = request.POST.get(
-            "password1",
-            "",
-        )
-
-        password2 = request.POST.get(
-            "password2",
-            "",
-        )
-
-        datos["rut"] = rut
-        datos["fecha_nacimiento"] = fecha_nacimiento
-
-        # ------------------------------------------------------
-        # NORMALIZAR RUT
-        # ------------------------------------------------------
-        rut = (
-            rut
-            .replace(".", "")
-            .replace(" ", "")
-            .upper()
-        )
-
-        # ------------------------------------------------------
-        # VALIDAR CAMPOS BÁSICOS
-        # ------------------------------------------------------
-        if not rut or not fecha_nacimiento:
-            messages.error(
-                request,
-                "Debes ingresar tu RUT y fecha de nacimiento.",
-            )
-
-            return render(
-                request,
-                "registration/activar_jugador.html",
-                datos,
-            )
-
-        if not password1 or not password2:
-            messages.error(
-                request,
-                "Debes ingresar y confirmar una contraseña.",
-            )
-
-            return render(
-                request,
-                "registration/activar_jugador.html",
-                datos,
-            )
-
-        if password1 != password2:
-            messages.error(
-                request,
-                "Las contraseñas no coinciden.",
-            )
-
-            return render(
-                request,
-                "registration/activar_jugador.html",
-                datos,
-            )
-
-        # ------------------------------------------------------
-        # BUSCAR JUGADOR POR RUT
-        # ------------------------------------------------------
-        jugador = Jugador.objects.filter(
-            rut=rut
-        ).select_related("usuario").first()
-
-        if jugador is None:
-            messages.error(
-                request,
-                "No encontramos un jugador registrado con ese RUT.",
-            )
-
-            return render(
-                request,
-                "registration/activar_jugador.html",
-                datos,
-            )
-
-        # ------------------------------------------------------
-        # COMPROBAR EDAD
-        # ------------------------------------------------------
-        if jugador.edad is None or jugador.edad < 18:
-            messages.error(
-                request,
-                "La activación de cuenta solo está disponible "
-                "para jugadores de 18 años o más.",
-            )
-
-            return render(
-                request,
-                "registration/activar_jugador.html",
-                datos,
-            )
-
-        # ------------------------------------------------------
-        # COMPROBAR SI YA TIENE CUENTA
-        # ------------------------------------------------------
-        if jugador.usuario is not None:
-            messages.error(
-                request,
-                "Este jugador ya tiene una cuenta asociada. "
-                "Puedes iniciar sesión normalmente.",
-            )
-
-            return render(
-                request,
-                "registration/activar_jugador.html",
-                datos,
-            )
-
-        # ------------------------------------------------------
-        # VALIDAR CONTRASEÑA
-        # ------------------------------------------------------
-        try:
-            validate_password(password1)
-
-        except ValidationError as error:
-            for mensaje in error.messages:
-                messages.error(
-                    request,
-                    mensaje,
-                )
-
-            return render(
-                request,
-                "registration/activar_jugador.html",
-                datos,
-            )
-
-        # ------------------------------------------------------
-        # CREAR CUENTA Y VINCULARLA AL JUGADOR
-        # ------------------------------------------------------
-        try:
-
-            with transaction.atomic():
-
-                User = get_user_model()
-
-                # Comprobamos nuevamente que no exista
-                # una cuenta con ese RUT.
-                if User.objects.filter(
-                    rut=rut
-                ).exists():
-
-                    messages.error(
-                        request,
-                        "Ya existe una cuenta con ese RUT.",
-                    )
-
-                    return render(
-                        request,
-                        "registration/activar_jugador.html",
-                        datos,
-                    )
-
-                usuario = User(
-                    rut=rut,
-                )
-
-                # Algunas implementaciones de usuario tienen
-                # estos campos y otras no. Los rellenamos
-                # solamente cuando existen.
-                campos_usuario = {
-                    campo.name
-                    for campo in usuario._meta.fields
-                }
-
-                if "username" in campos_usuario:
-                    usuario.username = rut
-
-                if "first_name" in campos_usuario:
-                    usuario.first_name = jugador.nombres
-
-                if "last_name" in campos_usuario:
-                    usuario.last_name = jugador.apellidos
-
-                if "nombres" in campos_usuario:
-                    usuario.nombres = jugador.nombres
-
-                if "apellidos" in campos_usuario:
-                    usuario.apellidos = jugador.apellidos
-
-                usuario.set_password(password1)
-
-                usuario.save()
-
-                # Vincular cuenta con jugador.
-                jugador.usuario = usuario
-
-                jugador.save(
-                    update_fields=[
-                        "usuario",
-                        "updated_at",
-                    ]
-                )
-
-                # El jugador adulto pasa a administrar
-                # su propia información.
-                ApoderadoJugador.objects.filter(
-                    jugador=jugador,
-                    activo=True,
-                ).update(
-                    activo=False,
-                    puede_gestionar=False,
-                )
-
-        except IntegrityError:
-            messages.error(
-                request,
-                "No fue posible crear la cuenta porque "
-                "el RUT ya está registrado.",
-            )
-
-            return render(
-                request,
-                "registration/activar_jugador.html",
-                datos,
-            )
-
-        # ------------------------------------------------------
-        # INICIAR SESIÓN AUTOMÁTICAMENTE
-        # ------------------------------------------------------
-        login(request, usuario)
-
-        messages.success(
-            request,
-            "Tu cuenta de jugador fue activada correctamente.",
-        )
-
-        return redirect("panel_jugador")
-
-    return render(
-        request,
-        "registration/activar_jugador.html",
-        datos,
-    )
 @login_required
 def categorias_jugadores(request):
 
@@ -861,4 +363,275 @@ def categorias_jugadores(request):
             "cambios_recientes": cambios_recientes,
             "busqueda": busqueda,
         },
+    )
+
+def _agregar_error_validacion(form, exc):
+    if isinstance(exc, IntegrityError):
+        form.add_error(None, "No es posible completar la inscripción. Solicita revisión administrativa.")
+        return
+    if hasattr(exc, "message_dict"):
+        for campo, mensajes in exc.message_dict.items():
+            destino = campo if campo in form.fields else None
+
+            for mensaje in mensajes:
+                form.add_error(destino, mensaje,)
+        return
+
+    for mensaje in exc.messages:
+        form.add_error(None, mensaje,)
+
+
+def inscripcion_publica(request):
+    if request.user.is_authenticated:
+        return redirect("panel")
+
+    if request.method == "POST":
+        form = InscripcionJugadorForm(request.POST)
+
+        if form.is_valid():
+            try:
+                solicitud = inscribir_jugador(
+                    datos=form.cleaned_data,
+                )
+            except (ValidationError, IntegrityError) as exc:
+                _agregar_error_validacion(form, exc)
+            else:
+                request.session["ultima_solicitud_id"] = solicitud.pk
+
+                messages.success(request,"La solicitud fue enviada correctamente.",)
+
+                return redirect("inscripcion_exito")
+    else:
+        form = InscripcionJugadorForm()
+
+    return render(
+        request,
+        "usuarios/inscripcion_form.html",
+        {
+            "form": form,
+            "modo_apoderado": False,
+        },
+    )
+
+
+def inscripcion_exito(request):
+    solicitud_id = request.session.pop("ultima_solicitud_id",None,)
+
+    return render(
+        request,
+        "usuarios/inscripcion_exito.html",
+        {
+            "solicitud_id": solicitud_id,
+        },
+    )
+
+
+@login_required
+def agregar_jugador_apoderado(request):
+    try:
+        apoderado = request.user.apoderado
+    except Apoderado.DoesNotExist:
+        messages.error(
+            request,
+            "Necesitas un perfil de apoderado para agregar jugadores.",
+        )
+        return redirect("panel")
+
+    if request.method == "POST":
+        form = InscripcionJugadorForm(
+            request.POST,
+            apoderado_existente=apoderado,
+        )
+
+        if form.is_valid():
+            try:
+                inscribir_jugador(
+                    datos=form.cleaned_data,
+                    solicitante=request.user,
+                    apoderado_existente=apoderado,
+                )
+            except (ValidationError, IntegrityError) as exc:
+                _agregar_error_validacion(form, exc)
+            else:
+                messages.success(
+                    request,
+                    "La solicitud fue enviada correctamente.",
+                )
+                return redirect("panel")
+    else:
+        form = InscripcionJugadorForm(
+            apoderado_existente=apoderado,
+        )
+
+    return render(
+        request,
+        "usuarios/inscripcion_form.html",
+        {
+            "form": form,
+            "modo_apoderado": True,
+        },
+    )
+
+
+@user_passes_test(
+    es_administracion,
+    login_url="login",
+)
+def solicitudes_administracion(request):
+    estado = request.GET.get("estado", "").strip()
+
+    solicitudes = (
+        SolicitudInscripcion.objects
+        .select_related(
+            "jugador",
+            "jugador__categoria_actual",
+            "revisado_por",
+        )
+        .order_by("-fecha_solicitud")
+    )
+
+    estados_validos = {
+        valor
+        for valor, _ in SolicitudInscripcion.Estado.choices
+    }
+
+    if estado in estados_validos:
+        solicitudes = solicitudes.filter(
+            estado=estado
+        )
+
+    return render(
+        request,
+        "usuarios/solicitudes_lista.html",
+        {
+            "solicitudes": solicitudes,
+            "estado_actual": estado,
+            "estados": SolicitudInscripcion.Estado.choices,
+        },
+    )
+
+
+@user_passes_test(es_administracion, login_url="login",)
+def solicitud_detalle(request, pk):
+    solicitud = get_object_or_404(
+        SolicitudInscripcion.objects
+        .select_related(
+            "jugador",
+            "jugador__categoria_actual",
+            "solicitante",
+            "revisado_por",
+        )
+        .prefetch_related(
+            "jugador__vinculos_apoderados__apoderado",
+            "jugador__alertas_salud",
+        ),
+        pk=pk,
+    )
+
+    rechazo_form = RechazoSolicitudForm()
+
+    return render(
+        request,
+        "usuarios/solicitud_detalle.html",
+        {
+            "solicitud": solicitud,
+            "rechazo_form": rechazo_form,
+        },
+    )
+
+
+@require_POST
+@user_passes_test(es_administracion, login_url="login",)
+def solicitud_iniciar_revision(request, pk):
+    solicitud = get_object_or_404(
+        SolicitudInscripcion,
+        pk=pk,
+    )
+
+    try:
+        marcar_solicitud_en_revision(solicitud=solicitud, usuario=request.user)
+    except ValidationError as exc:
+        messages.error(
+            request,
+            " ".join(exc.messages),
+        )
+    else:
+        messages.success(request, "La solicitud pasó a revisión.",)
+
+    return redirect(
+        "solicitud_detalle",
+        pk=pk,
+    )
+
+
+@require_POST
+@user_passes_test(es_administracion, login_url="login",)
+def solicitud_aprobar(request, pk):
+    solicitud = get_object_or_404(
+        SolicitudInscripcion,
+        pk=pk,
+    )
+
+    try:
+        aprobar_solicitud_inscripcion(
+            solicitud=solicitud,
+            usuario=request.user,
+        )
+    except IntegrityError:
+        messages.error(request, "No fue posible preparar la cuenta. Solicita revisión de identidad.")
+    except ValidationError as exc:
+        messages.error(
+            request,
+            " ".join(exc.messages),
+        )
+    else:
+        messages.success(
+            request,
+            "Solicitud aprobada correctamente.",
+        )
+
+    return redirect(
+        "solicitud_detalle",
+        pk=pk,
+    )
+
+
+@require_POST
+@user_passes_test(es_administracion, login_url="login",)
+def solicitud_rechazar(request, pk):
+    solicitud = get_object_or_404(
+        SolicitudInscripcion,
+        pk=pk,
+    )
+
+    form = RechazoSolicitudForm(
+        request.POST
+    )
+
+    if form.is_valid():
+        try:
+            rechazar_solicitud_inscripcion(
+                solicitud=solicitud,
+                usuario=request.user,
+                motivo=form.cleaned_data["motivo"],
+            )
+        except ValidationError as exc:
+            messages.error(
+                request,
+                " ".join(exc.messages),
+            )
+        else:
+            messages.success(
+                request,
+                "Solicitud rechazada.",
+            )
+    else:
+        messages.error(
+            request,
+            "Debe indicar un motivo válido para rechazar.",
+        )
+
+    return redirect(
+        "solicitud_detalle",
+        pk=pk,
     )

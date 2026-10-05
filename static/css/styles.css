@@ -169,3 +169,43 @@ footer a:hover{color:var(--naranja)}
 .panel dl{display:grid;grid-template-columns:auto 1fr;gap:10px 22px;margin:18px 0 0;font-size:.95rem}
 .panel dt{font-weight:600}
 .panel dd{margin:0;color:var(--gris)}
+
+/* Inscripción y revisión de solicitudes */
+.wrap-formulario{max-width:900px}
+.cab-formulario{margin-bottom:24px}
+.etiqueta-seccion{color:var(--naranja);font-weight:600;margin-bottom:8px}
+.formulario-inscripcion .tarjeta,.gestion-solicitudes .tarjeta{
+  background:var(--blanco);border:1px solid var(--linea);border-radius:6px;padding:24px}
+.formulario-ayllu fieldset{border:0;border-top:1px solid var(--linea);padding:20px 0;margin-bottom:16px}
+.formulario-ayllu legend{font-weight:600;padding-right:12px}
+.rejilla-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.formulario-ayllu input:not([type="checkbox"]):not([type="radio"]),
+.formulario-ayllu select,.formulario-ayllu textarea,
+.gestion-solicitudes select,.gestion-solicitudes textarea{
+  width:100%;border:1px solid var(--linea);border-radius:4px;padding:12px;font:inherit;background:var(--blanco)}
+.formulario-ayllu input[type="checkbox"],.formulario-ayllu input[type="radio"]{width:auto}
+.formulario-ayllu textarea,.gestion-solicitudes textarea{resize:vertical;min-height:100px}
+.formulario-ayllu fieldset[hidden],#bloque-alerta-salud[hidden],#bloque-club-anterior[hidden]{display:none}
+.bloque-ayuda,.resumen-errores{margin-bottom:16px}
+.opcional,.ayuda{color:var(--gris);font-size:.85rem}
+.consentimiento label,.acciones-form{display:flex;gap:12px;align-items:center}
+.acciones-form{flex-wrap:wrap}
+.opciones-radio label{display:flex;gap:8px;align-items:center}
+.formulario-inscripcion .boton,.gestion-solicitudes .boton{font:inherit;cursor:pointer}
+.confirmacion{display:grid;gap:18px}
+.filtro-solicitudes{display:flex;align-items:end;gap:16px;margin:20px 0}
+.filtro-solicitudes .campo{margin-bottom:0}
+.tabla-contenedor{overflow-x:auto}
+.tabla-ayllu{width:100%;border-collapse:collapse}
+.tabla-ayllu th,.tabla-ayllu td{padding:12px;border-bottom:1px solid var(--linea);text-align:left}
+.detalle-solicitud,.acciones-revision{margin-bottom:18px}
+.datos-detalle{display:grid;grid-template-columns:180px minmax(0,1fr);gap:8px 18px}
+.datos-detalle dt{font-weight:600}
+.datos-detalle dd{margin:0;overflow-wrap:anywhere}
+.acciones-revision{display:grid;gap:16px}
+.form-rechazo{border-top:1px solid var(--linea);padding-top:16px}
+.boton-secundario{background:transparent;color:var(--tinta);border:1px solid var(--linea)}
+@media(max-width:700px){
+  .rejilla-form,.datos-detalle{grid-template-columns:1fr}
+  .filtro-solicitudes{flex-direction:column;align-items:stretch}
+}
