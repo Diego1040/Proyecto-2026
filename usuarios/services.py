@@ -160,12 +160,14 @@ def asignar_categoria_automatica(
     jugador.categoria_actual = nueva_categoria
     jugador.save(update_fields=["categoria_actual"])
 
-    HistorialCategoria.objects.create(
+    historial = HistorialCategoria(
         jugador=jugador,
         categoria_anterior=categoria_anterior,
         categoria_nueva=nueva_categoria,
         tipo_cambio=HistorialCategoria.TipoCambio.AUTOMATICO,
     )
+    historial.full_clean()
+    historial.save()
 
     return nueva_categoria
 
@@ -470,6 +472,10 @@ def crear_solicitud_inscripcion(
     - Asigna categoria automaticamente
     - Crea la solicitud en estado pendiente
     """
+
+    # Los históricos pueden omitirla; una inscripción normal sigue exigiéndola.
+    if jugador.procedencia not in Jugador.Procedencia.values:
+        raise ValidationError({"procedencia": "Debe indicar la procedencia para inscribir al jugador."})
 
     if fecha_referencia is None:
         fecha_referencia = timezone.localdate()

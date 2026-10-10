@@ -332,6 +332,7 @@ class Jugador(models.Model):
         max_length=20,
         choices=Procedencia.choices,
         default=Procedencia.INDEPENDIENTE,
+        blank=True,
     )
 
     club_anterior = models.CharField(
