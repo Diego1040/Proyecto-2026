@@ -2,17 +2,24 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
+from django.contrib.auth import get_user_model  #HU-06
 from django.utils import timezone
 
 from .models import Asistencia, Entrenamiento
 from .permisos import categorias_visibles, es_administracion, es_entrenador
 from .services import (
     PLAZO_EDICION_HORAS,
+    actualizar_planificacion,          #HU-06
     es_entrenamiento_antiguo,
+    historial_planificacion,           #HU-06
     jugadores_del_entrenamiento,
+    puede_editar_planificacion,        #HU-06
     puede_modificar,
     registrar_asistencia,
+    responsables_posibles,             #HU-06
+    validar_planificacion,             #HU-06
 )
+from usuarios.services import registrar_auditoria  # HU-06
 
 # Create your views here.
 def _sin_permiso(request):
@@ -34,43 +41,46 @@ def entrenamientos(request):
     if request.method == "POST":
         categoria = categorias.filter(pk=request.POST.get("categoria_id")).first()
 
-        # CAMBIO (HU-07): los datos son obligatorios, sin valores inventados
-        nombre = request.POST.get("nombre", "").strip()
-        fecha = request.POST.get("fecha", "").strip()
-
-        try:
-            duracion = int(request.POST.get("duracion", ""))
-        except ValueError:
-            duracion = 0
-
-        errores = []
-        if categoria is None:
-            errores.append("Elige una de tus categorías.")
-        if not nombre:
-            errores.append("Escribe un nombre para el entrenamiento.")
-        if not fecha:
-            errores.append("Indica la fecha del entrenamiento.")
-        if duracion < 1:
-            errores.append("La duración debe ser de al menos 1 minuto.")
+        #HU-06
+        datos = _leer_planificacion(request.POST)
+        errores = validar_planificacion(categoria=categoria, **datos)
 
         if errores:
             for error in errores:
                 messages.error(request, error)
             return redirect("deportivo:entrenamientos")
-        # FIN CAMBIO
 
         entrenamiento = Entrenamiento.objects.create(
             categoria=categoria,
-            nombre=nombre,
-            fecha=fecha,
-            duracion=duracion,
             creado_por=usuario,
+            **datos,
         )
-        return redirect("deportivo:tomar_asistencia", pk=entrenamiento.pk)
+
+        registrar_auditoria(
+            usuario=usuario,
+            accion="PLANIFICACION_CREADA",
+            entidad="Entrenamiento",
+            entidad_id=entrenamiento.pk,
+            detalle={"nombre": entrenamiento.nombre, "fecha": str(entrenamiento.fecha)},
+        )
+
+        messages.success(request, f"Entrenamiento \"{entrenamiento.nombre}\" planificado.")
+        return redirect("deportivo:entrenamientos")
+        # FIN CAMBIO
 
     # LISTADO
     lista = (
-        Entrenamiento.objects.filter(categoria__in=categorias).select_related("categoria")[:30]
+        Entrenamiento.objects.filter(categoria__in=categorias).select_related("categoria", "responsable")[:30]
+    )
+
+    hoy = timezone.localdate()
+
+    #HU-06
+    proximos = (
+        Entrenamiento.objects
+        .filter(categoria__in=categorias, fecha__gte=hoy)
+        .select_related("categoria", "responsable")
+        .order_by("fecha", "hora_inicio")
     )
 
     filas = [
@@ -80,9 +90,23 @@ def entrenamientos(request):
             "presentes": e.asistencias.filter(estado=Asistencia.Estado.PRESENTE).count(),
         }
         for e in lista
+        if e.fecha < hoy
     ]
 
-    return render(request, "deportivo/entrenamientos.html", {"filas": filas, "categorias": categorias, "hoy": timezone.localdate(), "rol": "Administración" if es_administracion(usuario) else "Entrenador"})
+    # Entrenadores de las categorias visibles (el servidor revisa
+    # despues que el elegido sea de la categoria del entrenamiento)
+    responsables = (
+        get_user_model().objects
+        .filter(
+            is_active=True,
+            groups__name="Entrenador",
+            perfil_entrenador__categorias__in=categorias,
+        )
+        .distinct()
+        .order_by("first_name", "last_name", "rut")
+    )
+
+    return render(request, "deportivo/entrenamientos.html", {"filas": filas, "proximos": proximos, "responsables": responsables, "categorias": categorias, "hoy": hoy, "rol": "Administración" if es_administracion(usuario) else "Entrenador"})
 
 @login_required
 def tomar_asistencia(request, pk):
@@ -138,3 +162,75 @@ def tomar_asistencia(request, pk):
             "rol": "Administración" if es_administracion(usuario) else "Entrenador",
         },
     )
+
+
+#HU-06
+def _leer_planificacion(post):
+    """Lee los campos de la planificacion desde el formulario."""
+    try:
+        duracion = int(post.get("duracion", ""))
+    except ValueError:
+        duracion = 0
+
+    responsable = (
+        get_user_model().objects.filter(pk=post.get("responsable_id")).first()
+        if post.get("responsable_id") else None
+    )
+
+    return {
+        "nombre": post.get("nombre", "").strip(),
+        "fecha": post.get("fecha", "").strip(),
+        "hora_inicio": post.get("hora_inicio", "").strip(),
+        "duracion": duracion,
+        "objetivo": post.get("objetivo", "").strip(),
+        "responsable": responsable,
+    }
+
+
+@login_required
+def editar_planificacion(request, pk):
+    """Modificar la planificacion de un entrenamiento y ver su historial."""
+    usuario = request.user
+
+    if not (es_entrenador(usuario) or es_administracion(usuario)):
+        return _sin_permiso(request)
+
+    entrenamiento = get_object_or_404(
+        Entrenamiento.objects.select_related("categoria", "responsable"),
+        pk=pk,
+        categoria__in=categorias_visibles(usuario),
+    )
+    puede_editar = puede_editar_planificacion(usuario, entrenamiento)
+
+    if request.method == "POST":
+        datos = _leer_planificacion(request.POST)
+        errores = validar_planificacion(categoria=entrenamiento.categoria, **datos)
+
+        if errores:
+            for error in errores:
+                messages.error(request, error)
+            return redirect("deportivo:editar_planificacion", pk=pk)
+
+        try:
+            cambios = actualizar_planificacion(
+                entrenamiento=entrenamiento,
+                usuario=usuario,
+                datos=datos,
+            )
+        except ValidationError as error:
+            messages.error(request, " ".join(error.messages))
+            return redirect("deportivo:editar_planificacion", pk=pk)
+
+        if cambios:
+            messages.success(request, "Planificación actualizada. El cambio quedó en el historial.")
+        else:
+            messages.success(request, "No había cambios que guardar.")
+        return redirect("deportivo:editar_planificacion", pk=pk)
+
+    return render(request, "deportivo/editar_planificacion.html", {
+        "entrenamiento": entrenamiento,
+        "responsables": responsables_posibles(entrenamiento.categoria),
+        "historial": historial_planificacion(entrenamiento),
+        "puede_editar": puede_editar,
+        "rol": "Administración" if es_administracion(usuario) else "Entrenador",
+    })

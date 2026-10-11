@@ -130,7 +130,8 @@ class MigracionesFundacionTest(TransactionTestCase):
         asignaciones_originales = list(
             entrenador.categorias.through.objects.order_by("pk").values(),
         )
-        entrenamiento_original = Entrenamiento.objects.filter(pk=entrenamiento.pk).values().get()
+        EntrenamientoAntiguo = self.apps_antiguas.get_model("deportivo", "Entrenamiento")
+        entrenamiento_original = EntrenamientoAntiguo.objects.filter(pk=entrenamiento.pk).values().get()
         asistencia_original = Asistencia.objects.filter(pk=asistencia.pk).values().get()
 
         self.migrar()
@@ -170,7 +171,7 @@ class MigracionesFundacionTest(TransactionTestCase):
         solicitud_nueva = SolicitudInscripcion.objects.get(pk=solicitud.pk)
         self.assertEqual(solicitud_nueva.estado, "APROBADA")
         self.assertIsNone(solicitud_nueva.usuario_autorizado_id)
-        self.assertEqual(Entrenamiento.objects.filter(pk=entrenamiento.pk).values().get(), entrenamiento_original)
+        self.assertEqual(EntrenamientoAntiguo.objects.filter(pk=entrenamiento.pk).values().get(), entrenamiento_original)         
         self.assertEqual(Asistencia.objects.filter(pk=asistencia.pk).values().get(), asistencia_original)
         self.assertEqual(Asistencia.objects.get(pk=asistencia.pk).jugador_id, jugadora.pk)
         self.assertEqual(list(PerfilEntrenador.categorias.through.objects.order_by("pk").values()),

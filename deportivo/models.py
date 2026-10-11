@@ -12,6 +12,16 @@ class Entrenamiento(models.Model):
     fecha = models.DateField()
     creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='entrenamientos_creados')
     creado_en = models.DateTimeField(auto_now_add=True)
+    #HU-06
+    hora_inicio = models.TimeField(null=True, blank=True)
+    objetivo = models.TextField(blank=True)
+    responsable = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='entrenamiento_a_cargo',
+    )
 
     class Meta:
         ordering = ['-fecha', '-creado_en']

@@ -112,3 +112,112 @@ def resumen_asistencia_mes(jugador, hoy=None):
         "justificadas": justificadas,
         "porcentaje": round(presentes * 100 / total) if total else None,
     }
+
+#HU-06
+def responsables_posibles(categoria):
+    """Entreadores que tienen una categoria asignada"""
+    from django.contrib.auth import get_user_model
+
+    return (
+        get_user_model().objects.filter(
+            is_active=True,
+            groups__name="Entrenador",
+            perfil_entrenador__categorias=categoria,
+        )
+        .distinct()
+        .order_by("first_name", "last_name", "rut")
+    )
+
+def validar_planificacion(*, categoria, nombre, fecha, hora_inicio, duracion, objetivo, responsable):
+    """Revisa los datos que son obligatorios de HU-06 y devuelve la lista de errores"""
+    errores = []
+
+    if not nombre:
+        errores.append("Escribe un nombre para el entrenamiento.")
+    if not fecha:
+        errores.append("Indica la fecha del entrenamiento.")
+    if not hora_inicio:
+        errores.append("Indica la hora del entrenamiento.")
+    if duracion < 1:
+        errores.append("La duración debe ser de al menos 1 minuto.")
+    if not objetivo:
+        errores.append("Escribe el objetivo del entrenamiento.")
+    if responsable is None:
+        errores.append("Elige el entrenador responsable.")
+    elif categoria is not None and not responsables_posibles(categoria).filter(pk=responsable.pk).exists():
+        errores.append("El responsable debe ser un entrenador de esa categoría.")
+
+    return errores
+
+def puede_editar_planificacion(usuario, entrenamiento):
+    """
+    La planificacion se puede cambiar hasta el dia del entrenamiento.
+    Despues de eso solo Administracion puede corregirla.
+    """
+    if es_administracion(usuario):
+        return True
+    return entrenamiento.fecha >= timezone.localdate()
+
+CAMPOS_PLANIFICACION = ["nombre", "fecha", "hora_inicio", "duracion", "objetivo", "responsable"]
+
+def _valor_legible(entrenamiento, campo):
+    valor = getattr(entrenamiento, campo)
+    if valor is None:
+        return ""
+    if campo == "responsable":
+        return valor.get_full_name() or str(valor)
+    if campo == "fecha":
+        return valor.strftime("%d/%m/%Y")
+    if campo == "hora_inicio":
+        return valor.strftime("%H:%M")
+    return str(valor)
+
+@transaction.atomic
+def actualizar_planificacion(*, entrenamiento, usuario, datos):
+    """
+    Guarda los cambios de la planificacion y deja el historial
+    (antes y despues de cada campo) en la auditoria.
+    """
+    if not puede_editar_planificacion(usuario, entrenamiento):
+        raise ValidationError(
+            "El entrenamiento ya pasó. Solo Administración puede modificarlo."
+        )
+    antes = {c: _valor_legible(entrenamiento, c) for c in CAMPOS_PLANIFICACION}
+
+    for campo, valor in datos.items():
+        setattr(entrenamiento, campo, valor)
+    entrenamiento.save()
+    entrenamiento.refresh_from_db()
+
+    despues = {c: _valor_legible(entrenamiento, c) for c in CAMPOS_PLANIFICACION}
+    cambios = {
+        c: {"antes": antes[c], "despues": despues[c]}
+        for c in CAMPOS_PLANIFICACION
+        if antes[c] != despues[c]
+    }
+
+    if cambios:
+        registrar_auditoria(
+            usuario=usuario,
+            accion="PLANIFICACION_MODIFICADA",
+            entidad="Entrenamiento",
+            entidad_id=entrenamiento.pk,
+            detalle=cambios,
+        )
+
+    return cambios
+
+def historial_planificacion(entrenamiento):
+    """Cambios registrados de un entrenamiento, del mas reciente al mas antiguo."""
+    from usuarios.models import Auditoria
+
+    return (
+        Auditoria.objects
+        .filter(
+            entidad="Entrenamiento",
+            entidad_id=entrenamiento.pk,
+            accion__in=["PLANIFICACION_CREADA", "PLANIFICACION_MODIFICADA"],
+        )
+        .select_related("usuario")
+        .order_by("-fecha")
+    )
