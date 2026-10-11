@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     # App del proyecto
     'usuarios.apps.UsuariosConfig',
     'deportivo',
+    'finanzas',
 ]
 
 AUTH_USER_MODEL = 'usuarios.Usuario'

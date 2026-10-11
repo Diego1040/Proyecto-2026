@@ -5,6 +5,8 @@ from django.contrib import admin
 from django.urls import include, path
 from usuarios.views import ConfirmarRecuperacionView
 
+from django.urls import include, path
+
 urlpatterns = [
     path("admin/", admin.site.urls),
 
@@ -16,4 +18,5 @@ urlpatterns = [
 
     path("", include("usuarios.urls")),
     path("deportivo/", include("deportivo.urls")),
+    path("finanzas/", include("finanzas.urls")),
 ]

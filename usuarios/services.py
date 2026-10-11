@@ -200,7 +200,7 @@ def tiene_excepcion_manual(jugador):
     if jugador.pk is None:
         return False
 
-    ultimo = jugador.historial_categorias.order_by("-fecha").first()
+    ultimo = jugador.historial_categorias.order_by("-fecha", "-pk").first()
 
     return (
         ultimo is not None

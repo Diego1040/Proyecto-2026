@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mis cuotas | Ayllu Basket</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 35px auto; padding: 0 18px; color: #222; }
+        .cuota { border: 1px solid #ddd; border-radius: 8px; padding: 18px; margin: 14px 0; }
+        .btn { background: #e8552a; color: white; border: 0; padding: 10px 16px; border-radius: 5px; cursor: pointer; }
+        .estado { font-weight: bold; }
+        .mensaje { padding: 10px; background: #f4f3f1; margin: 8px 0; }
+    </style>
+</head>
+<body>
+    <h1>Mis cuotas</h1>
+    <p>Consulta las cuotas de tus jugadores y paga las que estén pendientes.</p>
+
+    {% for message in messages %}
+        <p class="mensaje">{{ message }}</p>
+    {% endfor %}
+
+    {% for cuota in cuotas %}
+        <section class="cuota">
+            <h2>{{ cuota.jugador.nombres }} {{ cuota.jugador.apellidos }}</h2>
+
+            <p>Concepto: {{ cuota.concepto }}</p>
+            <p>Período: {{ cuota.periodo|date:"m/Y" }}</p>
+            <p>Vencimiento: {{ cuota.fecha_vencimiento|date:"d/m/Y" }}</p>
+            <p>Monto: ${{ cuota.monto|floatformat:0 }}</p>
+            <p class="estado">Estado: {{ cuota.get_estado_display }}</p>
+
+            {% if cuota.estado == "PENDIENTE" %}
+                {% if cuota.pago_en_curso %}
+    <p>
+        Existe un intento de pago en curso.
+        Puedes intentar continuar con esa misma operación.
+    </p>
+
+    <form
+        method="post"
+        action="{% url 'finanzas:reanudar_pago' cuota.id %}"
+    >
+        {% csrf_token %}
+        <button class="btn" type="submit">
+            Reanudar pago
+        </button>
+    </form>
+{% else %}
+                    <form method="post" action="{% url 'finanzas:iniciar_pago' cuota.id %}">
+                        {% csrf_token %}
+                        <button class="btn" type="submit">Pagar con Webpay</button>
+                    </form>
+                {% endif %}
+            {% endif %}
+        </section>
+    {% empty %}
+        <p>No tienes cuotas registradas.</p>
+    {% endfor %}
+</body>
+</html>
