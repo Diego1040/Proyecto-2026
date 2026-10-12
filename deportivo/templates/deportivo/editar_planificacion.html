@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<title>Ayllu Basket — Planificación</title>
+{% include "deportivo/_estilos.html" %}
+<style>
+.volver{color:var(--gris);font-size:.9rem;text-decoration:none}
+.volver:hover{color:var(--tinta)}
+.cambio{padding:14px 16px;border-top:1px solid var(--linea);font-size:.92rem}
+.cambio:first-child{border-top:0}
+.cambio small{color:var(--gris);display:block;margin-bottom:4px}
+.cambio ul{margin:0;padding-left:18px}
+fieldset{border:0;margin:0;padding:0;min-width:0;display:grid;gap:14px}
+</style>
+</head>
+<body>
+{% include "deportivo/_barra.html" %}
+ 
+<main><div class="wrap">
+ 
+  <div class="cabecera">
+    <a href="{% url 'deportivo:entrenamientos' %}" class="volver">← Entrenamientos</a>
+    <h1 style="margin-top:8px">{{ entrenamiento.nombre }}</h1>
+    <p class="sub">{{ entrenamiento.categoria }} · {{ entrenamiento.fecha|date:"l d/m/Y" }}</p>
+  </div>
+ 
+  {% if messages %}
+    <div class="mensajes">
+      {% for mensaje in messages %}
+        <div class="mensaje {{ mensaje.tags }}">{{ mensaje }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+ 
+  {% if not puede_editar %}
+    <div class="aviso">Este entrenamiento ya pasó. Solo Administración puede modificar su planificación.</div>
+  {% endif %}
+ 
+  <form method="post" class="tarjeta pad">
+    {% csrf_token %}
+    <fieldset {% if not puede_editar %}disabled{% endif %}>
+      <div class="fila">
+        <label class="campo">Nombre
+          <input type="text" name="nombre" value="{{ entrenamiento.nombre }}" required>
+        </label>
+        <label class="campo">Responsable
+          <select name="responsable_id" required>
+            <option value="">Elige un entrenador</option>
+            {% for r in responsables %}
+              <option value="{{ r.pk }}" {% if r == entrenamiento.responsable %}selected{% endif %}>{{ r.get_full_name|default:r.rut }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <div class="fila">
+        <label class="campo">Fecha
+          <input type="date" name="fecha" value="{{ entrenamiento.fecha|date:'Y-m-d' }}" required>
+        </label>
+        <label class="campo">Hora de inicio
+          <input type="time" name="hora_inicio" value="{{ entrenamiento.hora_inicio|time:'H:i' }}" required>
+        </label>
+      </div>
+      <label class="campo">Duración (minutos)
+        <input type="number" name="duracion" value="{{ entrenamiento.duracion }}" min="1" required>
+      </label>
+      <label class="campo">Objetivo
+        <textarea name="objetivo" required>{{ entrenamiento.objetivo }}</textarea>
+      </label>
+      {% if puede_editar %}
+        <div><button type="submit" class="btn">Guardar cambios</button></div>
+      {% endif %}
+    </fieldset>
+  </form>
+ 
+  <h2>Historial de la planificación</h2>
+  <div class="tarjeta">
+    {% for registro in historial %}
+      <div class="cambio">
+        <small>{{ registro.fecha|date:"d/m/Y H:i" }} · {{ registro.usuario.get_full_name|default:registro.usuario.rut }}</small>
+        {% if registro.accion == "PLANIFICACION_CREADA" %}
+          Creó la planificación.
+        {% else %}
+          <ul>
+            {% for campo, valores in registro.detalle.items %}
+              <li><b>{{ campo|capfirst }}:</b> {{ valores.antes|default:"(vacío)" }} → {{ valores.despues|default:"(vacío)" }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    {% empty %}
+      <p class="vacio">Sin cambios registrados.</p>
+    {% endfor %}
+  </div>
+ 
+</div></main>
+</body>
+</html>
