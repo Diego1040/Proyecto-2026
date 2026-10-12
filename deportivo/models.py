@@ -61,3 +61,36 @@ class PerfilEntrenador(models.Model):
 
     def __str__(self):
         return f"Entrenador: {self.usuario.username}"
+
+class Evento(models.Model):
+    class Tipo(models.TextChoices):
+        PARTIDO = "PARTIDO", "Partido"
+        VIAJE = "VIAJE", "Viaje"
+        CAMPEONATO = "CAMPEONATO", "Campeonato"
+        CLUB = "CLUB", "Actividad del club"
+
+    tipo = models.CharField(max_length=20, choices=Tipo.choices)
+    titulo = models.CharField(max_length=150)
+    categoria = models.ForeignKey(
+        Categoria,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="eventos",
+    )
+    fecha = models.DateField()
+    hora = models.TimeField()
+    lugar = models.CharField(max_length=200)
+    descripcion = models.TextField(blank=True)
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="eventos_creados",
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["fecha", "hora"]
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} - {self.titulo} ({self.fecha:%d-%m-%Y})"

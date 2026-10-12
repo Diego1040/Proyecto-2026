@@ -4,10 +4,18 @@ from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth import get_user_model  #HU-06
 from django.utils import timezone
+from datetime import date as _date, time as _time
 
-from .models import Asistencia, Entrenamiento
+from django.views.decorators.http import require_POST
+
+from .models import Asistencia, Entrenamiento, Evento
 from .permisos import categorias_visibles, es_administracion, es_entrenador
 from .services import (
+    categorias_del_usuario,
+    eventos_visibles,
+    puede_eliminar_evento,
+    puede_publicar_eventos,
+    validar_evento,
     PLAZO_EDICION_HORAS,
     actualizar_planificacion,          #HU-06
     es_entrenamiento_antiguo,
@@ -234,3 +242,107 @@ def editar_planificacion(request, pk):
         "puede_editar": puede_editar,
         "rol": "Administración" if es_administracion(usuario) else "Entrenador",
     })
+
+def _leer_fecha(texto):
+    try:
+        return _date.fromisoformat(texto)
+    except (TypeError, ValueError):
+        return None
+
+
+def _leer_hora(texto):
+    try:
+        return _time.fromisoformat(texto)
+    except (TypeError, ValueError):
+        return None
+
+
+@login_required
+def calendario(request):
+    """Calendario deportivo: todos lo consultan, Administración y entrenadores publican."""
+    usuario = request.user
+    publicar = puede_publicar_eventos(usuario)
+
+    # PUBLICAR EVENTO
+    if request.method == "POST":
+        if not publicar:
+            messages.error(request, "No tienes permiso para publicar eventos.")
+            return redirect("deportivo:calendario")
+
+        categoria_pedida = request.POST.get("categoria_id", "")
+        categoria = None
+        if categoria_pedida:
+            categoria = categorias_visibles(usuario).filter(pk=categoria_pedida).first()
+
+        datos = {
+            "tipo": request.POST.get("tipo", ""),
+            "titulo": request.POST.get("titulo", "").strip(),
+            "fecha": _leer_fecha(request.POST.get("fecha")),
+            "hora": _leer_hora(request.POST.get("hora")),
+            "lugar": request.POST.get("lugar", "").strip(),
+        }
+        errores = validar_evento(
+            usuario=usuario,
+            categoria=categoria,
+            categoria_pedida=categoria_pedida,
+            **datos,
+        )
+        if errores:
+            for error in errores:
+                messages.error(request, error)
+            return redirect("deportivo:calendario")
+
+        evento = Evento.objects.create(
+            categoria=categoria,
+            descripcion=request.POST.get("descripcion", "").strip(),
+            creado_por=usuario,
+            **datos,
+        )
+        registrar_auditoria(
+            usuario=usuario,
+            accion="EVENTO_CREADO",
+            entidad="Evento",
+            entidad_id=evento.pk,
+            detalle={"titulo": evento.titulo, "fecha": str(evento.fecha)},
+        )
+        messages.success(request, f"Evento \"{evento.titulo}\" publicado.")
+        return redirect("deportivo:calendario")
+
+    # CONSULTAR (con filtro por categoría)
+    mis_categorias = categorias_del_usuario(usuario)
+    filtro = mis_categorias.filter(pk=request.GET.get("categoria") or None).first()
+
+    eventos = eventos_visibles(usuario, categoria=filtro, desde=timezone.localdate())
+    for evento in eventos:
+        evento.se_puede_eliminar = publicar and puede_eliminar_evento(usuario, evento)
+
+    return render(request, "deportivo/calendario.html", {
+        "eventos": eventos,
+        "mis_categorias": mis_categorias,
+        "filtro": filtro,
+        "puede_publicar": publicar,
+        "categorias_publicar": categorias_visibles(usuario) if publicar else [],
+        "es_admin": es_administracion(usuario),
+        "tipos": Evento.Tipo.choices,
+        "hoy": timezone.localdate(),
+    })
+
+
+@login_required
+@require_POST
+def eliminar_evento(request, pk):
+    evento = get_object_or_404(Evento, pk=pk)
+    if not (puede_publicar_eventos(request.user) and puede_eliminar_evento(request.user, evento)):
+        messages.error(request, "No tienes permiso para eliminar este evento.")
+        return redirect("deportivo:calendario")
+
+    registrar_auditoria(
+        usuario=request.user,
+        accion="EVENTO_ELIMINADO",
+        entidad="Evento",
+        entidad_id=evento.pk,
+        detalle={"titulo": evento.titulo, "fecha": str(evento.fecha)},
+    )
+    evento.delete()
+    messages.success(request, "Evento eliminado.")
+    return redirect("deportivo:calendario")

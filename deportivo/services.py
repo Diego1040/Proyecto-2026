@@ -4,7 +4,10 @@ from datetime import datetime, time, timedelta
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
-
+from django.db.models import Q
+from usuarios.models import Categoria
+from .models import Evento
+from .permisos import categorias_visibles, es_entrenador
 from usuarios.models import Jugador
 from usuarios.services import registrar_auditoria
 
@@ -221,3 +224,78 @@ def historial_planificacion(entrenamiento):
         .select_related("usuario")
         .order_by("-fecha")
     )
+
+def puede_publicar_eventos(usuario):
+    """Admnistración y entrenadores pueden publicar eventos"""
+    return es_administracion(usuario) or es_entrenador(usuario)
+
+def categorias_del_usuario(usuario):
+    """
+    Categorías cuyo calendario puede consultar el usuario.
+    - Administración: todas las activas.
+    - Entrenador: sus categorías asignadas.
+    - Jugador: su categoría actual.
+    - Apoderado: las categorías de sus jugadores vinculados.
+    Un usuario puede tener varios perfiles, por eso se suman.
+    """
+    if es_administracion(usuario):
+        return Categoria.objects.filter(activa=True)
+
+    ids = set(categorias_visibles(usuario).values_list("pk", flat=True))
+
+    jugador = getattr(usuario, "jugador", None)
+    if jugador and jugador.categoria_actual_id:
+        ids.add(jugador.categoria_actual_id)
+
+    apoderado = getattr(usuario, "apoderado", None)
+    if apoderado:
+        ids.update(
+            apoderado.vinculos_jugadores.filter(activo=True, jugador__categoria_actual__isnull=False).values_list("jugador__categoria_actual_id", flat=True)
+        )
+
+    return Categoria.objects.filter(pk__in=ids)
+
+def eventos_visibles(usuario, categoria=None, desde=None):
+    """
+    Eventos que ve el usuario: los de sus categorías y los de todo el club.
+    Si se indica una categoría, filtra solo esa (más los del club).
+    """
+    categorias = categorias_del_usuario(usuario)
+    if categoria is not None:
+        categorias = categorias.filter(pk=categoria.pk)
+
+    eventos = Evento.objects.filter(Q(categoria__in=categorias) | Q(categoria__isnull=True)).select_related("categoria")
+    if desde is not None:
+        eventos = eventos.filter(fecha__gte=desde)
+
+    return eventos.order_by("fecha", "hora")
+
+def validar_evento(*, usuario, tipo, titulo, categoria, categoria_pedida, fecha, hora, lugar):
+    """Devuelve la lista de errores del formulario de evento (vacía = OK)."""
+    errores = []
+
+    if tipo not in Evento.Tipo.values:
+        errores.append("Selecciona un tipo de evento válido.")
+    if not titulo:
+        errores.append("El título es obligatorio.")
+    if not fecha:
+        errores.append("La fecha es obligatoria.")
+    elif fecha < timezone.localdate():
+        errores.append("No se pueden publicar eventos en fechas pasadas.")
+    if not hora:
+        errores.append("La hora es obligatoria.")
+    if not lugar:
+        errores.append("El lugar es obligatorio.")
+
+    # Pidió una categoría pero no es una de las suyas
+    if categoria_pedida and categoria is None:
+        errores.append("No puedes publicar eventos para esa categoría.")
+    # Solo Administración publica eventos para todo el club
+    if not categoria_pedida and not es_administracion(usuario):
+        errores.append("Solo Administración puede publicar eventos para todo el club.")
+
+    return errores
+
+def puede_eliminar_evento(usuario, evento):
+    """Administración elimina cualquiera; el entrenador solo los que creó."""
+    return es_administracion(usuario) or evento.creado_por_id == usuario.pk

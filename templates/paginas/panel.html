@@ -76,6 +76,16 @@
           <a class="boton" href="{% url 'deportivo:entrenamientos' %}">Ver entrenamientos</a>
         </article>
       {% endif %}
+      {% if perfiles %}
+        <article class="tarjeta opcion-panel">
+          <div class="opcion-panel-contenido">
+            <p class="etiqueta-seccion">Calendario</p>
+            <h2>Calendario deportivo</h2>
+            <p>Partidos, viajes, campeonatos y actividades por categoría.</p>
+          </div>
+          <a class="boton" href="{% url 'deportivo:calendario' %}">Ver calendario</a>
+        </article>
+      {% endif %}
       {% if user.is_staff %}
         <article class="tarjeta opcion-panel">
           <h2>Django Admin</h2>

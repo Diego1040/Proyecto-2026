@@ -11,10 +11,16 @@ urlpatterns = [
         views.tomar_asistencia,
         name="tomar_asistencia",
     ),
-    # NUEVO HU-06
+    # HU-06
     path(
         "entrenamientos/<int:pk>/planificacion/",
         views.editar_planificacion,
         name="editar_planificacion",
+    ),
+    path("calendario/", views.calendario, name="calendario"),
+    path(
+        "calendario/<int:pk>/eliminar/",
+        views.eliminar_evento,
+        name="eliminar_evento",
     ),
 ]

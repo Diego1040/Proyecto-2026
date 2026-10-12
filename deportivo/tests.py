@@ -7,9 +7,9 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
  
-from usuarios.models import Auditoria, Categoria, Jugador
+from usuarios.models import Auditoria, Categoria, Jugador, Apoderado, ApoderadoJugador
  
-from .models import Asistencia, Entrenamiento, PerfilEntrenador
+from .models import Asistencia, Entrenamiento, PerfilEntrenador, Evento
  
  
 class AsistenciaTest(TestCase):
@@ -310,3 +310,166 @@ class PlanificacionTest(TestCase):
         Asistencia.objects.create(entrenamiento=e, jugador=jugador, estado="PRESENTE", registrado_por=self.entrenador)
         with self.assertRaises(ProtectedError):
             e.delete()
+
+class CalendarioTest(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("cargar_categorias", verbosity=0)
+        Usuario = get_user_model()
+
+        cls.u15 = Categoria.objects.get(nombre="U15 Varones")
+        cls.u13 = Categoria.objects.get(nombre="U13 Damas")
+
+        cls.entrenador = Usuario.objects.create_user(rut="33333333-3", password="clave-segura-123")
+        cls.entrenador.groups.add(Group.objects.get_or_create(name="Entrenador")[0])
+        PerfilEntrenador.objects.create(usuario=cls.entrenador).categorias.add(cls.u15)
+
+        cls.secretaria = Usuario.objects.create_user(rut="22222222-2", password="clave-segura-123")
+        cls.secretaria.groups.add(Group.objects.get_or_create(name="Administración")[0])
+
+        # Apoderada de Tomás (U15)
+        cls.mama = Usuario.objects.create_user(rut="12345678-5", password="clave-segura-123")
+        apoderada = Apoderado.objects.create(
+            usuario=cls.mama, rut="12345678-5", nombres="Patricia",
+            apellidos="Vergara", telefono="+56911111111",
+        )
+        tomas = Jugador.objects.create(
+            rut="22333444-K", nombres="Tomas", apellidos="Vergara",
+            fecha_nacimiento=date(2012, 2, 1), rama=Categoria.Rama.VARONES,
+            estado=Jugador.Estado.ACTIVO, categoria_actual=cls.u15,
+        )
+        ApoderadoJugador.objects.create(
+            apoderado=apoderada, jugador=tomas, parentesco="MADRE", es_principal=True,
+        )
+
+        cls.otro = Usuario.objects.create_user(rut="11111111-1", password="clave-segura-123")
+
+    def evento(self, categoria=None, dias=3, titulo="Partido"):
+        return Evento.objects.create(
+            tipo=Evento.Tipo.PARTIDO, titulo=titulo, categoria=categoria,
+            fecha=timezone.localdate() + timedelta(days=dias), hora="10:00",
+            lugar="Gimnasio Epicentro", creado_por=self.secretaria,
+        )
+
+    def datos(self, **cambios):
+        base = {
+            "tipo": "PARTIDO",
+            "titulo": "Ayllu vs Arica",
+            "categoria_id": self.u15.pk,
+            "fecha": (timezone.localdate() + timedelta(days=5)).isoformat(),
+            "hora": "11:00",
+            "lugar": "Gimnasio Epicentro",
+            "descripcion": "",
+        }
+        base.update(cambios)
+        return base
+
+    # ---------- consultar ----------
+
+    def test_panel_muestra_acceso_al_calendario(self):
+        self.client.force_login(self.mama)
+        respuesta = self.client.get(reverse("panel"))
+        self.assertContains(respuesta, reverse("deportivo:calendario"))
+
+    def test_apoderada_ve_eventos_de_su_categoria_y_del_club(self):
+        self.evento(self.u15, titulo="Partido U15")
+        self.evento(None, titulo="Aniversario del club")
+        self.evento(self.u13, titulo="Partido U13")
+
+        self.client.force_login(self.mama)
+        respuesta = self.client.get(reverse("deportivo:calendario"))
+
+        self.assertContains(respuesta, "Partido U15")
+        self.assertContains(respuesta, "Aniversario del club")
+        self.assertContains(respuesta, "Gimnasio Epicentro")
+        self.assertNotContains(respuesta, "Partido U13")
+
+    def test_no_muestra_eventos_pasados(self):
+        self.evento(self.u15, dias=-1, titulo="Partido de ayer")
+        self.client.force_login(self.mama)
+        respuesta = self.client.get(reverse("deportivo:calendario"))
+        self.assertNotContains(respuesta, "Partido de ayer")
+
+    def test_filtro_por_categoria(self):
+        self.evento(self.u15, titulo="Partido U15")
+        self.evento(self.u13, titulo="Partido U13")
+
+        self.client.force_login(self.secretaria)
+        respuesta = self.client.get(reverse("deportivo:calendario"), {"categoria": self.u13.pk})
+
+        self.assertContains(respuesta, "Partido U13")
+        self.assertNotContains(respuesta, "Partido U15")
+
+    def test_usuario_sin_perfil_solo_ve_eventos_del_club(self):
+        self.evento(self.u15, titulo="Partido U15")
+        self.evento(None, titulo="Aniversario del club")
+
+        self.client.force_login(self.otro)
+        respuesta = self.client.get(reverse("deportivo:calendario"))
+
+        self.assertContains(respuesta, "Aniversario del club")
+        self.assertNotContains(respuesta, "Partido U15")
+
+    def test_sin_sesion_redirige_al_login(self):
+        respuesta = self.client.get(reverse("deportivo:calendario"))
+        self.assertEqual(respuesta.status_code, 302)
+        self.assertIn(reverse("login"), respuesta.url)
+
+    # ---------- publicar ----------
+
+    def test_entrenador_publica_evento_de_su_categoria(self):
+        self.client.force_login(self.entrenador)
+        self.client.post(reverse("deportivo:calendario"), self.datos())
+
+        evento = Evento.objects.get()
+        self.assertEqual(evento.categoria, self.u15)
+        self.assertEqual(evento.creado_por, self.entrenador)
+        self.assertTrue(Auditoria.objects.filter(accion="EVENTO_CREADO", entidad_id=evento.pk).exists())
+
+    def test_entrenador_no_publica_en_categoria_ajena(self):
+        self.client.force_login(self.entrenador)
+        self.client.post(reverse("deportivo:calendario"), self.datos(categoria_id=self.u13.pk))
+        self.assertFalse(Evento.objects.exists())
+
+    def test_entrenador_no_publica_para_todo_el_club(self):
+        self.client.force_login(self.entrenador)
+        self.client.post(reverse("deportivo:calendario"), self.datos(categoria_id=""))
+        self.assertFalse(Evento.objects.exists())
+
+    def test_administracion_publica_para_todo_el_club(self):
+        self.client.force_login(self.secretaria)
+        self.client.post(reverse("deportivo:calendario"), self.datos(categoria_id="", tipo="CLUB"))
+        evento = Evento.objects.get()
+        self.assertIsNone(evento.categoria)
+
+    def test_apoderada_no_puede_publicar(self):
+        self.client.force_login(self.mama)
+        self.client.post(reverse("deportivo:calendario"), self.datos())
+        self.assertFalse(Evento.objects.exists())
+
+    def test_no_publica_con_datos_vacios(self):
+        self.client.force_login(self.secretaria)
+        self.client.post(reverse("deportivo:calendario"), self.datos(titulo="", lugar="", hora="", fecha=""))
+        self.assertFalse(Evento.objects.exists())
+
+    def test_no_publica_en_fecha_pasada(self):
+        self.client.force_login(self.secretaria)
+        ayer = (timezone.localdate() - timedelta(days=1)).isoformat()
+        self.client.post(reverse("deportivo:calendario"), self.datos(fecha=ayer))
+        self.assertFalse(Evento.objects.exists())
+
+    # ---------- eliminar ----------
+
+    def test_entrenador_no_elimina_evento_de_otro(self):
+        evento = self.evento(self.u15)  # lo creó la secretaria
+        self.client.force_login(self.entrenador)
+        self.client.post(reverse("deportivo:eliminar_evento", args=[evento.pk]))
+        self.assertTrue(Evento.objects.filter(pk=evento.pk).exists())
+
+    def test_administracion_elimina_y_queda_auditoria(self):
+        evento = self.evento(self.u15)
+        self.client.force_login(self.secretaria)
+        self.client.post(reverse("deportivo:eliminar_evento", args=[evento.pk]))
+        self.assertFalse(Evento.objects.filter(pk=evento.pk).exists())
+        self.assertTrue(Auditoria.objects.filter(accion="EVENTO_ELIMINADO", entidad_id=evento.pk).exists())
