@@ -26,4 +26,20 @@ urlpatterns = [
     views.reanudar_pago,
     name="reanudar_pago",
 ),
+
+path(
+    "tesoreria/",
+    views.panel_tesoreria,
+    name="tesoreria",
+),
+path(
+    "tesoreria/cuotas/nueva/",
+    views.crear_cuota,
+    name="crear_cuota",
+),
+path(
+    "tesoreria/cuotas/<int:cuota_id>/registrar-pago/",
+    views.registrar_pago_manual,
+    name="registrar_pago_manual",
+),
 ]

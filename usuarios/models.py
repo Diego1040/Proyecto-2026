@@ -271,6 +271,15 @@ class Jugador(models.Model):
         related_name="jugador",
     )
 
+    becado = models.BooleanField(
+    default=False,
+    verbose_name="Beca completa",
+    help_text=(
+        "Si está activada, el jugador queda exento "
+        "de la mensualidad."
+    )
+    )
+
     rut = models.CharField(
         max_length=12,
         unique=True,

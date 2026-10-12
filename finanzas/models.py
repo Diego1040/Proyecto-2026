@@ -106,11 +106,34 @@ class Pago(models.Model):
      ERROR = "ERROR", "Error de pago"
      EXPIRADO = "EXPIRADO", "Token expirado"
 
+    class MedioPago(models.TextChoices):
+        WEBPAY = "WEBPAY", "Webpay"
+        EFECTIVO = "EFECTIVO", "Efectivo"
+        TRANSFERENCIA = "TRANSFERENCIA", "Transferencia"
+        POS = "POS", "Débito / POS"
+        OTRO = "OTRO", "Otro autorizado"
+
+    medio_pago = models.CharField(
+        max_length=20,
+        choices=MedioPago.choices,
+        default=MedioPago.WEBPAY,
+    )
+
+    referencia = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Número de comprobante o referencia del pago manual.",
+    )
+
+###
     cuota = models.ForeignKey(
         Cuota,
         on_delete=models.PROTECT,
         related_name="pagos",
     )
+
+
 
     # Usuario que inició el pago.
     # Puede ser el apoderado autorizado o el propio jugador adulto.

@@ -161,6 +161,7 @@ class ReglaCategoriaAdmin(admin.ModelAdmin):
         "edad_min",
     )
 
+
 @admin.register(Jugador)
 class JugadorAdmin(admin.ModelAdmin):
     list_display = (
@@ -169,6 +170,7 @@ class JugadorAdmin(admin.ModelAdmin):
         "apellidos",
         "rama",
         "estado",
+        "becado",
         "categoria_actual",
         "fecha_nacimiento",
     )
@@ -176,6 +178,7 @@ class JugadorAdmin(admin.ModelAdmin):
     list_filter = (
         "rama",
         "estado",
+        "becado",
         "categoria_actual",
         "procedencia",
     )
@@ -195,6 +198,11 @@ class JugadorAdmin(admin.ModelAdmin):
         "usuario",
         "categoria_actual",
     )
+
+    list_editable = (
+        "becado",
+    )
+
 
 @admin.register(Apoderado)
 class ApoderadoAdmin(admin.ModelAdmin):

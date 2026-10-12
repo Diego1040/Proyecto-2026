@@ -15,11 +15,11 @@ from .forms import (
 from .services import (
     inscribir_jugador,
     aprobar_solicitud_inscripcion,
-    cambiar_categoria_manual,          
+    cambiar_categoria_manual,
     marcar_solicitud_en_revision,
-    obtener_categoria_automatica,      
+    obtener_categoria_automatica,
     rechazar_solicitud_inscripcion,
-    registrar_auditoria,               
+    registrar_auditoria,
     completar_activacion,
     cuenta_puede_activarse,
     cuenta_puede_recuperarse,
@@ -29,8 +29,8 @@ from .models import (
     AlertaSalud,
     Apoderado,
     ApoderadoJugador,
-    Categoria,                         
-    HistorialCategoria,               
+    Categoria,
+    HistorialCategoria,
     Jugador,
     SolicitudInscripcion,
     Usuario,
@@ -51,6 +51,13 @@ def inicio(request):
 
 @login_required
 def panel(request):
+
+    if request.user.groups.filter(
+        name="Tesorería"
+    ).exists():
+        return redirect("finanzas:tesoreria")
+
+
     """Presenta todos los accesos disponibles sin elegir un perfil exclusivo."""
     usuario = request.user
     # Compatibilidad con el formulario de contacto del panel anterior.

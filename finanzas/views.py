@@ -24,6 +24,15 @@ from datetime import timedelta
 from .webpay_service import obtener_transaccion_webpay
 
 
+from django.core.paginator import Paginator
+from django.db import IntegrityError
+from django.db.models import Sum
+
+from .forms import CuotaForm, PagoManualForm
+from .permissions import tesoreria_required
+
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -615,3 +624,198 @@ def retorno_webpay(request):
             "pago": pago,
         },
     )
+
+
+def contexto_tesoreria(request):
+    hoy = timezone.localdate()
+    inicio_mes = hoy.replace(day=1)
+
+    pagos_mes = Pago.objects.filter(
+        estado=Pago.Estado.CONFIRMADO,
+        fecha_transaccion__date__gte=inicio_mes,
+        fecha_transaccion__date__lte=hoy,
+    )
+
+    recaudado_mes = (
+        pagos_mes.aggregate(total=Sum("monto"))["total"]
+        or Decimal("0")
+    )
+
+    cuotas_pendientes = Cuota.objects.filter(
+        estado=Cuota.Estado.PENDIENTE
+    ).count()
+
+    pagos_webpay_mes = pagos_mes.filter(
+        medio_pago="WEBPAY"
+    ).count()
+
+    pagos_manuales_mes = pagos_mes.exclude(
+        medio_pago="WEBPAY"
+    ).count()
+
+    intentos_en_curso = Pago.objects.filter(
+        cuota_id=OuterRef("pk"),
+        estado=Pago.Estado.INICIADO,
+    )
+
+    lista_cuotas = (
+        Cuota.objects.select_related("jugador")
+        .prefetch_related("pagos")
+        .annotate(
+            tiene_pago_iniciado=Exists(intentos_en_curso)
+        )
+        .order_by(
+            "-periodo",
+            "jugador__apellidos",
+            "jugador__nombres",
+        )
+    )
+
+    pagina = Paginator(lista_cuotas, 25).get_page(
+        request.GET.get("page")
+    )
+
+    ultimos_pagos = (
+        Pago.objects.select_related(
+            "cuota__jugador",
+            "usuario",
+        )
+        .order_by("-creado_en")[:10]
+    )
+
+    return {
+        "hoy": hoy,
+        "recaudado_mes": recaudado_mes,
+        "cuotas_pendientes": cuotas_pendientes,
+        "pagos_webpay_mes": pagos_webpay_mes,
+        "pagos_manuales_mes": pagos_manuales_mes,
+        "pagina": pagina,
+        "ultimos_pagos": ultimos_pagos,
+    }
+
+
+@login_required
+@tesoreria_required
+def panel_tesoreria(request):
+    contexto = contexto_tesoreria(request)
+
+    return render(
+        request,
+        "finanzas/tesoreria.html",
+        contexto,
+    )
+
+
+@login_required
+@tesoreria_required
+def crear_cuota(request):
+    if request.method == "POST":
+        form = CuotaForm(request.POST)
+
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    cuota = form.save()
+            except IntegrityError:
+                form.add_error(
+                    None,
+                    "Ya existe una cuota para ese jugador y período.",
+                )
+            else:
+                messages.success(
+                    request,
+                    f"Se creó la cuota de {cuota.jugador.nombres} "
+                    f"{cuota.jugador.apellidos}.",
+                )
+                return redirect("finanzas:tesoreria")
+    else:
+        form = CuotaForm()
+
+    return render(
+        request,
+        "finanzas/crear_cuota.html",
+        {"form": form},
+    )
+
+
+@login_required
+@tesoreria_required
+@require_POST
+def registrar_pago_manual(request, cuota_id):
+    form = PagoManualForm(request.POST)
+
+    if not form.is_valid():
+        errores = "; ".join(
+            error
+            for errores_campo in form.errors.values()
+            for error in errores_campo
+        )
+        messages.error(
+            request,
+            f"Revisa los datos del pago: {errores}",
+        )
+        return redirect("finanzas:tesoreria")
+
+    try:
+        with transaction.atomic():
+            cuota = get_object_or_404(
+                Cuota.objects.select_for_update(),
+                pk=cuota_id,
+            )
+
+            if cuota.estado != Cuota.Estado.PENDIENTE:
+                messages.warning(
+                    request,
+                    "La cuota ya no está pendiente.",
+                )
+                return redirect("finanzas:tesoreria")
+
+            if Pago.objects.filter(
+                cuota=cuota,
+                estado=Pago.Estado.CONFIRMADO,
+            ).exists():
+                messages.warning(
+                    request,
+                    "La cuota ya tiene un pago confirmado.",
+                )
+                return redirect("finanzas:tesoreria")
+
+            if Pago.objects.filter(
+                cuota=cuota,
+                estado=Pago.Estado.INICIADO,
+            ).exists():
+                messages.error(
+                    request,
+                    "Existe un intento de Webpay sin resolver. "
+                    "Verifica su estado antes de registrar un pago manual.",
+                )
+                return redirect("finanzas:tesoreria")
+
+            pago = Pago.objects.create(
+                cuota=cuota,
+                usuario=request.user,
+                monto=cuota.monto,
+                estado=Pago.Estado.CONFIRMADO,
+                medio_pago=form.cleaned_data["medio_pago"],
+                referencia=form.cleaned_data["referencia"].strip(),
+                fecha_transaccion=timezone.now(),
+            )
+
+            cuota.estado = Cuota.Estado.PAGADA
+            cuota.save(
+                update_fields=["estado", "actualizado_en"]
+            )
+
+    except IntegrityError:
+        messages.error(
+            request,
+            "No se pudo registrar el pago porque existe "
+            "una operación incompatible. Revisa el estado de la cuota.",
+        )
+        return redirect("finanzas:tesoreria")
+
+    messages.success(
+        request,
+        f"Pago manual de ${pago.monto:,.0f} registrado correctamente.",
+    )
+    return redirect("finanzas:tesoreria")
