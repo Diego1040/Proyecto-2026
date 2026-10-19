@@ -4,7 +4,9 @@ from decimal import Decimal, InvalidOperation
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.db.models import Exists, OuterRef, Q
+
+from django.db.models import Exists, OuterRef, Prefetch, Q
+
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -32,6 +34,25 @@ from .forms import CuotaForm, PagoManualForm
 from .permissions import tesoreria_required
 
 
+from io import BytesIO
+from xml.sax.saxutils import escape as xml_escape
+
+from django.http import HttpResponse
+
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import cm
+from reportlab.platypus import (
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +73,7 @@ def usuario_puede_pagar_cuota(usuario, cuota):
 
 @login_required
 def mis_cuotas(request):
-    """Muestra exclusivamente las cuotas de jugadores autorizados."""
+    """Muestra las cuotas y pagos confirmados del usuario autorizado."""
 
     pago_en_curso = Pago.objects.filter(
         cuota_id=OuterRef("pk"),
@@ -61,6 +82,18 @@ def mis_cuotas(request):
 
     cuotas = (
         Cuota.objects.select_related("jugador")
+        .prefetch_related(
+            Prefetch(
+                "pagos",
+                queryset=Pago.objects.filter(
+                    estado=Pago.Estado.CONFIRMADO,
+                ).order_by(
+                    "-fecha_transaccion",
+                    "-creado_en",
+                ),
+                to_attr="pagos_confirmados",
+            )
+        )
         .filter(
             Q(jugador__usuario_id=request.user.pk)
             | Q(
@@ -78,6 +111,233 @@ def mis_cuotas(request):
         "finanzas/mis_cuotas.html",
         {"cuotas": cuotas},
     )
+
+
+
+@login_required
+def comprobante_pago(request, pago_id):
+    """Muestra el comprobante de un pago confirmado y autorizado."""
+
+    pagos_autorizados = (
+        Pago.objects.filter(
+            estado=Pago.Estado.CONFIRMADO,
+        )
+        .filter(
+            Q(cuota__jugador__usuario_id=request.user.pk)
+            | Q(
+                cuota__jugador__vinculos_apoderados__apoderado__usuario_id=request.user.pk,
+                cuota__jugador__vinculos_apoderados__activo=True,
+                cuota__jugador__vinculos_apoderados__puede_gestionar=True,
+            )
+        )
+        .select_related("cuota", "cuota__jugador", "usuario")
+        .distinct()
+    )
+
+    pago = get_object_or_404(
+        pagos_autorizados,
+        pk=pago_id,
+    )
+
+    return render(
+        request,
+        "finanzas/comprobante_pago.html",
+        {"pago": pago},
+
+
+    )
+
+
+@login_required
+def descargar_comprobante_pdf(request, pago_id):
+    """Genera y descarga el PDF de un pago confirmado y autorizado."""
+
+    pagos_autorizados = (
+        Pago.objects.filter(
+            estado=Pago.Estado.CONFIRMADO,
+        )
+        .filter(
+            Q(cuota__jugador__usuario_id=request.user.pk)
+            | Q(
+                cuota__jugador__vinculos_apoderados__apoderado__usuario_id=request.user.pk,
+                cuota__jugador__vinculos_apoderados__activo=True,
+                cuota__jugador__vinculos_apoderados__puede_gestionar=True,
+            )
+        )
+        .select_related("cuota", "cuota__jugador")
+        .distinct()
+    )
+
+    pago = get_object_or_404(
+        pagos_autorizados,
+        pk=pago_id,
+    )
+
+    buffer = BytesIO()
+
+    documento = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        rightMargin=2 * cm,
+        leftMargin=2 * cm,
+        topMargin=2 * cm,
+        bottomMargin=2 * cm,
+        title="Comprobante de pago - Ayllu Basket",
+        author="Club Deportivo Ayllu Basket",
+    )
+
+    estilos = getSampleStyleSheet()
+
+    estilo_titulo = ParagraphStyle(
+        "TituloAyllu",
+        parent=estilos["Title"],
+        fontName="Helvetica-Bold",
+        fontSize=20,
+        leading=24,
+        textColor=colors.HexColor("#E8552A"),
+        alignment=TA_CENTER,
+        spaceAfter=6,
+    )
+
+    estilo_subtitulo = ParagraphStyle(
+        "SubtituloAyllu",
+        parent=estilos["Normal"],
+        fontSize=11,
+        alignment=TA_CENTER,
+        spaceAfter=18,
+    )
+
+    estilo_seccion = ParagraphStyle(
+        "SeccionAyllu",
+        parent=estilos["Heading2"],
+        fontSize=12,
+        leading=16,
+        textColor=colors.HexColor("#E8552A"),
+        spaceBefore=14,
+        spaceAfter=8,
+    )
+
+    estilo_texto = ParagraphStyle(
+        "TextoAyllu",
+        parent=estilos["BodyText"],
+        fontName="Helvetica",
+        fontSize=10,
+        leading=14,
+    )
+
+    def celda(valor, negrita=False):
+        texto = xml_escape(
+            str(valor) if valor not in (None, "") else "No registrado"
+        )
+        if negrita:
+            texto = f"<b>{texto}</b>"
+        return Paragraph(texto, estilo_texto)
+
+    def crear_tabla(datos):
+        tabla = Table(
+            [
+                [celda(etiqueta, True), celda(valor)]
+                for etiqueta, valor in datos
+            ],
+            colWidths=[5 * cm, 12.5 * cm],
+            hAlign="LEFT",
+        )
+
+        tabla.setStyle(
+            TableStyle(
+                [
+                    (
+                        "BACKGROUND",
+                        (0, 0),
+                        (0, -1),
+                        colors.HexColor("#F4F4F4"),
+                    ),
+                    (
+                        "LINEBELOW",
+                        (0, 0),
+                        (-1, -1),
+                        0.4,
+                        colors.HexColor("#DDDDDD"),
+                    ),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                    ("TOPPADDING", (0, 0), (-1, -1), 8),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                ]
+            )
+        )
+        return tabla
+
+    fecha_pago = pago.fecha_transaccion or pago.creado_en
+    fecha_local = timezone.localtime(fecha_pago)
+    monto = f"${pago.monto:,.0f}".replace(",", ".")
+
+    historia = [
+        Paragraph("AYLLU BASKET", estilo_titulo),
+        Paragraph("COMPROBANTE INTERNO DE PAGO", estilo_subtitulo),
+        Paragraph(
+            "<b>Estado del pago:</b> Confirmado",
+            estilo_texto,
+        ),
+        Spacer(1, 0.4 * cm),
+        Paragraph("Datos del pago", estilo_seccion),
+        crear_tabla(
+            [
+                ("Folio interno", pago.orden_compra),
+                (
+                    "Fecha del pago",
+                    fecha_local.strftime("%d/%m/%Y %H:%M"),
+                ),
+                ("Medio de pago", pago.get_medio_pago_display()),
+                ("Monto pagado", monto),
+            ]
+        ),
+        Paragraph("Datos del jugador y la cuota", estilo_seccion),
+        crear_tabla(
+            [
+                (
+                    "Jugador",
+                    f"{pago.cuota.jugador.nombres} "
+                    f"{pago.cuota.jugador.apellidos}",
+                ),
+                ("Concepto", pago.cuota.concepto),
+                (
+                    "Período pagado",
+                    pago.cuota.periodo.strftime("%m/%Y"),
+                ),
+                (
+                    "Estado de la cuota",
+                    pago.cuota.get_estado_display(),
+                ),
+                ("Referencia", pago.referencia),
+                ("Código de autorización", pago.codigo_autorizacion),
+            ]
+        ),
+        Spacer(1, 0.7 * cm),
+        Paragraph(
+            "Documento interno generado por el sistema de gestión "
+            "del Club Deportivo Ayllu Basket a partir del registro "
+            "de un pago confirmado. No sustituye un comprobante "
+            "tributario ni el comprobante original del proveedor de pago.",
+            estilos["Italic"],
+        ),
+    ]
+
+    documento.build(historia)
+    contenido_pdf = buffer.getvalue()
+    buffer.close()
+
+    respuesta = HttpResponse(
+        contenido_pdf,
+        content_type="application/pdf",
+    )
+    respuesta["Content-Disposition"] = (
+        f'attachment; filename="comprobante_ayllu_pago_{pago.pk}.pdf"'
+    )
+    respuesta["X-Content-Type-Options"] = "nosniff"
+
+    return respuesta
 
 
 @login_required

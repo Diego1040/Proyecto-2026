@@ -5,14 +5,15 @@ from decimal import Decimal
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from django.db.models import Exists, OuterRef
 from django.utils import timezone
 
-from finanzas.models import Cuota
+from finanzas.models import Beca, Cuota
 from usuarios.models import Jugador
 
 
 # Valor provisional mientras se define la tarifa oficial.
-MONTO_CUOTA_MENSUAL = Decimal("25000")
+MONTO_CUOTA_MENSUAL = Decimal("15000")  # CLP
 
 # Vencimiento provisional: día 10 de cada mes.
 DIA_VENCIMIENTO = 10
@@ -67,10 +68,34 @@ class Command(BaseCommand):
         )
 
         # Solo jugadores activos que no tengan beca completa.
-        jugadores = Jugador.objects.filter(
-            estado=Jugador.Estado.ACTIVO,
-            becado=False,
-        ).order_by("pk")
+        # Calcular el último día del período.
+        fin_periodo = date(
+            periodo.year,
+            periodo.month,
+            ultimo_dia,
+        )
+
+        # Buscar becas activas que cubran el período.
+        becas_del_periodo = Beca.objects.filter(
+            jugador_id=OuterRef("pk"),
+            estado=Beca.Estado.ACTIVA,
+            fecha_inicio__lte=fin_periodo,
+            fecha_termino__gte=periodo,
+        )
+
+        # Seleccionar jugadores activos sin beca en el período.
+        jugadores = (
+            Jugador.objects.filter(
+                estado=Jugador.Estado.ACTIVO,
+            )
+            .annotate(
+                tiene_beca_en_periodo=Exists(becas_del_periodo),
+            )
+            .filter(
+                tiene_beca_en_periodo=False,
+            )
+            .order_by("pk")
+        )
 
         # Modo de simulación: consulta, calcula y termina sin guardar.
         if options.get("simular"):

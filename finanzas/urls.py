@@ -11,6 +11,13 @@ urlpatterns = [
         views.mis_cuotas,
         name="mis_cuotas",
     ),
+
+        path(
+        "pagos/<int:pago_id>/comprobante/",
+        views.comprobante_pago,
+        name="comprobante_pago",
+    ),
+
     path(
         "cuotas/<int:cuota_id>/pagar/",
         views.iniciar_pago,
@@ -42,4 +49,10 @@ path(
     views.registrar_pago_manual,
     name="registrar_pago_manual",
 ),
+
+    path(
+        "pagos/<int:pago_id>/comprobante/pdf/",
+        views.descargar_comprobante_pdf,
+        name="descargar_comprobante_pdf",
+    ),
 ]

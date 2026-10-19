@@ -7,3 +7,4 @@ tzdata==2026.4
 
 #Transbank SDK
 transbank-sdk==6.1.0
+reportlab==5.0.1
