@@ -16,7 +16,8 @@ from django.views.decorators.http import require_http_methods, require_POST
 
 from usuarios.models import ApoderadoJugador
 
-from .models import Cuota, Pago
+from .models import Beca, Cuota, Pago
+
 from .webpay_service import (
     obtener_transaccion_webpay,
     URL_WEBPAY_INTEGRACION,
@@ -30,8 +31,9 @@ from django.core.paginator import Paginator
 from django.db import IntegrityError
 from django.db.models import Sum
 
-from .forms import CuotaForm, PagoManualForm
-from .permissions import tesoreria_required
+from .forms import BecaForm, CuotaForm, PagoManualForm
+
+from .permissions import becas_required, tesoreria_required
 
 
 from io import BytesIO
@@ -1079,3 +1081,156 @@ def registrar_pago_manual(request, cuota_id):
         f"Pago manual de ${pago.monto:,.0f} registrado correctamente.",
     )
     return redirect("finanzas:tesoreria")
+
+
+@login_required
+@becas_required
+def listar_becas(request):
+    becas = (
+        Beca.objects
+        .select_related("jugador")
+        .order_by("-fecha_inicio", "jugador__apellidos")
+    )
+
+    return render(
+        request,
+        "finanzas/listar_becas.html",
+        {
+    "becas": becas,
+    "hoy": timezone.localdate(),
+},
+    )
+
+
+@login_required
+@becas_required
+def crear_beca(request):
+    if request.method == "POST":
+        form = BecaForm(request.POST)
+
+        if form.is_valid():
+            beca = form.save(commit=False)
+            beca.estado = Beca.Estado.ACTIVA
+            beca.save()
+
+            messages.success(
+                request,
+                "La beca se registró correctamente.",
+            )
+            return redirect("finanzas:listar_becas")
+    else:
+        form = BecaForm()
+
+    return render(
+        request,
+        "finanzas/crear_beca.html",
+        {"form": form},
+    )
+
+
+@login_required
+@becas_required
+@require_POST
+def finalizar_beca(request, beca_id):
+    beca = get_object_or_404(
+        Beca,
+        pk=beca_id,
+        estado=Beca.Estado.ACTIVA,
+    )
+
+    beca.estado = Beca.Estado.FINALIZADA
+    beca.fecha_finalizacion = timezone.localdate()
+    beca.save(
+    update_fields=[
+        "estado",
+        "fecha_finalizacion",
+        "actualizado_en",
+    ])
+
+    messages.success(
+        request,
+        "La beca se finalizó correctamente. "
+        "Los registros históricos de cuotas y pagos no se modificaron.",
+    )
+    return redirect("finanzas:listar_becas")
+
+
+
+@login_required
+@becas_required
+@require_POST
+def renovar_beca(request, beca_id):
+    beca_anterior = get_object_or_404(
+        Beca,
+        pk=beca_id,
+    )
+
+    if beca_anterior.estado != Beca.Estado.ACTIVA:
+        messages.error(
+            request,
+            "Solo se pueden renovar becas que estén activas.",
+        )
+        return redirect("finanzas:listar_becas")
+
+    hoy = timezone.localdate()
+
+    if beca_anterior.fecha_termino >= hoy:
+        messages.error(
+            request,
+            "La beca todavía está vigente. "
+            "La renovación debe realizarse al terminar el período.",
+        )
+        return redirect("finanzas:listar_becas")
+
+    nueva_fecha_inicio = beca_anterior.fecha_termino + timedelta(days=1)
+
+    # Comprobar que no exista otra beca que se superponga.
+    nueva_fecha_termino = (
+        sumar_meses(nueva_fecha_inicio, 6) - timedelta(days=1)
+    )
+
+    becas_superpuestas = Beca.objects.filter(
+        jugador=beca_anterior.jugador,
+        fecha_inicio__lte=nueva_fecha_termino,
+        fecha_termino__gte=nueva_fecha_inicio,
+    ).exclude(
+        pk=beca_anterior.pk,
+    ).filter(
+        estado__in=[
+            Beca.Estado.ACTIVA,
+            Beca.Estado.RENOVADA,
+        ],
+    )
+
+    if becas_superpuestas.exists():
+        messages.error(
+            request,
+            "No se puede renovar la beca porque existe otro "
+            "período que se superpone con la renovación.",
+        )
+        return redirect("finanzas:listar_becas")
+
+    # Guardar ambos cambios juntos para evitar estados parciales.
+    from django.db import transaction
+
+    with transaction.atomic():
+        beca_anterior.estado = Beca.Estado.RENOVADA
+        beca_anterior.save(
+            update_fields=["estado", "actualizado_en"]
+        )
+
+        Beca.objects.create(
+            jugador=beca_anterior.jugador,
+            fecha_inicio=nueva_fecha_inicio,
+            estado=Beca.Estado.ACTIVA,
+            observaciones=(
+                "Renovación de la beca anterior. "
+                "Evaluación autorizada por administración."
+            ),
+        )
+
+    messages.success(
+        request,
+        "La beca se renovó por un nuevo período de seis meses.",
+    )
+    return redirect("finanzas:listar_becas")

@@ -245,6 +245,13 @@ class Beca(models.Model):
         editable=False,
     )
 
+    fecha_finalizacion = models.DateField(
+        null=True,
+        blank=True,
+        editable=False,
+        help_text="Fecha efectiva en que se finalizó la beca.",
+    )
+
     estado = models.CharField(
         max_length=12,
         choices=Estado.choices,
@@ -273,15 +280,17 @@ class Beca(models.Model):
         super().save(*args, **kwargs)
 
     def vigente_en(self, fecha):
-        return (
-            self.estado == self.Estado.ACTIVA
-            and self.fecha_inicio <= fecha <= self.fecha_termino
-        )
+        if not self.fecha_inicio <= fecha <= self.fecha_termino:
+          return False
 
-    def __str__(self):
-        return (
-            f"Beca de {self.jugador.nombres} "
-            f"{self.jugador.apellidos} "
-            f"({self.fecha_inicio:%d/%m/%Y} - "
-            f"{self.fecha_termino:%d/%m/%Y})"
-        )
+        if (
+        self.fecha_finalizacion is not None
+        and fecha >= self.fecha_finalizacion
+    ):
+         return False
+
+        return self.estado in (
+        self.Estado.ACTIVA,
+        self.Estado.RENOVADA,
+        self.Estado.FINALIZADA,
+    )

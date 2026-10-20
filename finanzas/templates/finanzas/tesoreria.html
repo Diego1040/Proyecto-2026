@@ -152,13 +152,21 @@ input,select,textarea{background:var(--blanco);border:1px solid var(--linea);bor
   </div>
 </header>
 
+
 <nav class="tabs" aria-label="Secciones de tesorería">
   <div class="wrap">
     <button class="tab" role="tab" aria-selected="true" data-vista="pagos">Pagos</button>
     <button class="tab" role="tab" aria-selected="false" data-vista="morosidad">Morosidad</button>
-    <button class="tab" role="tab" aria-selected="false" data-vista="becas">Becas</button>
+    <a
+      class="tab"
+      href="{% url 'finanzas:listar_becas' %}"
+      style="text-decoration:none;display:inline-flex;align-items:center"
+    >
+      Gestionar becas
+    </a>
   </div>
 </nav>
+
 
 <main><div class="wrap">
 <p class="url" id="url">/tesoreria/pagos/</p>
