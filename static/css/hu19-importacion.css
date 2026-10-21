@@ -1,0 +1,120 @@
+/* Presentación exclusiva de HU19. Reutiliza la identidad y los controles del sitio. */
+.hu19 { padding: 40px 0 56px; }
+.hu19 h1 { font-size: clamp(1.9rem, 3.4vw, 2.65rem); line-height: 1.08; }
+.hu19 h2 { font-size: 1.55rem; line-height: 1.12; }
+.hu19 .hu19-cabecera { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
+.hu19 .etiqueta-seccion { font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 8px; }
+.hu19 .hu19-subtitulo { color: var(--gris); margin-top: 10px; font-size: .95rem; }
+.hu19 .hu19-volver { flex: none; margin-top: 27px; }
+.hu19 .hu19-etapa { color: var(--gris); font-size: .76rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; margin-bottom: 7px; }
+.hu19 .boton { border: 1px solid transparent; font-weight: 600; font-size: .92rem; padding: 12px 18px; text-align: center; }
+.hu19 .boton-linea { font-size: .85rem; padding: 9px 13px; border: 1px solid var(--linea); }
+.hu19 .tarjeta { padding: 22px; }
+.hu19 .hu19-cab-seccion { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+.hu19 .hu19-descarga { flex: none; }
+
+/* La confirmación sigue a la revisión en el orden del documento. */
+.hu19 .hu19-flujo { display: grid; grid-template-columns: minmax(0, 1fr) 292px; grid-template-areas: "resumen confirmar" "revisiones confirmar"; gap: 24px; align-items: start; }
+.hu19 .hu19-flujo--resultado { grid-template-columns: minmax(0, 1fr); grid-template-areas: "resumen" "revisiones"; }
+.hu19 .hu19-resumen { grid-area: resumen; min-width: 0; }
+.hu19 .hu19-archivo { display: flex; flex-wrap: wrap; gap: 10px 24px; font-size: .82rem; margin: 18px 0 22px; }
+.hu19 .hu19-archivo dt { color: var(--gris); }
+.hu19 .hu19-archivo dd { margin: 0; font-weight: 500; }
+.hu19 .hu19-archivo-nombre { flex-basis: 100%; overflow-wrap: anywhere; }
+.hu19 .hu19-indicadores { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 16px 12px; margin: 0; padding: 18px 0; border-block: 1px solid var(--linea); }
+.hu19 .hu19-indicador { border-left: 2px solid var(--linea); padding-left: 12px; }
+.hu19 .hu19-indicador dt { font-size: .82rem; color: var(--gris); }
+.hu19 .hu19-indicador dd { font-family: "Barlow Condensed", system-ui, sans-serif; font-size: 2.5rem; font-weight: 700; line-height: 1.15; margin: 5px 0 0; font-variant-numeric: tabular-nums; }
+.hu19 .hu19-indicador--listos { border-color: var(--verde); }
+.hu19 .hu19-indicador--listos dd { color: var(--verde); }
+.hu19 .hu19-nota { color: var(--gris); font-size: .82rem; line-height: 1.5; margin-top: 14px; }
+.hu19 summary { cursor: pointer; }
+.hu19 summary:focus-visible, .hu19 .hu19-tabla-scroll:focus-visible { outline: 2px solid var(--naranja); outline-offset: 3px; }
+.hu19 .hu19-detalle-resumen { margin-top: 16px; font-size: .85rem; }
+.hu19 .hu19-detalle-resumen summary { font-weight: 600; }
+.hu19 .hu19-detalle-resumen summary span { display: block; margin-left: 17px; font-size: .78rem; font-weight: 400; color: var(--gris); }
+.hu19 .hu19-indicadores-secundarios { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; margin: 14px 0 0; }
+.hu19 .hu19-indicadores-secundarios div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--linea); padding-bottom: 5px; }
+.hu19 .hu19-indicadores-secundarios dt { color: var(--gris); }
+.hu19 .hu19-indicadores-secundarios dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.hu19 .hu19-pie-resumen { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: 18px; font-size: .8rem; color: var(--gris); }
+.hu19 .hu19-ir-confirmacion { font-size: .85rem; }
+
+/* Tablas completas con desplazamiento nativo y foco de teclado. */
+.hu19 .hu19-revisiones { grid-area: revisiones; display: grid; gap: 24px; min-width: 0; }
+.hu19 .hu19-tabla-seccion { min-width: 0; }
+.hu19 .hu19-cab-tabla { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+.hu19 .hu19-cab-tabla h2 { font-size: 1.4rem; }
+.hu19 .hu19-conteo { color: var(--gris); font-size: .8rem; font-variant-numeric: tabular-nums; }
+.hu19 .hu19-nota-tabla { margin: 0 0 8px; }
+.hu19 .hu19-ayuda-tabla { color: var(--gris); font-size: .76rem; margin-bottom: 10px; }
+.hu19 .hu19-tabla-scroll { max-height: 380px; overflow: auto; scrollbar-gutter: stable; background: var(--blanco); border: 1px solid var(--linea); border-radius: 4px; }
+.hu19 .hu19-tabla-scroll table { min-width: 680px; border-collapse: separate; border-spacing: 0; font-size: .84rem; line-height: 1.45; }
+.hu19 .hu19-tabla-scroll--pendientes table { min-width: 1040px; }
+.hu19 .hu19-tabla-scroll th { position: sticky; top: 0; z-index: 1; background: #F1F0EC; font-size: .75rem; font-weight: 600; }
+.hu19 .hu19-tabla-scroll td, .hu19 .hu19-tabla-scroll th { vertical-align: top; padding: 12px 14px; }
+.hu19 .hu19-tabla-scroll td { overflow-wrap: anywhere; }
+.hu19 .hu19-tabla-scroll tbody tr:last-child td { border-bottom: 0; }
+.hu19 .hu19-tabla-scroll tbody tr:hover { background: var(--papel); }
+.hu19 .hu19-tabla-scroll td:first-child { font-variant-numeric: tabular-nums; color: var(--gris); }
+.hu19 .hu19-tabla-scroll td:last-child { min-width: 240px; }
+.hu19 .hu19-tabla-scroll--pendientes td:last-child { min-width: 265px; }
+.hu19 .hu19-tabla-vacia { color: var(--gris); padding: 18px 14px; }
+.hu19 .hu19-indicacion { margin-top: 5px; font-size: .78rem; }
+.hu19 .hu19-indicacion summary { color: var(--naranja-texto); font-weight: 500; }
+.hu19 .hu19-indicacion p { margin-top: 7px; }
+
+.hu19 .hu19-confirmacion { grid-area: confirmar; position: sticky; top: 94px; border-top: 3px solid var(--naranja); scroll-margin-top: 94px; }
+.hu19 .hu19-cantidad-confirmacion { font-size: .9rem; margin-top: 16px; }
+.hu19 .hu19-cantidad-confirmacion strong { display: block; font-family: "Barlow Condensed", system-ui, sans-serif; font-size: 2.5rem; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.hu19 .hu19-condiciones { margin: 14px 0 18px; padding-left: 18px; font-size: .85rem; }
+.hu19 .hu19-condiciones li + li { margin-top: 8px; }
+.hu19 .hu19-consentimiento { display: flex; gap: 10px; align-items: flex-start; font-size: .85rem; border-top: 1px solid var(--linea); padding-top: 16px; cursor: pointer; }
+.hu19 .hu19-consentimiento input { width: 17px; height: 17px; margin: 3px 0 0; flex: none; accent-color: var(--naranja); }
+.hu19 .hu19-boton-confirmar { display: block; width: 100%; margin-top: 18px; }
+.hu19 .hu19-sin-importables { margin-top: 16px; color: var(--gris); font-size: .9rem; }
+
+/* La carga inicial es principal; reemplazar un archivo es una acción secundaria. */
+.hu19 .hu19-carga { margin-top: 0; }
+.hu19 .hu19-instrucciones { color: var(--gris); font-size: .88rem; margin: 10px 0 22px; }
+.hu19 .hu19-campos { display: grid; grid-template-columns: minmax(0, 1fr) 135px auto; align-items: start; gap: 18px; }
+.hu19 .hu19-campos .campo { margin: 0; min-width: 0; }
+.hu19 .hu19-campos input { min-height: 48px; font-size: .92rem; }
+.hu19 .hu19-campos input[type="file"] { padding: 6px; }
+.hu19 .hu19-campos input[type="file"]::file-selector-button { font: inherit; padding: 7px 10px; margin-right: 10px; border: 1px solid var(--linea); border-radius: 3px; background: var(--papel); color: var(--tinta); cursor: pointer; }
+.hu19 .hu19-validar { padding-top: 29px; }
+.hu19 .hu19-validar .boton { min-height: 48px; }
+.hu19 .errorlist { padding-left: 18px; color: var(--naranja-texto); font-size: .85rem; margin: 8px 0; }
+.hu19 .hu19-otro-archivo { margin-top: 28px; border-top: 1px solid var(--linea); padding-top: 18px; }
+.hu19 .hu19-otro-archivo > summary { font-weight: 600; font-size: .95rem; }
+.hu19 .hu19-otro-archivo > summary span { font-weight: 400; font-size: .82rem; color: var(--gris); margin-left: 12px; }
+.hu19 .hu19-otro-archivo .hu19-carga { margin-top: 16px; }
+
+@media (max-width: 960px) {
+  .hu19 .hu19-flujo { grid-template-columns: minmax(0, 1fr); grid-template-areas: "resumen" "revisiones" "confirmar"; }
+  .hu19 .hu19-flujo--resultado { grid-template-areas: "resumen" "revisiones"; }
+  .hu19 .hu19-confirmacion { position: static; }
+  .hu19 .hu19-cantidad-confirmacion strong { display: inline; margin-right: 6px; font-size: 1.8rem; }
+  .hu19 .hu19-campos { grid-template-columns: minmax(0, 1fr) 135px; }
+  .hu19 .hu19-validar { grid-column: 1 / -1; padding-top: 0; }
+}
+
+@media (max-width: 600px) {
+  .hu19 { padding: 26px 0 40px; }
+  .hu19 > .wrap { padding-inline: 16px; }
+  .hu19 .hu19-cabecera { flex-direction: column; gap: 12px; margin-bottom: 22px; }
+  .hu19 .hu19-volver { margin-top: 0; font-size: .85rem; }
+  .hu19 .tarjeta { padding: 18px; }
+  .hu19 .hu19-flujo, .hu19 .hu19-revisiones { gap: 20px; }
+  .hu19 .hu19-indicadores { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hu19 .hu19-indicadores-secundarios { grid-template-columns: minmax(0, 1fr); }
+  .hu19 .hu19-archivo { gap: 10px 18px; }
+  .hu19 .hu19-tabla-scroll { max-height: 340px; }
+  .hu19 .hu19-campos { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .hu19 .hu19-validar .boton { width: 100%; }
+  .hu19 .hu19-otro-archivo > summary span { display: block; margin-left: 17px; margin-top: 3px; }
+}
+
+@media (max-height: 650px) and (min-width: 961px) {
+  .hu19 .hu19-confirmacion { position: static; }
+}

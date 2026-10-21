@@ -1,11 +1,19 @@
 from django.urls import path
 from django.views.generic import TemplateView
 
-from . import views
+from . import views, views_importacion_jugadores
 
 urlpatterns = [
     path("", views.inicio, name="inicio"),
     path("panel/", views.panel, name="panel"),
+    path("administracion/importar-jugadores/", views_importacion_jugadores.importacion_jugadores,
+         name="importacion_jugadores"),
+    path("administracion/importar-jugadores/<uuid:proceso_id>/confirmar/",
+         views_importacion_jugadores.importacion_jugadores_confirmar, name="importacion_jugadores_confirmar"),
+    path("administracion/importar-jugadores/<uuid:proceso_id>/reporte/",
+         views_importacion_jugadores.importacion_jugadores_reporte, name="importacion_jugadores_reporte"),
+    path("administracion/importar-jugadores/<uuid:proceso_id>/resultado/",
+         views_importacion_jugadores.importacion_jugadores_resultado, name="importacion_jugadores_resultado"),
     path("perfil/jugador/", views.perfil_jugador, name="perfil_jugador"),
     path("perfil/apoderado/", views.perfil_apoderado, name="perfil_apoderado"),
     path("activar-cuenta/", views.activar_cuenta, name="activar_cuenta"),
