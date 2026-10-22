@@ -9,6 +9,12 @@ from django.db.models import Q
 
 from usuarios.models import Jugador
 
+from calendar import monthrange
+from datetime import date, timedelta
+from django.utils import timezone
+
+
+
 
 def generar_orden_compra():
     """Genera un identificador único para la transacción Webpay."""
@@ -18,6 +24,15 @@ def generar_orden_compra():
 def generar_session_id():
     """Genera un identificador para la sesión de pago."""
     return uuid.uuid4().hex
+
+def sumar_meses(fecha, meses):
+    """Suma meses calendario sin exceder el último día del mes."""
+    total_meses = fecha.month - 1 + meses
+    anio = fecha.year + total_meses // 12
+    mes = total_meses % 12 + 1
+    dia = min(fecha.day, monthrange(anio, mes)[1])
+
+    return date(anio, mes, dia)
 
 
 class Cuota(models.Model):
@@ -207,3 +222,75 @@ class Pago(models.Model):
             f"Pago {self.orden_compra} - "
             f"${self.monto} - {self.get_estado_display()}"
         )
+
+
+
+class Beca(models.Model):
+    class Estado(models.TextChoices):
+        ACTIVA = "ACTIVA", "Activa"
+        RENOVADA = "RENOVADA", "Renovada"
+        FINALIZADA = "FINALIZADA", "Finalizada"
+
+    jugador = models.ForeignKey(
+        Jugador,
+        on_delete=models.PROTECT,
+        related_name="becas",
+    )
+
+    fecha_inicio = models.DateField(
+        default=timezone.localdate,
+    )
+
+    fecha_termino = models.DateField(
+        editable=False,
+    )
+
+    fecha_finalizacion = models.DateField(
+        null=True,
+        blank=True,
+        editable=False,
+        help_text="Fecha efectiva en que se finalizó la beca.",
+    )
+
+    estado = models.CharField(
+        max_length=12,
+        choices=Estado.choices,
+        default=Estado.ACTIVA,
+    )
+
+    observaciones = models.TextField(
+        blank=True,
+        default="",
+        help_text="Motivo de la beca o evaluación de su renovación.",
+    )
+
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_inicio", "jugador__apellidos"]
+        verbose_name = "beca"
+        verbose_name_plural = "becas"
+
+    def save(self, *args, **kwargs):
+        self.fecha_termino = (
+            sumar_meses(self.fecha_inicio, 6)
+            - timedelta(days=1)
+        )
+        super().save(*args, **kwargs)
+
+    def vigente_en(self, fecha):
+        if not self.fecha_inicio <= fecha <= self.fecha_termino:
+          return False
+
+        if (
+        self.fecha_finalizacion is not None
+        and fecha >= self.fecha_finalizacion
+    ):
+         return False
+
+        return self.estado in (
+        self.Estado.ACTIVA,
+        self.Estado.RENOVADA,
+        self.Estado.FINALIZADA,
+    )

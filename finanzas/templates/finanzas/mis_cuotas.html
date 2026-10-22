@@ -30,6 +30,69 @@
             <p>Monto: ${{ cuota.monto|floatformat:0 }}</p>
             <p class="estado">Estado: {{ cuota.get_estado_display }}</p>
 
+
+
+<div class="historial-pagos">
+    <h3>Historial de pagos</h3>
+
+    {% for pago in cuota.pagos_confirmados %}
+        <div class="pago">
+            <p>
+                <strong>Fecha del pago:</strong>
+                {% if pago.fecha_transaccion %}
+                    {{ pago.fecha_transaccion|date:"d/m/Y H:i" }}
+                {% else %}
+                    {{ pago.creado_en|date:"d/m/Y H:i" }}
+                {% endif %}
+            </p>
+
+            <p>
+                <strong>Monto pagado:</strong>
+                ${{ pago.monto|floatformat:0 }}
+            </p>
+
+            <p>
+                <strong>Medio de pago:</strong>
+                {{ pago.get_medio_pago_display }}
+            </p>
+
+            {% if pago.referencia %}
+                <p>
+                    <strong>Referencia del comprobante:</strong>
+                    {{ pago.referencia }}
+                </p>
+            {% endif %}
+
+            {% if pago.codigo_autorizacion %}
+                <p>
+                    <strong>Código de autorización:</strong>
+                    {{ pago.codigo_autorizacion }}
+                </p>
+            {% endif %}
+
+                        {% if pago.codigo_autorizacion %}
+                <p>
+                    <strong>Código de autorización:</strong>
+                    {{ pago.codigo_autorizacion }}
+                </p>
+            {% endif %}
+
+          <p>
+    <a
+        class="btn"
+        href="{% url 'finanzas:comprobante_pago' pago.id %}"
+    >
+        Ver comprobante
+    </a>
+</p>
+        </div>
+        </div>
+    {% empty %}
+        <p>No hay pagos confirmados registrados para este período.</p>
+    {% endfor %}
+</div>
+
+
             {% if cuota.estado == "PENDIENTE" %}
                 {% if cuota.pago_en_curso %}
     <p>

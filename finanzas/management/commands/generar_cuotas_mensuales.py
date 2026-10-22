@@ -1,20 +1,21 @@
-
+﻿
 from calendar import monthrange
 from datetime import date, datetime
 from decimal import Decimal
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
 
-from finanzas.models import Cuota
+from finanzas.models import Beca, Cuota
 from usuarios.models import Jugador
 
 
 # Valor provisional mientras se define la tarifa oficial.
-MONTO_CUOTA_MENSUAL = Decimal("25000")
+MONTO_CUOTA_MENSUAL = Decimal("15000")  # CLP
 
-# Vencimiento provisional: día 10 de cada mes.
+# Vencimiento provisional: dÃ­a 10 de cada mes.
 DIA_VENCIMIENTO = 10
 
 
@@ -26,7 +27,7 @@ class Command(BaseCommand):
             "--periodo",
             type=str,
             help=(
-                "Período que se generará en formato AAAA-MM. "
+                "PerÃ­odo que se generarÃ¡ en formato AAAA-MM. "
                 "Por defecto utiliza el mes actual."
             ),
         )
@@ -48,7 +49,7 @@ class Command(BaseCommand):
                 ).date().replace(day=1)
             except ValueError as exc:
                 raise CommandError(
-                    "El período debe tener formato AAAA-MM, "
+                    "El perÃ­odo debe tener formato AAAA-MM, "
                     "por ejemplo 2026-10."
                 ) from exc
         else:
@@ -67,12 +68,50 @@ class Command(BaseCommand):
         )
 
         # Solo jugadores activos que no tengan beca completa.
-        jugadores = Jugador.objects.filter(
-            estado=Jugador.Estado.ACTIVO,
-            becado=False,
-        ).order_by("pk")
 
-        # Modo de simulación: consulta, calcula y termina sin guardar.
+        # Calcular el Ãºltimo dÃ­a del perÃ­odo.
+        fin_periodo = date(
+            periodo.year,
+            periodo.month,
+            ultimo_dia,
+        )
+
+        # Buscar becas activas que cubran el perÃ­odo.
+        becas_del_periodo = (
+    Beca.objects.filter(
+        jugador_id=OuterRef("pk"),
+        fecha_inicio__lte=fin_periodo,
+        fecha_termino__gte=periodo,
+    )
+    .filter(
+        Q(
+            estado__in=[
+                Beca.Estado.ACTIVA,
+                Beca.Estado.RENOVADA,
+            ]
+        )
+        | Q(
+            estado=Beca.Estado.FINALIZADA,
+            fecha_finalizacion__gt=fin_periodo,
+        )
+    )
+)
+
+        # Seleccionar jugadores activos sin beca en el perÃ­odo.
+        jugadores = (
+            Jugador.objects.filter(
+                estado=Jugador.Estado.ACTIVO,
+            )
+            .annotate(
+                tiene_beca_en_periodo=Exists(becas_del_periodo),
+            )
+            .filter(
+                tiene_beca_en_periodo=False,
+            )
+            .order_by("pk")
+        )
+
+        # Modo de simulaciÃ³n: consulta, calcula y termina sin guardar.
         if options.get("simular"):
             total_elegibles = jugadores.count()
 
@@ -84,10 +123,10 @@ class Command(BaseCommand):
             por_generar = total_elegibles - existentes
 
             self.stdout.write(
-                f"Simulación del período: {periodo:%Y-%m}\n"
+                f"SimulaciÃ³n del perÃ­odo: {periodo:%Y-%m}\n"
                 f"Jugadores activos sin beca: {total_elegibles}\n"
                 f"Cuotas existentes para esos jugadores: {existentes}\n"
-                f"Cuotas que se crearían: {por_generar}\n"
+                f"Cuotas que se crearÃ­an: {por_generar}\n"
                 f"Monto potencial: "
                 f"${por_generar * MONTO_CUOTA_MENSUAL:,.0f} CLP\n"
                 f"Vencimiento provisional: "
@@ -117,11 +156,11 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"Período procesado: {periodo:%Y-%m}\n"
+                f"PerÃ­odo procesado: {periodo:%Y-%m}\n"
                 f"Monto por cuota: ${MONTO_CUOTA_MENSUAL:,.0f} CLP\n"
                 f"Vencimiento provisional: "
                 f"{fecha_vencimiento:%d/%m/%Y}\n"
                 f"Cuotas creadas: {creadas}\n"
-                f"Cuotas que ya existían: {ya_existentes}"
+                f"Cuotas que ya existÃ­an: {ya_existentes}"
             )
         )

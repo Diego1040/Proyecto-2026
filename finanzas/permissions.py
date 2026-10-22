@@ -21,3 +21,21 @@ def tesoreria_required(view_func):
         return view_func(request, *args, **kwargs)
 
     return _wrapped_view
+
+
+def becas_required(view_func):
+    @login_required
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        autorizado = request.user.groups.filter(
+            name__in=("Tesorería", "Administración")
+        ).exists()
+
+        if not autorizado:
+            raise PermissionDenied(
+                "No tienes permiso para gestionar becas."
+            )
+
+        return view_func(request, *args, **kwargs)
+
+    return _wrapped_view
