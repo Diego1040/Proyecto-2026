@@ -19,7 +19,10 @@
       <a class="tab" href="{% url 'validar_fichas' %}">Fichas pendientes</a>
       <a class="tab" href="{% url 'categorias_jugadores' %}">Categorías</a>
     {% endif %}
-    <a class="tab activa" href="{% url 'deportivo:entrenamientos' %}">Entrenamientos</a>
+    {# CAMBIO (HU-09): pestaña Nóminas; la activa depende de la sección #}
+    <a class="tab {% if seccion != 'nominas' %}activa{% endif %}" href="{% url 'deportivo:entrenamientos' %}">Entrenamientos</a>
+    <a class="tab {% if seccion == 'nominas' %}activa{% endif %}" href="{% url 'deportivo:nominas' %}">Nóminas</a>
+    {# FIN CAMBIO #}
     <a class="tab" href="{% url 'panel' %}">Mi cuenta</a>
   </div>
 </nav>

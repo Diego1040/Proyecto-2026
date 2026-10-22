@@ -473,3 +473,139 @@ class CalendarioTest(TestCase):
         self.client.post(reverse("deportivo:eliminar_evento", args=[evento.pk]))
         self.assertFalse(Evento.objects.filter(pk=evento.pk).exists())
         self.assertTrue(Auditoria.objects.filter(accion="EVENTO_ELIMINADO", entidad_id=evento.pk).exists())
+
+# NUEVO (HU-09): nóminas de partido
+from .models import Nomina, NominaJugador
+
+
+class NominaTest(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("cargar_categorias", verbosity=0)
+        Usuario = get_user_model()
+
+        cls.u15 = Categoria.objects.get(nombre="U15 Varones")
+        cls.u13 = Categoria.objects.get(nombre="U13 Damas")
+
+        cls.entrenador = Usuario.objects.create_user(rut="33333333-3", password="clave-segura-123")
+        cls.entrenador.groups.add(Group.objects.get_or_create(name="Entrenador")[0])
+        PerfilEntrenador.objects.create(usuario=cls.entrenador).categorias.add(cls.u15)
+
+        cls.secretaria = Usuario.objects.create_user(rut="22222222-2", password="clave-segura-123")
+        cls.secretaria.groups.add(Group.objects.get_or_create(name="Administración")[0])
+
+        cls.otro = Usuario.objects.create_user(rut="11111111-1", password="clave-segura-123")
+
+        cls.tomas = Jugador.objects.create(
+            rut="22333444-K", nombres="Tomas", apellidos="Vergara",
+            fecha_nacimiento=date(2012, 2, 1), rama=Categoria.Rama.VARONES,
+            estado=Jugador.Estado.ACTIVO, categoria_actual=cls.u15,
+        )
+        cls.pendiente = Jugador.objects.create(
+            rut="22444555-5", nombres="Martin", apellidos="Vergara",
+            fecha_nacimiento=date(2012, 12, 20), rama=Categoria.Rama.VARONES,
+            estado=Jugador.Estado.PENDIENTE, categoria_actual=cls.u15,
+        )
+        cls.sofia = Jugador.objects.create(
+            rut="21111222-0", nombres="Sofia", apellidos="Rojas",
+            fecha_nacimiento=date(2014, 5, 5), rama=Categoria.Rama.DAMAS,
+            estado=Jugador.Estado.ACTIVO, categoria_actual=cls.u13,
+        )
+
+    def datos(self, **cambios):
+        base = {
+            "categoria": self.u15.pk,
+            "titulo": "Ayllu vs Arica",
+            "fecha": (timezone.localdate() + timedelta(days=3)).isoformat(),
+            "lugar": "Gimnasio Epicentro",
+            "jugadores": [self.tomas.pk],
+        }
+        base.update(cambios)
+        return base
+
+    def test_panel_ofrece_acceso_a_nominas(self):
+        self.client.force_login(self.entrenador)
+        respuesta = self.client.get(reverse("panel"))
+        self.assertContains(respuesta, reverse("deportivo:nominas"))
+
+    def test_usuario_sin_rol_no_entra(self):
+        self.client.force_login(self.otro)
+        respuesta = self.client.get(reverse("deportivo:nueva_nomina"))
+        self.assertEqual(respuesta.status_code, 302)
+        self.assertNotEqual(respuesta.url, reverse("deportivo:nueva_nomina"))
+
+    def test_muestra_jugadores_activos_con_categoria_y_asistencia(self):
+        # Tomás: 1 presente de 2 entrenamientos recientes = 50 %
+        for estado in ["PRESENTE", "AUSENTE"]:
+            e = Entrenamiento.objects.create(
+                categoria=self.u15, nombre="Técnico", duracion=90,
+                fecha=timezone.localdate() - timedelta(days=2), creado_por=self.entrenador,
+            )
+            Asistencia.objects.create(entrenamiento=e, jugador=self.tomas, estado=estado, registrado_por=self.entrenador)
+
+        self.client.force_login(self.entrenador)
+        respuesta = self.client.get(reverse("deportivo:nueva_nomina"), {"categoria": self.u15.pk})
+
+        self.assertContains(respuesta, "Vergara, Tomas")
+        self.assertContains(respuesta, "U15 Varones")
+        self.assertContains(respuesta, "50%")
+        self.assertNotContains(respuesta, "Martin")  # pendiente, no activo
+
+    def test_entrenador_genera_nomina_con_seleccion_manual(self):
+        self.client.force_login(self.entrenador)
+        respuesta = self.client.post(reverse("deportivo:nueva_nomina"), self.datos())
+
+        nomina = Nomina.objects.get()
+        self.assertRedirects(respuesta, reverse("deportivo:ver_nomina", args=[nomina.pk]))
+        self.assertEqual(list(nomina.integrantes.values_list("jugador", flat=True)), [self.tomas.pk])
+        self.assertTrue(Auditoria.objects.filter(accion="NOMINA_GENERADA", entidad_id=nomina.pk).exists())
+
+    def test_no_genera_nomina_sin_jugadores(self):
+        self.client.force_login(self.entrenador)
+        self.client.post(reverse("deportivo:nueva_nomina"), self.datos(jugadores=[]))
+        self.assertFalse(Nomina.objects.exists())
+
+    def test_no_acepta_jugador_de_otra_categoria(self):
+        self.client.force_login(self.entrenador)
+        self.client.post(reverse("deportivo:nueva_nomina"), self.datos(jugadores=[self.tomas.pk, self.sofia.pk]))
+        self.assertFalse(Nomina.objects.exists())
+
+    def test_entrenador_no_genera_nomina_de_categoria_ajena(self):
+        self.client.force_login(self.entrenador)
+        self.client.post(reverse("deportivo:nueva_nomina"), self.datos(categoria=self.u13.pk, jugadores=[self.sofia.pk]))
+        self.assertFalse(Nomina.objects.exists())
+
+    def test_nomina_desde_partido_del_calendario(self):
+        partido = Evento.objects.create(
+            tipo=Evento.Tipo.PARTIDO, titulo="Ayllu vs Tacna", categoria=self.u15,
+            fecha=timezone.localdate() + timedelta(days=5), hora="11:00",
+            lugar="Coliseo", creado_por=self.secretaria,
+        )
+        self.client.force_login(self.entrenador)
+        respuesta = self.client.get(reverse("deportivo:nueva_nomina"), {"evento": partido.pk})
+        self.assertContains(respuesta, 'value="Ayllu vs Tacna"')
+
+        self.client.post(reverse("deportivo:nueva_nomina"), self.datos(evento=partido.pk, titulo="Ayllu vs Tacna"))
+        self.assertEqual(Nomina.objects.get().evento, partido)
+
+    def test_pdf_de_la_nomina(self):
+        self.client.force_login(self.entrenador)
+        self.client.post(reverse("deportivo:nueva_nomina"), self.datos())
+        nomina = Nomina.objects.get()
+
+        respuesta = self.client.get(reverse("deportivo:nomina_pdf", args=[nomina.pk]))
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(respuesta["Content-Type"], "application/pdf")
+        self.assertTrue(respuesta.content.startswith(b"%PDF"))
+
+    def test_entrenador_no_ve_nomina_de_otra_categoria(self):
+        nomina = Nomina.objects.create(
+            categoria=self.u13, titulo="Partido U13", fecha=timezone.localdate(), creado_por=self.secretaria,
+        )
+        NominaJugador.objects.create(nomina=nomina, jugador=self.sofia)
+
+        self.client.force_login(self.entrenador)
+        self.assertEqual(self.client.get(reverse("deportivo:ver_nomina", args=[nomina.pk])).status_code, 404)
+        self.assertEqual(self.client.get(reverse("deportivo:nomina_pdf", args=[nomina.pk])).status_code, 404)
+# FIN NUEVO (HU-09)

@@ -68,6 +68,7 @@
           <a class="boton-linea" href="{% url 'importacion_jugadores' %}">Importar jugadores históricos</a>
           <a class="boton-linea" href="{% url 'categorias_jugadores' %}">Categorías y excepciones</a>
           <a class="boton-linea" href="{% url 'deportivo:entrenamientos' %}">Entrenamientos y asistencia</a>
+          <a class="boton-linea" href="{% url 'deportivo:nominas' %}">Nóminas</a>{# NUEVO (HU-09) #}
         </article>
       {% endif %}
       {% if es_entrenador %}
@@ -75,8 +76,11 @@
           <p class="etiqueta-seccion">Entrenador</p>
           <h2>Entrenamientos y asistencia</h2>
           <a class="boton" href="{% url 'deportivo:entrenamientos' %}">Ver entrenamientos</a>
+          {# NUEVO (HU-09) #}
+          <a class="boton-linea" href="{% url 'deportivo:nominas' %}">Nóminas</a>
         </article>
       {% endif %}
+      {# NUEVO (HU-10): calendario para todos los perfiles #}
       {% if perfiles %}
         <article class="tarjeta opcion-panel">
           <div class="opcion-panel-contenido">
@@ -87,6 +91,7 @@
           <a class="boton" href="{% url 'deportivo:calendario' %}">Ver calendario</a>
         </article>
       {% endif %}
+      {# FIN NUEVO (HU-10) #}
       {% if user.is_staff %}
         <article class="tarjeta opcion-panel">
           <h2>Django Admin</h2>

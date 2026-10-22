@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<title>Ayllu Basket — Nueva nómina</title>
+{% include "deportivo/_estilos.html" %}
+<style>
+.volver{color:var(--gris);font-size:.9rem;text-decoration:none}
+.volver:hover{color:var(--tinta)}
+.paso{display:grid;gap:14px}
+.partido{display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid var(--linea);text-decoration:none;flex-wrap:wrap}
+.partido:first-child{border-top:0}
+.partido:hover{background:var(--papel)}
+.partido .info{flex:1;min-width:180px}
+.partido small{color:var(--gris);display:block;font-size:.84rem}
+.jug{display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid var(--linea);cursor:pointer}
+.jug:first-of-type{border-top:0}
+.jug input{width:22px;height:22px;flex:none;accent-color:var(--naranja)}
+.jug .info{flex:1;min-width:0}
+.jug .info b{display:block;font-weight:600}
+.jug .info small{color:var(--gris);font-size:.84rem}
+.asis{font-weight:600;font-size:.9rem;min-width:56px;text-align:right}
+.asis.alta{color:var(--verde)}
+.asis.media{color:var(--ambar)}
+.asis.baja{color:var(--rojo)}
+.asis.sin{color:var(--gris);font-weight:400}
+.guardar{position:sticky;bottom:0;background:var(--blanco);border-top:1px solid var(--linea);padding:12px 16px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+</style>
+</head>
+<body>
+{% include "deportivo/_barra.html" %}
+ 
+<main><div class="wrap">
+ 
+  <div class="cabecera">
+    <a href="{% url 'deportivo:nominas' %}" class="volver">← Nóminas</a>
+    <h1 style="margin-top:8px">Nueva nómina</h1>
+    <p class="sub">La selección es manual: el sistema no excluye jugadores automáticamente.</p>
+  </div>
+ 
+  {% if messages %}
+    <div class="mensajes">
+      {% for mensaje in messages %}
+        <div class="mensaje {{ mensaje.tags }}">{{ mensaje }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+ 
+  {% if not categoria %}
+    {# PASO 1: elegir partido del calendario o categoría #}
+    {% if partidos %}
+      <h2>Próximos partidos del calendario</h2>
+      <div class="tarjeta">
+        {% for partido in partidos %}
+          <a class="partido" href="?evento={{ partido.pk }}">
+            <div class="info">
+              <b>{{ partido.titulo }}</b>
+              <small>{{ partido.categoria }} · {{ partido.fecha|date:"d/m/Y" }} {{ partido.hora|time:"H:i" }} · {{ partido.lugar }}</small>
+            </div>
+            <span class="pill cat">{{ partido.get_tipo_display }}</span>
+          </a>
+        {% endfor %}
+      </div>
+    {% endif %}
+ 
+    <h2>{% if partidos %}O elige solo la categoría{% else %}Elige la categoría{% endif %}</h2>
+    <form method="get" class="tarjeta pad paso">
+      <label class="campo">Categoría
+        <select name="categoria" required>
+          {% for c in categorias %}<option value="{{ c.pk }}">{{ c }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="btn" type="submit">Continuar</button>
+    </form>
+ 
+  {% else %}
+    {# PASO 2: datos del partido y selección de jugadores #}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="categoria" value="{{ categoria.pk }}">
+      {% if evento %}<input type="hidden" name="evento" value="{{ evento.pk }}">{% endif %}
+ 
+      <div class="tarjeta pad paso">
+        <p><span class="pill cat">{{ categoria }}</span> <a class="volver" href="{% url 'deportivo:nueva_nomina' %}">Cambiar</a></p>
+        <div class="fila">
+          <label class="campo">Partido / rival
+            <input type="text" name="titulo" maxlength="150" required value="{{ evento.titulo|default:'' }}" placeholder="Ayllu vs. Arica Basket">
+          </label>
+          <label class="campo">Fecha
+            <input type="date" name="fecha" required value="{% if evento %}{{ evento.fecha|date:'Y-m-d' }}{% else %}{{ hoy|date:'Y-m-d' }}{% endif %}">
+          </label>
+        </div>
+        <label class="campo">Lugar
+          <input type="text" name="lugar" maxlength="200" value="{{ evento.lugar|default:'' }}" placeholder="Gimnasio Epicentro">
+        </label>
+      </div>
+ 
+      <h2>Jugadores ({{ candidatos|length }})</h2>
+      <p class="sub" style="margin:-4px 0 12px">Asistencia de los últimos {{ dias_asistencia }} días. Máximo {{ max_jugadores }} jugadores.</p>
+ 
+      <div class="tarjeta">
+        {% for c in candidatos %}
+          <label class="jug">
+            <input type="checkbox" name="jugadores" value="{{ c.jugador.pk }}">
+            <span class="info">
+              <b>{{ c.jugador.apellidos }}, {{ c.jugador.nombres }}</b>
+              <small>{{ c.jugador.categoria_actual }} · {{ c.jugador.rut }}</small>
+            </span>
+            {% if c.asistencia is None %}
+              <span class="asis sin">Sin registros</span>
+            {% else %}
+              <span class="asis {% if c.asistencia >= 75 %}alta{% elif c.asistencia >= 50 %}media{% else %}baja{% endif %}">{{ c.asistencia }}%</span>
+            {% endif %}
+          </label>
+        {% empty %}
+          <p class="vacio">No hay jugadores activos en {{ categoria }}.</p>
+        {% endfor %}
+ 
+        {% if candidatos %}
+          <div class="guardar">
+            <span class="sub" id="contador">0 seleccionados</span>
+            <button class="btn" type="submit">Generar nómina</button>
+          </div>
+        {% endif %}
+      </div>
+ 
+      <label class="campo" style="margin-top:16px">Observaciones (opcional)
+        <textarea name="observaciones" placeholder="Citación 1 hora antes, uniforme oficial."></textarea>
+      </label>
+    </form>
+ 
+    <script>
+    // Cuenta los seleccionados y avisa si se pasa del máximo
+    (function () {
+      var max = Number("{{ max_jugadores }}");    
+      var casillas = document.querySelectorAll('input[name="jugadores"]');
+      var contador = document.getElementById('contador');
+      function actualizar() {
+        var n = document.querySelectorAll('input[name="jugadores"]:checked').length;
+        contador.textContent = n + ' seleccionado' + (n === 1 ? '' : 's') + ' de ' + max;
+        contador.style.color = n > max ? 'var(--rojo)' : '';
+      }
+      casillas.forEach(function (c) { c.addEventListener('change', actualizar); });
+      if (contador) actualizar();
+    })();
+    </script>
+  {% endif %}
+ 
+</div></main>
+</body>
+</html>

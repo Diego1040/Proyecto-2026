@@ -23,4 +23,8 @@ urlpatterns = [
         views.eliminar_evento,
         name="eliminar_evento",
     ),
+    path("nominas/", views.nominas, name="nominas"),
+    path("nominas/nueva/", views.nueva_nomina, name="nueva_nomina"),
+    path("nominas/<int:pk>/", views.ver_nomina, name="ver_nomina"),
+    path("nominas/<int:pk>/pdf/", views.nomina_pdf, name="nomina_pdf"),
 ]

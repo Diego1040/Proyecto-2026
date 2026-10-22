@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<title>Ayllu Basket — Nóminas</title>
+{% include "deportivo/_estilos.html" %}
+<style>
+.nom{display:flex;align-items:center;gap:12px;padding:14px 16px;border-top:1px solid var(--linea);flex-wrap:wrap}
+.nom:first-child{border-top:0}
+.nom .info{flex:1;min-width:200px}
+.nom .info b{display:block;font-weight:600}
+.nom .info small{color:var(--gris);font-size:.84rem;display:block}
+.nom .acciones{display:flex;gap:8px}
+</style>
+</head>
+<body>
+{% include "deportivo/_barra.html" %}
+ 
+<main><div class="wrap">
+ 
+  <div class="cabecera" style="display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap">
+    <div>
+      <h1>Nóminas</h1>
+      <p class="sub">Selecciona jugadores y genera la nómina del partido en PDF.</p>
+    </div>
+    <a class="btn" href="{% url 'deportivo:nueva_nomina' %}">Nueva nómina</a>
+  </div>
+ 
+  {% if messages %}
+    <div class="mensajes">
+      {% for mensaje in messages %}
+        <div class="mensaje {{ mensaje.tags }}">{{ mensaje }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+ 
+  <div class="tarjeta">
+    {% for nomina in nominas %}
+      <div class="nom">
+        <div class="info">
+          <b>{{ nomina.titulo }}</b>
+          <small>{{ nomina.categoria }} · {{ nomina.fecha|date:"d/m/Y" }}{% if nomina.lugar %} · {{ nomina.lugar }}{% endif %}</small>
+        </div>
+        <div class="acciones">
+          <a class="btn gris chico" href="{% url 'deportivo:ver_nomina' nomina.pk %}">Ver</a>
+          <a class="btn chico" href="{% url 'deportivo:nomina_pdf' nomina.pk %}" target="_blank">PDF</a>
+        </div>
+      </div>
+    {% empty %}
+      <p class="vacio">Todavía no hay nóminas generadas.</p>
+    {% endfor %}
+  </div>
+ 
+</div></main>
+</body>
+</html>

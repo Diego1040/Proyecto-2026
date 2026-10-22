@@ -5,12 +5,20 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth import get_user_model  #HU-06
 from django.utils import timezone
 from datetime import date as _date, time as _time
+from django.http import HttpResponse
 
 from django.views.decorators.http import require_POST
 
-from .models import Asistencia, Entrenamiento, Evento
+from .models import Asistencia, Entrenamiento, Evento, Nomina
+from .nomina_pdf import generar_pdf_nomina
 from .permisos import categorias_visibles, es_administracion, es_entrenador
 from .services import (
+    MAX_JUGADORES_NOMINA,
+    DIAS_ASISTENCIA_NOMINA,
+    candidatos_nomina,
+    crear_nomina,
+    nominas_visibles,
+    partidos_para_nomina,
     categorias_del_usuario,
     eventos_visibles,
     puede_eliminar_evento,
@@ -346,3 +354,102 @@ def eliminar_evento(request, pk):
     evento.delete()
     messages.success(request, "Evento eliminado.")
     return redirect("deportivo:calendario")
+
+def _rol(usuario):
+    return "Administración" if es_administracion(usuario) else "Entrenador"
+
+
+@login_required
+def nominas(request):
+    """Lista de nóminas generadas."""
+    usuario = request.user
+    if not (es_entrenador(usuario) or es_administracion(usuario)):
+        return _sin_permiso(request)
+
+    return render(request, "deportivo/nominas.html", {
+        "nominas": nominas_visibles(usuario)[:30],
+        "rol": _rol(usuario),
+        "seccion": "nominas",
+    })
+
+
+@login_required
+def nueva_nomina(request):
+    """Elegir partido/categoría, seleccionar jugadores y generar la nómina."""
+    usuario = request.user
+    if not (es_entrenador(usuario) or es_administracion(usuario)):
+        return _sin_permiso(request)
+
+    categorias = categorias_visibles(usuario)
+    partidos = partidos_para_nomina(categorias)
+
+    # Partido del calendario (opcional) y categoría elegida
+    datos = request.POST if request.method == "POST" else request.GET
+    evento = partidos.filter(pk=datos.get("evento") or None).first()
+    categoria = evento.categoria if evento else categorias.filter(pk=datos.get("categoria") or None).first()
+
+    if request.method == "POST":
+        try:
+            nomina = crear_nomina(
+                usuario=usuario,
+                categoria=categoria,
+                evento=evento,
+                titulo=request.POST.get("titulo", "").strip(),
+                fecha=_leer_fecha(request.POST.get("fecha")),
+                lugar=request.POST.get("lugar", "").strip(),
+                observaciones=request.POST.get("observaciones", "").strip(),
+                jugador_ids=request.POST.getlist("jugadores"),
+            )
+        except ValidationError as error:
+            for mensaje in error.messages:
+                messages.error(request, mensaje)
+            url = f"{request.path}?categoria={categoria.pk if categoria else ''}"
+            if evento:
+                url += f"&evento={evento.pk}"
+            return redirect(url)
+
+        messages.success(request, f"Nómina \"{nomina.titulo}\" generada con {nomina.integrantes.count()} jugadores.")
+        return redirect("deportivo:ver_nomina", pk=nomina.pk)
+
+    return render(request, "deportivo/nueva_nomina.html", {
+        "categorias": categorias,
+        "partidos": partidos,
+        "categoria": categoria,
+        "evento": evento,
+        "candidatos": candidatos_nomina(categoria) if categoria else [],
+        "max_jugadores": MAX_JUGADORES_NOMINA,
+        "dias_asistencia": DIAS_ASISTENCIA_NOMINA,
+        "hoy": timezone.localdate(),
+        "rol": _rol(usuario),
+        "seccion": "nominas",
+    })
+
+
+def _nomina_visible(request, pk):
+    return get_object_or_404(
+        nominas_visibles(request.user).prefetch_related("integrantes__jugador"),
+        pk=pk,
+    )
+
+
+@login_required
+def ver_nomina(request, pk):
+    if not (es_entrenador(request.user) or es_administracion(request.user)):
+        return _sin_permiso(request)
+
+    return render(request, "deportivo/ver_nomina.html", {
+        "nomina": _nomina_visible(request, pk),
+        "rol": _rol(request.user),
+        "seccion": "nominas",
+    })
+
+
+@login_required
+def nomina_pdf(request, pk):
+    if not (es_entrenador(request.user) or es_administracion(request.user)):
+        return _sin_permiso(request)
+
+    nomina = _nomina_visible(request, pk)
+    respuesta = HttpResponse(generar_pdf_nomina(nomina), content_type="application/pdf")
+    respuesta["Content-Disposition"] = f'inline; filename="nomina_{nomina.pk}_{nomina.fecha:%Y%m%d}.pdf"'
+    return respuesta

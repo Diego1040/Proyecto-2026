@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<title>Ayllu Basket — Nómina {{ nomina.titulo }}</title>
+{% include "deportivo/_estilos.html" %}
+<style>
+.volver{color:var(--gris);font-size:.9rem;text-decoration:none}
+.volver:hover{color:var(--tinta)}
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px 14px;border-bottom:1px solid var(--linea);text-align:left;font-size:.95rem}
+th{font-size:.8rem;color:var(--gris);text-transform:uppercase}
+tr:last-child td{border-bottom:0}
+.acciones{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+@media(max-width:600px){.ocultar-movil{display:none}}
+</style>
+</head>
+<body>
+{% include "deportivo/_barra.html" %}
+ 
+<main><div class="wrap">
+ 
+  <div class="cabecera">
+    <a href="{% url 'deportivo:nominas' %}" class="volver">← Nóminas</a>
+    <h1 style="margin-top:8px">{{ nomina.titulo }}</h1>
+    <p class="sub">{{ nomina.categoria }} · {{ nomina.fecha|date:"d/m/Y" }}{% if nomina.lugar %} · {{ nomina.lugar }}{% endif %}</p>
+  </div>
+ 
+  {% if messages %}
+    <div class="mensajes">
+      {% for mensaje in messages %}
+        <div class="mensaje {{ mensaje.tags }}">{{ mensaje }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+ 
+  <div class="acciones">
+    <a class="btn" href="{% url 'deportivo:nomina_pdf' nomina.pk %}" target="_blank">Descargar PDF</a>
+  </div>
+ 
+  <div class="tarjeta" style="overflow-x:auto">
+    <table>
+      <thead>
+        <tr><th>N°</th><th>Jugador</th><th>RUT</th><th class="ocultar-movil">Asistencia</th></tr>
+      </thead>
+      <tbody>
+        {% for integrante in nomina.integrantes.all %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ integrante.jugador.apellidos }}, {{ integrante.jugador.nombres }}</td>
+            <td>{{ integrante.jugador.rut }}</td>
+            <td class="ocultar-movil">{% if integrante.asistencia_porcentaje is None %}—{% else %}{{ integrante.asistencia_porcentaje }}%{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+ 
+  {% if nomina.observaciones %}
+    <p style="margin-top:16px"><b>Observaciones:</b> {{ nomina.observaciones|linebreaksbr }}</p>
+  {% endif %}
+  <p class="sub" style="margin-top:16px">Generada por {{ nomina.creado_por.get_full_name|default:nomina.creado_por.rut }} el {{ nomina.creado_en|date:"d/m/Y H:i" }}.</p>
+ 
+</div></main>
+</body>
+</html>

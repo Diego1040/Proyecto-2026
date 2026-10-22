@@ -11,7 +11,7 @@ from .permisos import categorias_visibles, es_entrenador
 from usuarios.models import Jugador
 from usuarios.services import registrar_auditoria
 
-from .models import Asistencia
+from .models import Asistencia, Nomina, NominaJugador
 from .permisos import es_administracion
 
 
@@ -299,3 +299,113 @@ def validar_evento(*, usuario, tipo, titulo, categoria, categoria_pedida, fecha,
 def puede_eliminar_evento(usuario, evento):
     """Administración elimina cualquiera; el entrenador solo los que creó."""
     return es_administracion(usuario) or evento.creado_por_id == usuario.pk
+
+DIAS_ASISTENCIA_NOMINA = 30
+MAX_JUGADORES_NOMINA = 12
+
+def asistencia_reciente(jugador, dias=DIAS_ASISTENCIA_NOMINA, hoy=None):
+    """Porcentaje de asistencia del jugador en los últimos días (None si no hay registros)."""
+    if hoy is None:
+        hoy = timezone.localdate()
+
+    registros = Asistencia.objects.filter(
+        jugador=jugador,
+        entrenamiento__fecha__gt=hoy - timedelta(days=dias),
+        entrenamiento__fecha__lte=hoy,
+    )
+    total = registros.count()
+    if not total:
+        return None
+    presentes = registros.filter(estado=Asistencia.Estado.PRESENTE).count()
+    return round(presentes * 100 / total)
+
+
+def candidatos_nomina(categoria):
+    """
+    Jugadores activos de la categoría con su asistencia reciente.
+    No se excluye a nadie por deudas: la selección es manual del entrenador.
+    """
+    jugadores = Jugador.objects.filter(
+        categoria_actual=categoria,
+        estado=Jugador.Estado.ACTIVO,
+    ).order_by("apellidos", "nombres")
+
+    return [
+        {"jugador": j, "asistencia": asistencia_reciente(j)}
+        for j in jugadores
+    ]
+
+
+def partidos_para_nomina(categorias):
+    """Partidos y campeonatos próximos del calendario (HU-10) de esas categorías."""
+    return (
+        Evento.objects
+        .filter(
+            tipo__in=[Evento.Tipo.PARTIDO, Evento.Tipo.CAMPEONATO],
+            categoria__in=categorias,
+            fecha__gte=timezone.localdate(),
+        )
+        .select_related("categoria")
+        .order_by("fecha", "hora")
+    )
+
+
+@transaction.atomic
+def crear_nomina(*, usuario, categoria, titulo, fecha, lugar="", evento=None, jugador_ids=(), observaciones=""):
+    """Valida y guarda la nómina con sus jugadores. Lanza ValidationError con la lista de errores."""
+    errores = []
+
+    if categoria is None:
+        errores.append("Selecciona una categoría válida.")
+    if not titulo:
+        errores.append("Escribe el partido o rival de la nómina.")
+    if not fecha:
+        errores.append("Indica la fecha del partido.")
+    if evento is not None and categoria is not None and evento.categoria_id != categoria.pk:
+        errores.append("El partido elegido no es de esa categoría.")
+
+    ids = {int(i) for i in jugador_ids if str(i).isdigit()}
+    candidatos = {c["jugador"].pk: c for c in candidatos_nomina(categoria)} if categoria else {}
+    elegidos = [candidatos[i] for i in ids if i in candidatos]
+
+    if not elegidos:
+        errores.append("Selecciona al menos un jugador.")
+    elif len(elegidos) > MAX_JUGADORES_NOMINA:
+        errores.append(f"La nómina admite como máximo {MAX_JUGADORES_NOMINA} jugadores.")
+    if len(elegidos) != len(ids):
+        errores.append("Hay jugadores que no pertenecen a la categoría o no están activos.")
+
+    if errores:
+        raise ValidationError(errores)
+
+    nomina = Nomina.objects.create(
+        categoria=categoria,
+        evento=evento,
+        titulo=titulo,
+        fecha=fecha,
+        lugar=lugar,
+        observaciones=observaciones,
+        creado_por=usuario,
+    )
+    NominaJugador.objects.bulk_create([
+        NominaJugador(nomina=nomina, jugador=c["jugador"], asistencia_porcentaje=c["asistencia"])
+        for c in elegidos
+    ])
+
+    registrar_auditoria(
+        usuario=usuario,
+        accion="NOMINA_GENERADA",
+        entidad="Nomina",
+        entidad_id=nomina.pk,
+        detalle={"titulo": titulo, "fecha": str(fecha), "jugadores": len(elegidos)},
+    )
+    return nomina
+
+
+def nominas_visibles(usuario):
+    """Nóminas de las categorías que el usuario puede ver (Administración: todas)."""
+    return (
+        Nomina.objects
+        .filter(categoria__in=categorias_visibles(usuario))
+        .select_related("categoria", "creado_por")
+    )
