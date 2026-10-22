@@ -9,7 +9,7 @@ from django.utils import timezone
  
 from usuarios.models import Auditoria, Categoria, Jugador, Apoderado, ApoderadoJugador
  
-from .models import Asistencia, Entrenamiento, PerfilEntrenador, Evento
+from .models import Asistencia, Entrenamiento, PerfilEntrenador, Evento, ReporteLesion
  
  
 class AsistenciaTest(TestCase):
@@ -682,3 +682,158 @@ class HistorialNominasTest(TestCase):
         respuesta = self.client.get(reverse("deportivo:exportar_nominas"))
         self.assertEqual(respuesta.status_code, 302)
 # HU-20
+
+class LesionTest(TestCase):
+ 
+    @classmethod
+    def setUpTestData(cls):
+        call_command("cargar_categorias", verbosity=0)
+        Usuario = get_user_model()
+ 
+        cls.u15 = Categoria.objects.get(nombre="U15 Varones")
+        cls.u13 = Categoria.objects.get(nombre="U13 Damas")
+ 
+        cls.entrenador = Usuario.objects.create_user(rut="33333333-3", password="clave-segura-123")
+        cls.entrenador.groups.add(Group.objects.get_or_create(name="Entrenador")[0])
+        PerfilEntrenador.objects.create(usuario=cls.entrenador).categorias.add(cls.u15)
+ 
+        cls.entrenador_u13 = Usuario.objects.create_user(rut="55555555-5", password="clave-segura-123")
+        cls.entrenador_u13.groups.add(Group.objects.get_or_create(name="Entrenador")[0])
+        PerfilEntrenador.objects.create(usuario=cls.entrenador_u13).categorias.add(cls.u13)
+ 
+        # Apoderada de Tomás (U15)
+        cls.mama = Usuario.objects.create_user(rut="12345678-5", password="clave-segura-123")
+        apoderada = Apoderado.objects.create(
+            usuario=cls.mama, rut="12345678-5", nombres="Patricia",
+            apellidos="Vergara", telefono="+56911111111",
+        )
+        cls.tomas = Jugador.objects.create(
+            rut="22333444-K", nombres="Tomas", apellidos="Vergara",
+            fecha_nacimiento=date(2012, 2, 1), rama=Categoria.Rama.VARONES,
+            estado=Jugador.Estado.ACTIVO, categoria_actual=cls.u15,
+        )
+        ApoderadoJugador.objects.create(apoderado=apoderada, jugador=cls.tomas, parentesco="MADRE", es_principal=True)
+ 
+        cls.sofia = Jugador.objects.create(
+            rut="21111222-0", nombres="Sofia", apellidos="Rojas",
+            fecha_nacimiento=date(2014, 5, 5), rama=Categoria.Rama.DAMAS,
+            estado=Jugador.Estado.ACTIVO, categoria_actual=cls.u13,
+        )
+        cls.otro = Usuario.objects.create_user(rut="11111111-1", password="clave-segura-123")
+ 
+    def datos(self, **cambios):
+        base = {
+            "jugador_id": self.tomas.pk,
+            "tipo": "LESION",
+            "descripcion": "Esguince de tobillo, reposo 2 semanas.",
+            "fecha_inicio": timezone.localdate().isoformat(),
+            "fecha_fin": (timezone.localdate() + timedelta(days=14)).isoformat(),
+        }
+        base.update(cambios)
+        return base
+ 
+    def reporte(self, **cambios):
+        datos = {
+            "jugador": self.tomas, "tipo": "LESION", "descripcion": "Esguince",
+            "fecha_inicio": timezone.localdate(), "reportado_por": self.mama,
+        }
+        datos.update(cambios)
+        return ReporteLesion.objects.create(**datos)
+ 
+    # ---------- reportar ----------
+ 
+    def test_panel_ofrece_reportar_lesion_al_apoderado(self):
+        self.client.force_login(self.mama)
+        self.assertContains(self.client.get(reverse("panel")), reverse("deportivo:mis_lesiones"))
+ 
+    def test_apoderada_reporta_y_queda_pendiente(self):
+        self.client.force_login(self.mama)
+        self.client.post(reverse("deportivo:mis_lesiones"), self.datos())
+ 
+        reporte = ReporteLesion.objects.get()
+        self.assertEqual(reporte.estado, ReporteLesion.Estado.PENDIENTE)
+        self.assertEqual(reporte.reportado_por, self.mama)
+        auditoria = Auditoria.objects.get(accion="LESION_REPORTADA")
+        self.assertNotIn("Esguince", str(auditoria.detalle))  # no guarda datos de salud
+ 
+    def test_no_reporta_jugador_ajeno(self):
+        self.client.force_login(self.mama)
+        self.client.post(reverse("deportivo:mis_lesiones"), self.datos(jugador_id=self.sofia.pk))
+        self.assertFalse(ReporteLesion.objects.exists())
+ 
+    def test_no_reporta_con_datos_vacios_o_fechas_invertidas(self):
+        self.client.force_login(self.mama)
+        self.client.post(reverse("deportivo:mis_lesiones"), self.datos(descripcion=""))
+        ayer = (timezone.localdate() - timedelta(days=1)).isoformat()
+        self.client.post(reverse("deportivo:mis_lesiones"), self.datos(fecha_fin=ayer))
+        self.assertFalse(ReporteLesion.objects.exists())
+ 
+    def test_usuario_sin_jugadores_no_entra(self):
+        self.client.force_login(self.otro)
+        respuesta = self.client.get(reverse("deportivo:mis_lesiones"))
+        self.assertRedirects(respuesta, reverse("panel"))
+ 
+    # ---------- validar ----------
+ 
+    def test_entrenador_ve_reportes_de_su_categoria(self):
+        self.reporte()
+        self.reporte(jugador=self.sofia, descripcion="Tendinitis")
+        self.client.force_login(self.entrenador)
+        respuesta = self.client.get(reverse("deportivo:revisar_lesiones"))
+        self.assertContains(respuesta, "Esguince")
+        self.assertNotContains(respuesta, "Tendinitis")
+ 
+    def test_entrenador_valida_sin_cambiar_asistencia(self):
+        reporte = self.reporte()
+        entrenamiento = Entrenamiento.objects.create(
+            categoria=self.u15, nombre="Técnico", duracion=90,
+            fecha=timezone.localdate(), creado_por=self.entrenador,
+        )
+        asistencia = Asistencia.objects.create(
+            entrenamiento=entrenamiento, jugador=self.tomas,
+            estado=Asistencia.Estado.AUSENTE, registrado_por=self.entrenador,
+        )
+ 
+        self.client.force_login(self.entrenador)
+        self.client.post(reverse("deportivo:revisar_lesiones"), {"reporte_id": reporte.pk, "decision": "VALIDADO"})
+ 
+        reporte.refresh_from_db()
+        asistencia.refresh_from_db()
+        self.assertEqual(reporte.estado, ReporteLesion.Estado.VALIDADO)
+        self.assertEqual(reporte.revisado_por, self.entrenador)
+        self.assertEqual(asistencia.estado, Asistencia.Estado.AUSENTE)  # no justifica automáticamente
+        self.assertTrue(Auditoria.objects.filter(accion="LESION_VALIDADO", entidad_id=reporte.pk).exists())
+ 
+    def test_rechazo_exige_motivo(self):
+        reporte = self.reporte()
+        self.client.force_login(self.entrenador)
+        self.client.post(reverse("deportivo:revisar_lesiones"), {"reporte_id": reporte.pk, "decision": "RECHAZADO"})
+        reporte.refresh_from_db()
+        self.assertEqual(reporte.estado, ReporteLesion.Estado.PENDIENTE)
+ 
+        self.client.post(reverse("deportivo:revisar_lesiones"), {
+            "reporte_id": reporte.pk, "decision": "RECHAZADO", "comentario": "Falta certificado",
+        })
+        reporte.refresh_from_db()
+        self.assertEqual(reporte.estado, ReporteLesion.Estado.RECHAZADO)
+ 
+    def test_entrenador_no_revisa_otra_categoria(self):
+        reporte = self.reporte()
+        self.client.force_login(self.entrenador_u13)
+        respuesta = self.client.post(reverse("deportivo:revisar_lesiones"), {"reporte_id": reporte.pk, "decision": "VALIDADO"})
+        self.assertEqual(respuesta.status_code, 404)
+        reporte.refresh_from_db()
+        self.assertEqual(reporte.estado, ReporteLesion.Estado.PENDIENTE)
+ 
+    def test_apoderada_no_puede_revisar(self):
+        self.client.force_login(self.mama)
+        respuesta = self.client.get(reverse("deportivo:revisar_lesiones"))
+        self.assertEqual(respuesta.status_code, 302)
+ 
+    def test_nomina_avisa_lesion_validada_sin_excluir(self):
+        self.reporte(estado=ReporteLesion.Estado.VALIDADO)
+        self.client.force_login(self.entrenador)
+        respuesta = self.client.get(reverse("deportivo:nueva_nomina"), {"categoria": self.u15.pk})
+        self.assertContains(respuesta, "Vergara, Tomas")
+        self.assertContains(respuesta, "Lesión")
+# HU-08 FIN

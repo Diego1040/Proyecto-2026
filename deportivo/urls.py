@@ -28,4 +28,6 @@ urlpatterns = [
     path("nominas/exportar/", views.exportar_nominas, name="exportar_nominas"), # HU-20
     path("nominas/<int:pk>/", views.ver_nomina, name="ver_nomina"),
     path("nominas/<int:pk>/pdf/", views.nomina_pdf, name="nomina_pdf"),
+    path("lesiones/", views.mis_lesiones, name="mis_lesiones"), # HU-08
+    path("lesiones/revision/", views.revisar_lesiones, name="revisar_lesiones"),  #JU-08
 ]

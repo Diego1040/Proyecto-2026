@@ -104,6 +104,10 @@
             <span class="info">
               <b>{{ c.jugador.apellidos }}, {{ c.jugador.nombres }}</b>
               <small>{{ c.jugador.categoria_actual }} · {{ c.jugador.rut }}</small>
+              {# HU-08: aviso de lesión validada (no excluye al jugador) #}
+              {% if c.restriccion %}
+                <br><span class="pill esp">{{ c.restriccion.get_tipo_display }}{% if c.restriccion.fecha_fin %} hasta {{ c.restriccion.fecha_fin|date:"d/m" }}{% endif %}</span>
+              {% endif %}
             </span>
             {% if c.asistencia is None %}
               <span class="asis sin">Sin registros</span>

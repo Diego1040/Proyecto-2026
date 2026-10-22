@@ -152,3 +152,49 @@ class NominaJugador(models.Model):
 
     def __str__(self):
         return f"{self.jugador} en {self.nomina}"
+
+# HU-08
+class ReporteLesion(models.Model):
+    class Tipo(models.TextChoices):
+        LESION = "LESION", "Lesión"
+        LICENCIA = "LICENCIA", "Licencia médica"
+        RESTRICCION = "RESTRICCION", "Restricción temporal"
+ 
+    class Estado(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Pendiente de revisión"
+        VALIDADO = "VALIDADO", "Validado"
+        RECHAZADO = "RECHAZADO", "Rechazado"
+ 
+    jugador = models.ForeignKey(
+        Jugador,
+        on_delete=models.PROTECT,
+        related_name="reportes_lesion",
+    )
+    tipo = models.CharField(max_length=20, choices=Tipo.choices)
+    # Solo lo necesario para el cuerpo técnico (minimización de datos)
+    descripcion = models.TextField(max_length=500)
+    fecha_inicio = models.DateField()
+    fecha_fin = models.DateField(null=True, blank=True, help_text="Fecha estimada de término")
+    estado = models.CharField(max_length=20, choices=Estado.choices, default=Estado.PENDIENTE)
+    reportado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="lesiones_reportadas",
+    )
+    reportado_en = models.DateTimeField(auto_now_add=True)
+    revisado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="lesiones_revisadas",
+    )
+    revisado_en = models.DateTimeField(null=True, blank=True)
+    comentario_revision = models.TextField(blank=True)
+ 
+    class Meta:
+        ordering = ["-reportado_en"]
+ 
+    def __str__(self):
+        return f"{self.get_tipo_display()} - {self.jugador} ({self.get_estado_display()})"
+# HU-08 FINAL

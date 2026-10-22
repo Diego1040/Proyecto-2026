@@ -43,6 +43,7 @@
             <p>Consulta tus datos, categoría, asistencia e historial.</p>
           </div>
           <a class="boton" href="{% url 'perfil_jugador' %}">Ver perfil</a>
+          <a class="boton-linea" href="{% url 'deportivo:mis_lesiones' %}">Reportar lesión</a>{# NUEVO (HU-08) #}
         </article>
       {% endif %}
 
@@ -54,6 +55,7 @@
             <p>Consulta tus vínculos activos o agrega otro jugador.</p>
           </div>
           <a class="boton" href="{% url 'perfil_apoderado' %}">Ver jugadores</a>
+          <a class="boton-linea" href="{% url 'deportivo:mis_lesiones' %}">Reportar lesión</a>{# NUEVO (HU-08) #}
         </article>
       {% endif %}
 
@@ -69,6 +71,7 @@
           <a class="boton-linea" href="{% url 'categorias_jugadores' %}">Categorías y excepciones</a>
           <a class="boton-linea" href="{% url 'deportivo:entrenamientos' %}">Entrenamientos y asistencia</a>
           <a class="boton-linea" href="{% url 'deportivo:nominas' %}">Nóminas</a>{# NUEVO (HU-09) #}
+          <a class="boton-linea" href="{% url 'deportivo:revisar_lesiones' %}">Lesiones</a>{# NUEVO (HU-08) #}
         </article>
       {% endif %}
       {% if es_entrenador %}
@@ -78,6 +81,7 @@
           <a class="boton" href="{% url 'deportivo:entrenamientos' %}">Ver entrenamientos</a>
           {# NUEVO (HU-09) #}
           <a class="boton-linea" href="{% url 'deportivo:nominas' %}">Nóminas</a>
+          <a class="boton-linea" href="{% url 'deportivo:revisar_lesiones' %}">Lesiones</a>{# NUEVO (HU-08) #}
         </article>
       {% endif %}
       {# NUEVO (HU-10): calendario para todos los perfiles #}

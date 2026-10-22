@@ -11,7 +11,7 @@ import csv
 from django.db.models import Count
 from django.views.decorators.http import require_POST
 
-from .models import Asistencia, Entrenamiento, Evento, Nomina
+from .models import Asistencia, Entrenamiento, Evento, Nomina, ReporteLesion
 from .nomina_pdf import generar_pdf_nomina
 from .permisos import categorias_visibles, es_administracion, es_entrenador
 from .services import (
@@ -37,6 +37,11 @@ from .services import (
     registrar_asistencia,
     responsables_posibles,             #HU-06
     validar_planificacion,             #HU-06
+    crear_reporte_lesion,              #HU-08
+    jugadores_que_puede_reportar,      #HU-08
+    puede_revisar_lesiones,            #HU-08
+    reportes_para_revisar,             #HU-08
+    revisar_reporte_lesion,            #HU-08
 )
 from usuarios.services import registrar_auditoria  # HU-06
 
@@ -509,3 +514,70 @@ def nomina_pdf(request, pk):
     respuesta = HttpResponse(generar_pdf_nomina(nomina), content_type="application/pdf")
     respuesta["Content-Disposition"] = f'inline; filename="nomina_{nomina.pk}_{nomina.fecha:%Y%m%d}.pdf"'
     return respuesta
+
+@login_required
+def mis_lesiones(request):
+    """El apoderado (o jugador adulto) reporta lesiones y ve el estado de sus reportes."""
+    usuario = request.user
+    jugadores = jugadores_que_puede_reportar(usuario)
+ 
+    if not jugadores.exists():
+        messages.error(request, "Tu cuenta no tiene jugadores para los que puedas reportar lesiones.")
+        return redirect("panel")
+ 
+    if request.method == "POST":
+        try:
+            crear_reporte_lesion(
+                usuario=usuario,
+                jugador=jugadores.filter(pk=request.POST.get("jugador_id") or None).first(),
+                tipo=request.POST.get("tipo", ""),
+                descripcion=request.POST.get("descripcion", "").strip(),
+                fecha_inicio=_leer_fecha(request.POST.get("fecha_inicio")),
+                fecha_fin=_leer_fecha(request.POST.get("fecha_fin")),
+            )
+        except ValidationError as error:
+            for mensaje in error.messages:
+                messages.error(request, mensaje)
+        else:
+            messages.success(request, "Reporte enviado. El cuerpo técnico lo revisará.")
+        return redirect("deportivo:mis_lesiones")
+ 
+    return render(request, "deportivo/mis_lesiones.html", {
+        "jugadores": jugadores,
+        "reportes": ReporteLesion.objects.filter(jugador__in=jugadores).select_related("jugador", "revisado_por"),
+        "tipos": ReporteLesion.Tipo.choices,
+        "hoy": timezone.localdate(),
+    })
+ 
+ 
+@login_required
+def revisar_lesiones(request):
+    """El cuerpo técnico valida o rechaza los reportes de sus categorías."""
+    usuario = request.user
+    if not puede_revisar_lesiones(usuario):
+        return _sin_permiso(request)
+ 
+    reportes = reportes_para_revisar(usuario)
+ 
+    if request.method == "POST":
+        reporte = get_object_or_404(reportes, pk=request.POST.get("reporte_id") or None)
+        try:
+            revisar_reporte_lesion(
+                usuario=usuario,
+                reporte=reporte,
+                decision=request.POST.get("decision", ""),
+                comentario=request.POST.get("comentario", "").strip(),
+            )
+        except ValidationError as error:
+            messages.error(request, " ".join(error.messages))
+        else:
+            messages.success(request, f"Reporte de {reporte.jugador.nombres} {reporte.get_estado_display().lower()}.")
+        return redirect("deportivo:revisar_lesiones")
+ 
+    return render(request, "deportivo/revisar_lesiones.html", {
+        "pendientes": reportes.filter(estado=ReporteLesion.Estado.PENDIENTE).order_by("reportado_en"),
+        "revisados": reportes.exclude(estado=ReporteLesion.Estado.PENDIENTE).order_by("-revisado_en")[:30],
+        "rol": _rol(usuario),
+        "seccion": "lesiones",
+    })
+# HU-08 FINAL

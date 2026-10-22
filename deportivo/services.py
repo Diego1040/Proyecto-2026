@@ -11,7 +11,7 @@ from .permisos import categorias_visibles, es_entrenador
 from usuarios.models import Jugador
 from usuarios.services import registrar_auditoria
 
-from .models import Asistencia, Nomina, NominaJugador
+from .models import Asistencia, Nomina, NominaJugador, ReporteLesion
 from .permisos import es_administracion
 
 
@@ -330,8 +330,9 @@ def candidatos_nomina(categoria):
         estado=Jugador.Estado.ACTIVO,
     ).order_by("apellidos", "nombres")
 
+    restricciones = restricciones_vigentes(jugadores)
     return [
-        {"jugador": j, "asistencia": asistencia_reciente(j)}
+        {"jugador": j, "asistencia": asistencia_reciente(j), "restriccion": restricciones.get(j.pk)}
         for j in jugadores
     ]
 
@@ -427,3 +428,124 @@ def filtrar_nominas(nominas, *, categoria=None, desde=None, hasta=None, texto=""
         ).distinct()
     return nominas
 # FIN NUEVO (HU-20)
+
+# HU-08
+def jugadores_que_puede_reportar(usuario):
+    """El jugador sobre sí mismo y el apoderado sobre sus jugadores vinculados que puede gestionar."""
+    ids = set()
+ 
+    jugador = getattr(usuario, "jugador", None)
+    if jugador:
+        ids.add(jugador.pk)
+ 
+    apoderado = getattr(usuario, "apoderado", None)
+    if apoderado:
+        ids.update(
+            apoderado.vinculos_jugadores
+            .filter(activo=True, puede_gestionar=True)
+            .values_list("jugador_id", flat=True)
+        )
+ 
+    return Jugador.objects.filter(pk__in=ids).order_by("nombres", "apellidos")
+ 
+ 
+def puede_revisar_lesiones(usuario):
+    return es_administracion(usuario) or es_entrenador(usuario)
+ 
+ 
+def reportes_para_revisar(usuario):
+    """Reportes de los jugadores de las categorías del entrenador (Administración: todas)."""
+    return (
+        ReporteLesion.objects
+        .filter(jugador__categoria_actual__in=categorias_visibles(usuario))
+        .select_related("jugador", "jugador__categoria_actual", "reportado_por", "revisado_por")
+    )
+ 
+ 
+def crear_reporte_lesion(*, usuario, jugador, tipo, descripcion, fecha_inicio, fecha_fin=None):
+    """Guarda el reporte como PENDIENTE. Lanza ValidationError con la lista de errores."""
+    errores = []
+ 
+    if jugador is None or not jugadores_que_puede_reportar(usuario).filter(pk=jugador.pk).exists():
+        errores.append("Selecciona un jugador vinculado a tu cuenta.")
+    if tipo not in ReporteLesion.Tipo.values:
+        errores.append("Selecciona el tipo de reporte.")
+    if not descripcion:
+        errores.append("Describe brevemente la lesión o restricción.")
+    elif len(descripcion) > 500:
+        errores.append("La descripción no puede superar los 500 caracteres.")
+    if not fecha_inicio:
+        errores.append("Indica desde qué fecha aplica.")
+    elif fecha_fin and fecha_fin < fecha_inicio:
+        errores.append("La fecha de término no puede ser anterior a la de inicio.")
+ 
+    if errores:
+        raise ValidationError(errores)
+ 
+    reporte = ReporteLesion.objects.create(
+        jugador=jugador,
+        tipo=tipo,
+        descripcion=descripcion,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+        reportado_por=usuario,
+    )
+    # La auditoría no guarda la descripción: es un dato de salud
+    registrar_auditoria(
+        usuario=usuario,
+        accion="LESION_REPORTADA",
+        entidad="ReporteLesion",
+        entidad_id=reporte.pk,
+        detalle={"jugador_id": jugador.pk, "tipo": tipo},
+    )
+    return reporte
+ 
+ 
+@transaction.atomic
+def revisar_reporte_lesion(*, usuario, reporte, decision, comentario=""):
+    """
+    Validación humana del cuerpo técnico.
+    No modifica la asistencia ni justifica ausencias automáticamente.
+    """
+    if not puede_revisar_lesiones(usuario) or not reportes_para_revisar(usuario).filter(pk=reporte.pk).exists():
+        raise ValidationError("No tienes permiso para revisar este reporte.")
+    if reporte.estado != ReporteLesion.Estado.PENDIENTE:
+        raise ValidationError("Este reporte ya fue revisado.")
+    if decision not in (ReporteLesion.Estado.VALIDADO, ReporteLesion.Estado.RECHAZADO):
+        raise ValidationError("Decisión no válida.")
+    if decision == ReporteLesion.Estado.RECHAZADO and not comentario:
+        raise ValidationError("Para rechazar un reporte debes indicar el motivo.")
+ 
+    reporte.estado = decision
+    reporte.revisado_por = usuario
+    reporte.revisado_en = timezone.now()
+    reporte.comentario_revision = comentario
+    reporte.save(update_fields=["estado", "revisado_por", "revisado_en", "comentario_revision"])
+ 
+    registrar_auditoria(
+        usuario=usuario,
+        accion=f"LESION_{decision}",
+        entidad="ReporteLesion",
+        entidad_id=reporte.pk,
+        detalle={"jugador_id": reporte.jugador_id},
+    )
+    return reporte
+ 
+ 
+def restricciones_vigentes(jugadores, hoy=None):
+    """{jugador_id: reporte} con las lesiones VALIDADAS que siguen vigentes hoy."""
+    if hoy is None:
+        hoy = timezone.localdate()
+ 
+    vigentes = (
+        ReporteLesion.objects
+        .filter(
+            jugador__in=jugadores,
+            estado=ReporteLesion.Estado.VALIDADO,
+            fecha_inicio__lte=hoy,
+        )
+        .filter(Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=hoy))
+        .order_by("fecha_inicio")
+    )
+    return {r.jugador_id: r for r in vigentes}
+# HU-08 FIN

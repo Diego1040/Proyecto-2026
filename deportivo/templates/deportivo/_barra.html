@@ -20,8 +20,9 @@
       <a class="tab" href="{% url 'categorias_jugadores' %}">Categorías</a>
     {% endif %}
     {# CAMBIO (HU-09): pestaña Nóminas; la activa depende de la sección #}
-    <a class="tab {% if seccion != 'nominas' %}activa{% endif %}" href="{% url 'deportivo:entrenamientos' %}">Entrenamientos</a>
+    <a class="tab {% if not seccion %}activa{% endif %}" href="{% url 'deportivo:entrenamientos' %}">Entrenamientos</a>
     <a class="tab {% if seccion == 'nominas' %}activa{% endif %}" href="{% url 'deportivo:nominas' %}">Nóminas</a>
+    <a class="tab {% if seccion == 'lesiones' %}activa{% endif %}" href="{% url 'deportivo:revisar_lesiones' %}">Lesiones</a>
     {# FIN CAMBIO #}
     <a class="tab" href="{% url 'panel' %}">Mi cuenta</a>
   </div>
