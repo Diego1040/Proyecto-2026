@@ -609,3 +609,76 @@ class NominaTest(TestCase):
         self.assertEqual(self.client.get(reverse("deportivo:ver_nomina", args=[nomina.pk])).status_code, 404)
         self.assertEqual(self.client.get(reverse("deportivo:nomina_pdf", args=[nomina.pk])).status_code, 404)
 # FIN NUEVO (HU-09)
+
+#HU-20
+class HistorialNominasTest(TestCase):
+    # Reutiliza los mismos usuarios y jugadores de NominaTest (sin repetir sus pruebas)
+    setUpTestData = classmethod(NominaTest.setUpTestData.__func__)
+
+    def crear(self, titulo, dias, categoria=None, jugador=None):
+        nomina = Nomina.objects.create(
+            categoria=categoria or self.u15, titulo=titulo,
+            fecha=timezone.localdate() - timedelta(days=dias),
+            lugar="Epicentro", creado_por=self.entrenador,
+        )
+        NominaJugador.objects.create(nomina=nomina, jugador=jugador or self.tomas, asistencia_porcentaje=80)
+        return nomina
+
+    def test_muestra_nominas_antiguas(self):
+        self.crear("Partido del año pasado", 400)
+        self.client.force_login(self.entrenador)
+        respuesta = self.client.get(reverse("deportivo:nominas"))
+        self.assertContains(respuesta, "Partido del año pasado")
+
+    def test_filtra_por_fechas(self):
+        self.crear("Partido antiguo", 60)
+        self.crear("Partido reciente", 5)
+        desde = (timezone.localdate() - timedelta(days=10)).isoformat()
+
+        self.client.force_login(self.entrenador)
+        respuesta = self.client.get(reverse("deportivo:nominas"), {"desde": desde})
+
+        self.assertContains(respuesta, "Partido reciente")
+        self.assertNotContains(respuesta, "Partido antiguo")
+
+    def test_busca_por_jugador_o_rival(self):
+        self.crear("Ayllu vs Tacna", 5)
+        self.crear("Ayllu vs Iquique", 6)
+
+        self.client.force_login(self.entrenador)
+        self.assertContains(self.client.get(reverse("deportivo:nominas"), {"q": "tacna"}), "Ayllu vs Tacna")
+        self.assertNotContains(self.client.get(reverse("deportivo:nominas"), {"q": "tacna"}), "Ayllu vs Iquique")
+        self.assertContains(self.client.get(reverse("deportivo:nominas"), {"q": "Vergara"}), "Ayllu vs Iquique")
+
+    def test_entrenador_no_ve_historial_de_otra_categoria(self):
+        self.crear("Partido U13", 5, categoria=self.u13, jugador=self.sofia)
+        self.client.force_login(self.entrenador)
+        self.assertNotContains(self.client.get(reverse("deportivo:nominas")), "Partido U13")
+
+    def test_administracion_ve_todas(self):
+        self.crear("Partido U13", 5, categoria=self.u13, jugador=self.sofia)
+        self.crear("Partido U15", 5)
+        self.client.force_login(self.secretaria)
+        respuesta = self.client.get(reverse("deportivo:nominas"))
+        self.assertContains(respuesta, "Partido U13")
+        self.assertContains(respuesta, "Partido U15")
+
+    def test_exporta_csv_con_filtros_y_auditoria(self):
+        self.crear("Ayllu vs Tacna", 5)
+        self.crear("Ayllu vs Iquique", 6)
+
+        self.client.force_login(self.entrenador)
+        respuesta = self.client.get(reverse("deportivo:exportar_nominas"), {"q": "tacna"})
+        contenido = respuesta.content.decode("utf-8-sig")
+
+        self.assertEqual(respuesta["Content-Type"], "text/csv; charset=utf-8")
+        self.assertIn("Ayllu vs Tacna", contenido)
+        self.assertIn("22333444-K", contenido)
+        self.assertNotIn("Iquique", contenido)
+        self.assertTrue(Auditoria.objects.filter(accion="NOMINAS_EXPORTADAS").exists())
+
+    def test_usuario_sin_rol_no_exporta(self):
+        self.client.force_login(self.otro)
+        respuesta = self.client.get(reverse("deportivo:exportar_nominas"))
+        self.assertEqual(respuesta.status_code, 302)
+# HU-20

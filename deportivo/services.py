@@ -401,7 +401,6 @@ def crear_nomina(*, usuario, categoria, titulo, fecha, lugar="", evento=None, ju
     )
     return nomina
 
-
 def nominas_visibles(usuario):
     """Nóminas de las categorías que el usuario puede ver (Administración: todas)."""
     return (
@@ -409,3 +408,22 @@ def nominas_visibles(usuario):
         .filter(categoria__in=categorias_visibles(usuario))
         .select_related("categoria", "creado_por")
     )
+
+# HU-20
+def filtrar_nominas(nominas, *, categoria=None, desde=None, hasta=None, texto=""):
+    """Aplica los filtros del historial a un queryset de nóminas."""
+    if categoria is not None:
+        nominas = nominas.filter(categoria=categoria)
+    if desde:
+        nominas = nominas.filter(fecha__gte=desde)
+    if hasta:
+        nominas = nominas.filter(fecha__lte=hasta)
+    if texto:
+        nominas = nominas.filter(
+            Q(titulo__icontains=texto)
+            | Q(lugar__icontains=texto)
+            | Q(integrantes__jugador__nombres__icontains=texto)
+            | Q(integrantes__jugador__apellidos__icontains=texto)
+        ).distinct()
+    return nominas
+# FIN NUEVO (HU-20)

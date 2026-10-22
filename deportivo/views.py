@@ -6,7 +6,9 @@ from django.contrib.auth import get_user_model  #HU-06
 from django.utils import timezone
 from datetime import date as _date, time as _time
 from django.http import HttpResponse
+import csv
 
+from django.db.models import Count
 from django.views.decorators.http import require_POST
 
 from .models import Asistencia, Entrenamiento, Evento, Nomina
@@ -21,6 +23,7 @@ from .services import (
     partidos_para_nomina,
     categorias_del_usuario,
     eventos_visibles,
+    filtrar_nominas,
     puede_eliminar_evento,
     puede_publicar_eventos,
     validar_evento,
@@ -366,12 +369,65 @@ def nominas(request):
     if not (es_entrenador(usuario) or es_administracion(usuario)):
         return _sin_permiso(request)
 
+    categorias = categorias_visibles(usuario)
+    filtros = _leer_filtros_nominas(request.GET, categorias)
+    lista = filtrar_nominas(nominas_visibles(usuario), **filtros).annotate(total_jugadores=Count("integrantes", distinct=True))
+
     return render(request, "deportivo/nominas.html", {
-        "nominas": nominas_visibles(usuario)[:30],
+        "nominas": lista,
+        "categorias": categorias,
+        "filtros": filtros,
+        "query": request.GET.urlencode(),
         "rol": _rol(usuario),
         "seccion": "nominas",
     })
 
+def _leer_filtros_nominas(get, categorias):
+    #HU-20
+    return {
+        "categoria": categorias.filter(pk=get.get("categoria") or None).first(),
+        "desde": _leer_fecha(get.get("desde")),
+        "hasta": _leer_fecha(get.get("hasta")),
+        "texto": get.get("q", "").strip(),
+    }
+
+@login_required
+def exportar_nominas(request):
+    #HU-20
+    usuario = request.user
+    if not (es_entrenador(usuario) or es_administracion(usuario)):
+        return _sin_permiso(request)
+
+    filtros = _leer_filtros_nominas(request.GET, categorias_visibles(usuario))
+    lista = filtrar_nominas(nominas_visibles(usuario), **filtros).prefetch_related("integrantes__jugador")
+
+    respuesta = HttpResponse(content_type="text/csv; charset=utf-8")
+    respuesta["Content-Disposition"] = f'attachment; filename="historial_nominas_{timezone.localdate():%Y%m%d}.csv"'
+    respuesta.write("\ufeff")  # BOM: para que Excel lea bien los tildes
+    escritor = csv.writer(respuesta, delimiter=";")
+    escritor.writerow(["Fecha", "Partido", "Categoría", "Lugar", "Jugador", "RUT", "Asistencia (%)", "Generada por"])
+    for nomina in lista:
+        creador = nomina.creado_por.get_full_name() or nomina.creado_por.rut
+        for integrante in nomina.integrantes.all():
+            j = integrante.jugador
+            escritor.writerow([
+                nomina.fecha.strftime("%d/%m/%Y"),
+                nomina.titulo,
+                str(nomina.categoria),
+                nomina.lugar,
+                f"{j.apellidos}, {j.nombres}",
+                j.rut,
+                "" if integrante.asistencia_porcentaje is None else integrante.asistencia_porcentaje,
+                creador,
+            ])
+
+    registrar_auditoria(
+        usuario=usuario,
+        accion="NOMINAS_EXPORTADAS",
+        entidad="Nomina",
+        detalle={"cantidad": len(lista)},
+    )
+    return respuesta
 
 @login_required
 def nueva_nomina(request):
