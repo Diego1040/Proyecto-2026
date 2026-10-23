@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ayllu Basket — Panel de tesorería</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --naranja:#E8552A;--naranja-hover:#CC4620;--naranja-suave:#FCEBE4;--naranja-texto:#9B3B14;
+  --tinta:#17171A;--papel:#F4F3F1;--blanco:#FFFFFF;--gris:#6E6E74;--linea:#E1DFDB;
+  --verde:#1D7A4F;--verde-fondo:#E2F1E9;--rojo:#B3261E;--rojo-fondo:#FBE9E7;
+  --ambar:#8A6A12;--ambar-fondo:#FFF6E3;--morado:#5B3A8E;--morado-fondo:#EEE8F7;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--papel);color:var(--tinta);font-family:"Barlow",system-ui,sans-serif;font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1{font-family:"Barlow Condensed",system-ui,sans-serif;font-weight:700;margin:0;font-size:1.9rem;text-transform:uppercase;letter-spacing:-.01em;line-height:1.05}
+h2{font-size:1.1rem;font-weight:600;margin:0}
+p{margin:0}
+button{font:inherit}
+:is(a,button,input,select,textarea):focus-visible{outline:2px solid var(--naranja);outline-offset:2px;border-radius:3px}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px}
+
+.barra{background:var(--tinta);color:#fff;position:sticky;top:0;z-index:20}
+.barra .wrap{display:flex;align-items:center;gap:14px;height:60px}
+.escudo{width:32px;height:32px;border-radius:50%;background:var(--naranja);flex:none}
+.barra b{font-family:"Barlow Condensed";font-size:1.2rem;text-transform:uppercase}
+.rol{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:.9rem;color:#B9B7B4}
+.avatar{width:30px;height:30px;border-radius:50%;background:#3A3A42;display:grid;place-items:center;font-size:.75rem;font-weight:600;color:#fff}
+
+.tabs{background:var(--blanco);border-bottom:1px solid var(--linea);position:sticky;top:60px;z-index:19;overflow-x:auto}
+.tabs .wrap{display:flex;gap:4px}
+.tab{padding:14px 16px;border:0;background:none;color:var(--gris);font-weight:500;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent}
+.tab:hover{color:var(--tinta)}
+.tab[aria-selected="true"]{color:var(--tinta);border-bottom-color:var(--naranja);font-weight:600}
+.url{font-family:ui-monospace,Menlo,monospace;font-size:.78rem;color:var(--gris);padding:8px 0 0}
+
+main{padding:24px 0 70px}
+.cabecera{margin-bottom:20px}
+.sub{color:var(--gris);font-size:.95rem;margin-top:4px}
+.tarjeta{background:var(--blanco);border:1px solid var(--linea);border-radius:8px}
+.pad{padding:18px}
+.btn{background:var(--naranja);color:#fff;border:0;border-radius:5px;padding:11px 20px;font-weight:600;cursor:pointer}
+.btn:hover{background:var(--naranja-hover)}
+.btn.gris{background:var(--blanco);color:var(--tinta);border:1px solid var(--linea)}
+.btn.gris:hover{background:var(--papel)}
+.btn.chico{padding:8px 14px;font-size:.9rem}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.pill{font-size:.75rem;font-weight:600;padding:3px 9px;border-radius:3px;display:inline-block;white-space:nowrap}
+.pill.ok{background:var(--verde-fondo);color:var(--verde)}
+.pill.no{background:var(--rojo-fondo);color:var(--rojo)}
+.pill.esp{background:var(--ambar-fondo);color:var(--ambar)}
+.pill.cat{background:var(--naranja-suave);color:var(--naranja-texto)}
+.pill.beca{background:var(--morado-fondo);color:var(--morado)}
+.pill.gris{background:#EDECEA;color:#4A4A4E}
+label.campo{display:grid;gap:5px;font-size:.85rem;color:var(--gris);font-weight:500}
+input,select,textarea{background:var(--blanco);border:1px solid var(--linea);border-radius:5px;padding:10px 12px;font:inherit;color:inherit;width:100%}
+.aviso{display:flex;gap:10px;border-radius:6px;padding:12px 14px;font-size:.9rem;margin-bottom:18px;background:var(--ambar-fondo);border:1px solid #F0DEB4;color:#6B5312}
+.aviso.priv{background:var(--morado-fondo);border-color:#D6C9EC;color:#4A2F74}
+
+.resumen{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1px;background:var(--linea);border:1px solid var(--linea);border-radius:8px;overflow:hidden;margin-bottom:18px}
+.kpi{background:var(--blanco);padding:16px}
+.kpi span{display:block;font-size:.82rem;color:var(--gris)}
+.kpi b{font-family:"Barlow Condensed";font-size:1.9rem;font-weight:700;line-height:1.1}
+
+.fila-j{display:flex;align-items:center;gap:12px;padding:14px 16px;border-top:1px solid var(--linea);flex-wrap:wrap}
+.fila-j:first-child{border-top:0}
+.ini{width:36px;height:36px;border-radius:50%;background:#EDECEA;display:grid;place-items:center;font-size:.78rem;font-weight:600;color:#4A4A4E;flex:none}
+.nom{font-weight:600;min-width:0}
+.nom small{display:block;font-weight:400;color:var(--gris);font-size:.83rem}
+.acc{margin-left:auto;display:flex;gap:8px;align-items:center}
+.form-pago{padding:0 16px 16px;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));align-items:end;background:#FBFAF9;border-top:1px solid var(--linea)}
+.form-pago.oculto{display:none}
+.form-pago > :first-child{padding-top:14px}
+
+.mov{display:flex;gap:12px;padding:12px 16px;border-top:1px solid var(--linea);font-size:.91rem;align-items:center;flex-wrap:wrap}
+.mov small{color:var(--gris)}
+.oculto{display:none}
+@media(max-width:600px){.acc{margin-left:0;width:100%}.acc .btn{flex:1}}
+
+.btn-crear-cuota {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 11px 7px 8px;
+  min-height: 42px;
+  border: 1px solid var(--naranja);
+  border-radius: 7px;
+  background: linear-gradient(
+    135deg,
+    var(--naranja),
+    var(--naranja-hover)
+  );
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 3px 8px rgba(232, 85, 42, 0.18);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.icono-crear-cuota {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.texto-crear-cuota {
+  letter-spacing: 0.01em;
+}
+
+.flecha-crear-cuota {
+  margin-left: 4px;
+  font-size: 0.95rem;
+  opacity: 0.8;
+  transition: transform 0.18s ease;
+}
+
+.btn-crear-cuota:hover {
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 5px 12px rgba(232, 85, 42, 0.25);
+}
+
+.btn-crear-cuota:hover .flecha-crear-cuota {
+  transform: translate(2px, -2px);
+}
+
+.btn-crear-cuota:focus-visible {
+  outline: 2px solid var(--naranja);
+  outline-offset: 3px;
+}
+</style>
+</head>
+<body>
+
+<header class="barra">
+  <div class="wrap">
+    <span class="escudo"></span>
+    <b>Ayllu Basket</b>
+    <span class="rol">Tesorería <span class="avatar">MR</span></span>
+  </div>
+</header>
+
+
+<nav class="tabs" aria-label="Secciones de tesorería">
+  <div class="wrap">
+    <button class="tab" role="tab" aria-selected="true" data-vista="pagos">Pagos</button>
+    <button class="tab" role="tab" aria-selected="false" data-vista="morosidad">Morosidad</button>
+    <a
+      class="tab"
+      href="{% url 'finanzas:listar_becas' %}"
+      style="text-decoration:none;display:inline-flex;align-items:center"
+    >
+      Gestionar becas
+    </a>
+  </div>
+</nav>
+
+
+<main><div class="wrap">
+<p class="url" id="url">/tesoreria/pagos/</p>
+
+<!-- ===== HU-12 / HU-21 PAGOS ===== -->
+<section id="v-pagos">
+  <div class="cabecera cabecera-pagos">
+  <div class="cabecera-texto">
+    <h1>Pagos de {{ hoy|date:"F Y" }}</h1>
+    <p class="sub">
+      · Administra las cuotas y registra los pagos presenciales.
+      Los pagos confirmados por Webpay se registran automáticamente.
+    </p>
+  </div>
+
+  <a
+  class="btn-crear-cuota"
+  href="{% url 'finanzas:crear_cuota' %}"
+>
+  <span class="icono-crear-cuota">+</span>
+  <span class="texto-crear-cuota">Crear cuota</span>
+  <span class="flecha-crear-cuota" aria-hidden="true">↗</span>
+</a>
+</div>
+
+  <div class="resumen">
+    <div class="kpi">
+      <span>Recaudado este mes</span>
+      <b>${{ recaudado_mes|floatformat:0 }}</b>
+    </div>
+
+    <div class="kpi">
+      <span>Cuotas pendientes</span>
+      <b>{{ cuotas_pendientes }}</b>
+    </div>
+
+    <div class="kpi">
+      <span>Pagadas por Webpay</span>
+      <b>{{ pagos_webpay_mes }}</b>
+    </div>
+
+    <div class="kpi">
+      <span>Registradas manualmente</span>
+      <b>{{ pagos_manuales_mes }}</b>
+    </div>
+  </div>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="aviso" role="status">
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="tarjeta" id="lista-pagos">
+    {% for cuota in pagina %}
+
+      <div class="fila-j">
+        <span class="ini">
+          {{ cuota.jugador.nombres|first }}{{ cuota.jugador.apellidos|first }}
+        </span>
+
+        <span class="nom">
+          {{ cuota.jugador.nombres }} {{ cuota.jugador.apellidos }}
+
+          <small>
+            {{ cuota.jugador.categoria_actual|default:"Sin categoría" }}
+            · {{ cuota.periodo|date:"F Y" }}
+            · ${{ cuota.monto|floatformat:0 }}
+          </small>
+        </span>
+
+        <span class="acc">
+          {% if cuota.estado == "PENDIENTE" %}
+            <span class="pill no">Pendiente</span>
+
+            {% if cuota.tiene_pago_iniciado %}
+              <span class="pill esp">Pago por verificar</span>
+            {% else %}
+              <button
+                type="button"
+                class="btn chico"
+                data-reg="{{ cuota.pk }}"
+              >
+                Registrar pago
+              </button>
+            {% endif %}
+
+          {% elif cuota.estado == "PAGADA" %}
+            <span class="pill ok">Pagada</span>
+
+          {% else %}
+            <span class="pill gris">Anulada</span>
+          {% endif %}
+        </span>
+      </div>
+
+      {% if cuota.estado == "PENDIENTE" and not cuota.tiene_pago_iniciado %}
+        <form
+          method="post"
+          action="{% url 'finanzas:registrar_pago_manual' cuota.pk %}"
+          class="form-pago oculto"
+          id="f{{ cuota.pk }}"
+        >
+          {% csrf_token %}
+
+          <label class="campo">
+            Medio de pago
+            <select name="medio_pago" required>
+              <option value="EFECTIVO">Efectivo</option>
+              <option value="TRANSFERENCIA">Transferencia</option>
+              <option value="POS">Débito / POS</option>
+              <option value="OTRO">Otro autorizado</option>
+            </select>
+          </label>
+
+          <label class="campo">
+            Referencia del comprobante
+            <input
+              type="text"
+              name="referencia"
+              maxlength="100"
+              placeholder="Número de comprobante (opcional)"
+            >
+          </label>
+
+          <button type="submit" class="btn chico">
+            Confirmar pago
+          </button>
+        </form>
+      {% endif %}
+
+    {% empty %}
+      <div class="pad">
+        <h2>No hay cuotas registradas</h2>
+        <p class="sub">
+          Crea la primera cuota para comenzar a administrar los pagos.
+        </p>
+      </div>
+    {% endfor %}
+  </div>
+
+  {% if pagina.has_other_pages %}
+    <div class="acc" style="margin-top:16px">
+      {% if pagina.has_previous %}
+        <a
+          class="btn gris chico"
+          href="?page={{ pagina.previous_page_number }}"
+        >
+          Anterior
+        </a>
+      {% endif %}
+
+      <span>
+        Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}
+      </span>
+
+      {% if pagina.has_next %}
+        <a
+          class="btn gris chico"
+          href="?page={{ pagina.next_page_number }}"
+        >
+          Siguiente
+        </a>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <div class="tarjeta" style="margin-top:24px">
+    <div class="pad">
+      <h2>Últimos movimientos</h2>
+    </div>
+
+    {% for pago in ultimos_pagos %}
+      <div class="mov">
+        <span>
+          {{ pago.cuota.jugador.nombres }}
+          {{ pago.cuota.jugador.apellidos }}
+          · ${{ pago.monto|floatformat:0 }}
+          · {{ pago.get_medio_pago_display }}
+
+          <small>{{ pago.get_estado_display }}</small>
+        </span>
+
+        <small style="margin-left:auto">
+          {{ pago.creado_en|date:"d/m/Y H:i" }}
+        </small>
+      </div>
+    {% empty %}
+      <div class="pad">
+        <p class="sub">Todavía no hay movimientos registrados.</p>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- ===== HU-15 / HU-22 MOROSIDAD ===== -->
+<section id="v-morosidad" class="oculto">
+  <div class="cabecera">
+    <h1>Alertas de morosidad</h1>
+    <p class="sub">HU-15 · La alerta es informativa: no excluye al jugador de entrenamientos ni de nóminas.</p>
+  </div>
+
+  <div class="aviso">
+    <span aria-hidden="true">&#9432;</span>
+    <span>El entrenador no ve esta pantalla ni ninguna marca de deuda en su listado de jugadores.</span>
+  </div>
+
+  <div class="tarjeta pad" style="margin-bottom:16px;display:flex;gap:14px;align-items:end;flex-wrap:wrap">
+    <label class="campo" style="max-width:220px">Generar alerta a partir de
+      <select><option>1 cuota impaga</option><option selected>2 cuotas impagas</option><option>3 cuotas impagas</option></select>
+    </label>
+    <button class="btn gris chico">Guardar umbral</button>
+  </div>
+
+  <div class="tarjeta">
+    <div class="fila-j">
+      <span class="ini">JF</span>
+      <span class="nom">Joaquín Flores Tapia<small>U15 Varones · 2 cuotas · $50.000</small></span>
+      <span class="acc">
+        <small class="sub" style="font-size:.83rem">Último aviso: 2 sep</small>
+        <button class="btn gris chico" data-cobrar>Reenviar aviso</button>
+      </span>
+    </div>
+    <div class="fila-j">
+      <span class="ini">VR</span>
+      <span class="nom">Vicente Rojas Cid<small>U15 Varones · 3 cuotas · $75.000</small></span>
+      <span class="acc">
+        <small class="sub" style="font-size:.83rem">Último aviso: 11 sep</small>
+        <button class="btn gris chico" data-cobrar disabled title="Debe pasar al menos una semana">Reenviar aviso</button>
+      </span>
+    </div>
+    <div class="fila-j">
+      <span class="ini">FA</span>
+      <span class="nom">Florencia Araya Pinto<small>U11 · 2 cuotas · $50.000</small></span>
+      <span class="acc">
+        <small class="sub" style="font-size:.83rem">Sin avisos</small>
+        <button class="btn gris chico" data-cobrar>Enviar aviso</button>
+      </span>
+    </div>
+  </div>
+  <p class="sub" style="margin-top:12px">Cada envío queda registrado con fecha y destinatario. No se puede reenviar dos veces en la misma semana.</p>
+</section>
+
+<!-- ===== HU-14 BECAS ===== -->
+<section id="v-becas" class="oculto">
+  <div class="cabecera">
+    <h1>Becas vigentes</h1>
+    <p class="sub">HU-14 · Durante la vigencia no se generan cuotas ni deuda para el jugador.</p>
+  </div>
+
+  <div class="aviso priv">
+    <span aria-hidden="true">&#9679;</span>
+    <span>Información confidencial. El jugador becado aparece como alumno regular para todos los demás perfiles, incluido su propio apoderado.</span>
+  </div>
+
+  <div class="tarjeta" style="margin-bottom:16px">
+    <div class="fila-j">
+      <span class="ini">MC</span>
+      <span class="nom">Matías Choque Vilca<small>U15 Varones</small></span>
+      <span class="acc"><span class="pill beca">Vigente hasta dic 2026</span><button class="btn gris chico">Editar</button></span>
+    </div>
+    <div class="fila-j">
+      <span class="ini">AC</span>
+      <span class="nom">Agustín Caqueo Mamani<small>U15 Varones</small></span>
+      <span class="acc"><span class="pill beca">Vigente hasta jun 2026</span><button class="btn gris chico">Editar</button></span>
+    </div>
+    <div class="fila-j">
+      <span class="ini">SP</span>
+      <span class="nom">Sofía Pizarro Luna<small>U13 Damas</small></span>
+      <span class="acc"><span class="pill gris">Expirada en mar 2026</span><button class="btn gris chico">Renovar</button></span>
+    </div>
+  </div>
+
+  <div class="tarjeta pad">
+    <h2>Asignar beca</h2>
+    <p class="sub" style="margin-bottom:14px">La suspensión de cobro empieza en el período que indiques.</p>
+    <div style="display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));align-items:end">
+      <label class="campo">Jugador<select><option>Buscar por nombre o RUT…</option></select></label>
+      <label class="campo">Desde<input type="month" value="2026-10"></label>
+      <label class="campo">Hasta<input type="month" value="2026-12"></label>
+      <button class="btn chico">Asignar</button>
+    </div>
+  </div>
+</section>
+</div></main>
+
+<script>
+const listaPagos = document.getElementById("lista-pagos");
+
+if (listaPagos) {
+  listaPagos.addEventListener("click", event => {
+    const boton = event.target.closest("[data-reg]");
+
+    if (!boton) {
+      return;
+    }
+
+    const formulario = document.getElementById(
+      "f" + boton.dataset.reg
+    );
+
+    if (formulario) {
+      formulario.classList.toggle("oculto");
+    }
+  });
+}
+
+const rutas = {
+  pagos: "/finanzas/tesoreria/",
+  morosidad: "/finanzas/tesoreria/#morosidad",
+  becas: "/finanzas/tesoreria/#becas"
+};
+
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    const vista = tab.dataset.vista;
+
+    document.querySelectorAll(".tab").forEach(otra => {
+      otra.setAttribute(
+        "aria-selected",
+        otra === tab ? "true" : "false"
+      );
+    });
+
+    Object.keys(rutas).forEach(nombre => {
+      const seccion = document.getElementById("v-" + nombre);
+
+      if (seccion) {
+        seccion.classList.toggle("oculto", nombre !== vista);
+      }
+    });
+
+    document.getElementById("url").textContent = rutas[vista];
+    window.scrollTo({ top: 0 });
+  });
+});
+</script>
+</body>
+</html>

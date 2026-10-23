@@ -1,0 +1,96 @@
+{# NUEVO (HU-07) - Miguel: archivo nuevo completo #}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<title>Ayllu Basket — Asistencia</title>
+{% include "deportivo/_estilos.html" %}
+<style>
+.volver{color:var(--gris);font-size:.9rem;text-decoration:none}
+.volver:hover{color:var(--tinta)}
+.jug{padding:16px;border-top:1px solid var(--linea)}
+.jug:first-child{border-top:0}
+.jug b{display:block;font-weight:600}
+.jug small{color:var(--gris);font-size:.84rem}
+/* Botones grandes, fáciles de tocar en el celular */
+.opciones{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;max-width:480px}
+.opciones input{position:absolute;opacity:0;width:1px;height:1px}
+.opciones label{display:block;text-align:center;padding:11px 4px;border:1px solid var(--linea);border-radius:5px;font-weight:600;font-size:.9rem;cursor:pointer;background:var(--blanco);color:var(--gris)}
+.opciones input:checked + label.PRESENTE{background:var(--verde-fondo);border-color:var(--verde);color:var(--verde)}
+.opciones input:checked + label.AUSENTE{background:var(--rojo-fondo);border-color:var(--rojo);color:var(--rojo)}
+.opciones input:checked + label.JUSTIFICADO{background:var(--ambar-fondo);border-color:var(--ambar);color:var(--ambar)}
+.opciones input:focus-visible + label{outline:2px solid var(--naranja);outline-offset:2px}
+.guardar{position:fixed;left:0;right:0;bottom:0;background:var(--blanco);border-top:1px solid var(--linea);padding:12px 0}
+.guardar .btn{width:100%}
+fieldset{border:0;margin:0;padding:0;min-width:0}
+</style>
+</head>
+<body>
+{% include "deportivo/_barra.html" %}
+
+<main><div class="wrap">
+
+  <div class="cabecera">
+    <a href="{% url 'deportivo:entrenamientos' %}" class="volver">← Entrenamientos</a>
+    <h1 style="margin-top:8px">{{ entrenamiento.nombre }}</h1>
+    <p class="sub">{{ entrenamiento.categoria }} · {{ entrenamiento.fecha|date:"d/m/Y" }} · {{ entrenamiento.duracion }} min</p>
+  </div>
+
+  {% if messages %}
+    <div class="mensajes">
+      {% for mensaje in messages %}
+        <div class="mensaje {{ mensaje.tags }}">{{ mensaje }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if antiguo %}
+    <div class="aviso">
+      {% if puede_modificar %}
+        Pasaron más de {{ plazo_horas }} horas desde este entrenamiento. Para modificarlo debes indicar un motivo.
+      {% else %}
+        Pasaron más de {{ plazo_horas }} horas desde este entrenamiento. Solo Administración puede modificarlo.
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <form method="post">
+    {% csrf_token %}
+    <fieldset {% if not puede_modificar %}disabled{% endif %}>
+
+      <div class="tarjeta">
+        {% for fila in filas %}
+          {% with j=fila.jugador %}
+          <div class="jug">
+            <b>{{ j.nombres }} {{ j.apellidos }}</b>
+            {% if fila.registro %}
+              <small>Registrado por {{ fila.registro.registrado_por }} · {{ fila.registro.modificado_en|date:"d/m/Y H:i" }}</small>
+            {% endif %}
+            <div class="opciones" role="radiogroup" aria-label="Asistencia de {{ j.nombres }}">
+              {% for valor, texto in estados %}
+                <input type="radio" id="e{{ j.pk }}{{ valor }}" name="estado_{{ j.pk }}" value="{{ valor }}" {% if fila.estado == valor %}checked{% endif %}>
+                <label for="e{{ j.pk }}{{ valor }}" class="{{ valor }}">{{ texto }}</label>
+              {% endfor %}
+            </div>
+          </div>
+          {% endwith %}
+        {% empty %}
+          <p class="vacio">No hay jugadores activos en {{ entrenamiento.categoria }}.</p>
+        {% endfor %}
+      </div>
+
+      {% if antiguo and puede_modificar %}
+        <label class="campo" style="margin-top:16px">Motivo de la modificación (obligatorio)
+          <textarea name="motivo" required placeholder="Ej: el entrenador avisó que Tomás sí asistió."></textarea>
+        </label>
+      {% endif %}
+
+      {% if filas and puede_modificar %}
+        <div class="guardar"><div class="wrap"><button type="submit" class="btn">Guardar asistencia</button></div></div>
+      {% endif %}
+
+    </fieldset>
+  </form>
+
+</div></main>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<title>Ayllu Basket — Nóminas</title>
+{% include "deportivo/_estilos.html" %}
+<style>
+.nom{display:flex;align-items:center;gap:12px;padding:14px 16px;border-top:1px solid var(--linea);flex-wrap:wrap}
+.nom:first-child{border-top:0}
+.nom .info{flex:1;min-width:200px}
+.nom .info b{display:block;font-weight:600}
+.nom .info small{color:var(--gris);font-size:.84rem;display:block}
+.nom .acciones{display:flex;gap:8px}
+/* NUEVO (HU-20): filtros */
+.filtros{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:end;margin-bottom:12px}
+.filtros .botones{display:flex;gap:8px;grid-column:1/-1}
+.resumen{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:18px 0 10px}
+@media(max-width:700px){.filtros{grid-template-columns:1fr 1fr}}
+@media(max-width:420px){.filtros{grid-template-columns:1fr}}
+/* FIN NUEVO */
+</style>
+</head>
+<body>
+{% include "deportivo/_barra.html" %}
+ 
+<main><div class="wrap">
+ 
+  <div class="cabecera" style="display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap">
+    <div>
+      <h1>Nóminas</h1>
+      <p class="sub">Historial de nóminas de partido. Busca, revisa y exporta las anteriores.</p>
+    </div>
+    <a class="btn" href="{% url 'deportivo:nueva_nomina' %}">Nueva nómina</a>
+  </div>
+ 
+  {% if messages %}
+    <div class="mensajes">
+      {% for mensaje in messages %}
+        <div class="mensaje {{ mensaje.tags }}">{{ mensaje }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+ 
+  {# NUEVO (HU-20): filtros del historial #}
+  <form method="get" class="tarjeta pad filtros">
+    <label class="campo">Categoría
+      <select name="categoria">
+        <option value="">Todas</option>
+        {% for c in categorias %}
+          <option value="{{ c.pk }}" {% if filtros.categoria and filtros.categoria.pk == c.pk %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="campo">Desde
+      <input type="date" name="desde" value="{{ filtros.desde|date:'Y-m-d' }}">
+    </label>
+    <label class="campo">Hasta
+      <input type="date" name="hasta" value="{{ filtros.hasta|date:'Y-m-d' }}">
+    </label>
+    <label class="campo">Buscar
+      <input type="search" name="q" value="{{ filtros.texto }}" placeholder="Rival o jugador">
+    </label>
+    <div class="botones">
+      <button class="btn chico" type="submit">Filtrar</button>
+      <a class="btn gris chico" href="{% url 'deportivo:nominas' %}">Limpiar</a>
+    </div>
+  </form>
+ 
+  <div class="resumen">
+    <p class="sub">{{ nominas|length }} nómina{{ nominas|length|pluralize }}</p>
+    {% if nominas %}
+      <a class="btn gris chico" href="{% url 'deportivo:exportar_nominas' %}?{{ query }}">Exportar a Excel (CSV)</a>
+    {% endif %}
+  </div>
+  {# FIN NUEVO (HU-20) #}
+ 
+  <div class="tarjeta">
+    {% for nomina in nominas %}
+      <div class="nom">
+        <div class="info">
+          <b>{{ nomina.titulo }}</b>
+          <small>{{ nomina.categoria }} · {{ nomina.fecha|date:"d/m/Y" }}{% if nomina.lugar %} · {{ nomina.lugar }}{% endif %} · {{ nomina.total_jugadores }} jugador{{ nomina.total_jugadores|pluralize:"es" }}</small>
+        </div>
+        <div class="acciones">
+          <a class="btn gris chico" href="{% url 'deportivo:ver_nomina' nomina.pk %}">Ver</a>
+          <a class="btn chico" href="{% url 'deportivo:nomina_pdf' nomina.pk %}" target="_blank">PDF</a>
+        </div>
+      </div>
+    {% empty %}
+      <p class="vacio">{% if filtros.categoria or filtros.desde or filtros.hasta or filtros.texto %}No hay nóminas con esos filtros.{% else %}Todavía no hay nóminas generadas.{% endif %}</p>
+    {% endfor %}
+  </div>
+ 
+</div></main>
+</body>
+</html>

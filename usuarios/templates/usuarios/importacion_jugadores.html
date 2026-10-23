@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block titulo %}Importar jugadores históricos — Ayllu Basket{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/hu19-importacion.css' %}">
+{% endblock %}
+
+{% block contenido %}
+<section class="seccion gestion-solicitudes hu19">
+  <div class="wrap">
+    <header class="hu19-cabecera">
+      <div>
+        <p class="etiqueta-seccion">Administración</p>
+        <h1>Importar jugadores históricos</h1>
+        <p class="hu19-subtitulo">Valida el Excel, revisa los resultados y confirma la importación.</p>
+      </div>
+      <a class="enlace hu19-volver" href="{% url 'panel' %}">Volver al panel</a>
+    </header>
+
+    {% if en_curso %}
+      <p class="aviso" role="status">La confirmación está en curso. Espera un momento y consulta el resultado.</p>
+      <a class="boton" href="{% url 'importacion_jugadores' %}">Consultar proceso</a>
+    {% endif %}
+
+    {% if resultado %}
+      {% if proceso.rollback %}
+        <p class="aviso error" role="alert">La importación se revirtió por completo. No se crearon jugadores ni historiales.</p>
+      {% else %}
+        <p class="aviso success" role="status">Importación finalizada. Jugadores creados: {{ proceso.resumen.creados }}.</p>
+      {% endif %}
+      {% if not proceso.reporte_final %}
+        <p class="aviso" role="alert">No se pudo generar el reporte final. El resumen muestra el resultado de la importación; el reporte y las tablas disponibles corresponden a la validación anterior.</p>
+      {% endif %}
+    {% endif %}
+
+    {% if proceso %}
+      <div class="hu19-flujo{% if resultado %} hu19-flujo--resultado{% endif %}">
+        <section class="tarjeta hu19-resumen" aria-labelledby="hu19-resumen-titulo">
+          <div class="hu19-cab-seccion">
+            <div>
+              <p class="hu19-etapa">{% if resultado %}Proceso finalizado{% else %}Paso 2 · Revisar resultados{% endif %}</p>
+              <h2 id="hu19-resumen-titulo">{% if resultado %}Resumen de importación{% else %}Resumen de validación{% endif %}</h2>
+              {% if not resultado %}<p class="hu19-nota">Validación sin guardar jugadores.</p>{% endif %}
+            </div>
+            {% if reporte_disponible %}
+              <a class="boton-linea hu19-descarga" href="{% url 'importacion_jugadores_reporte' proceso.id %}">Descargar reporte {% if resultado and proceso.reporte_final %}final{% else %}de validación{% endif %}</a>
+            {% endif %}
+          </div>
+
+          <dl class="hu19-archivo">
+            <div class="hu19-archivo-nombre"><dt>Archivo</dt><dd>{{ proceso.nombre }}</dd></div>
+            <div><dt>Temporada</dt><dd>{{ proceso.temporada }}</dd></div>
+            <div><dt>Fecha de referencia</dt><dd>{{ proceso.fecha }}</dd></div>
+          </dl>
+
+          <dl class="hu19-indicadores" aria-label="Indicadores principales">
+            {% for nombre, cantidad in proceso.resumen.items %}
+              {% if nombre == "jugadores detectados" %}
+                <div class="hu19-indicador"><dt>Jugadores detectados</dt><dd>{{ cantidad }}</dd></div>
+              {% elif nombre == "importables" and not resultado %}
+                <div class="hu19-indicador hu19-indicador--listos"><dt>Listos para importar</dt><dd>{{ cantidad }}</dd></div>
+              {% elif nombre == "creados" and resultado %}
+                <div class="hu19-indicador hu19-indicador--listos"><dt>Jugadores creados</dt><dd>{{ cantidad }}</dd></div>
+              {% elif nombre == "revisión" %}
+                <div class="hu19-indicador"><dt>Requieren revisión</dt><dd>{{ cantidad }}</dd></div>
+              {% elif nombre == "conflictos" and cantidad %}
+                <div class="hu19-indicador"><dt>Conflictos</dt><dd>{{ cantidad }}</dd></div>
+              {% elif nombre == "existentes" and cantidad %}
+                <div class="hu19-indicador"><dt>Existentes</dt><dd>{{ cantidad }}</dd></div>
+              {% endif %}
+            {% endfor %}
+          </dl>
+
+          <p class="hu19-nota">Existentes y conflictos pueden coincidir entre sí y con filas en revisión. Estas cifras no se suman para obtener el total.</p>
+          <details class="hu19-detalle-resumen">
+            <summary>Detalle completo del resumen <span>Filas examinadas, omitidas y otros estados</span></summary>
+            <dl class="hu19-indicadores-secundarios">
+              {% for nombre, cantidad in proceso.resumen.items %}
+                <div><dt>{{ nombre|capfirst }}</dt><dd>{{ cantidad }}</dd></div>
+              {% endfor %}
+            </dl>
+          </details>
+
+          <div class="hu19-pie-resumen">
+            {% if reporte_disponible %}
+              <p>El reporte conserva los contactos y pendientes de revisión. Disponible durante 30 minutos.</p>
+            {% else %}
+              <p class="aviso">El reporte ya no está disponible. El resumen conserva el resultado de la importación.</p>
+            {% endif %}
+            {% if not resultado and proceso.resumen.importables %}
+              <a class="enlace hu19-ir-confirmacion" href="#hu19-confirmacion">Ir a confirmación</a>
+            {% endif %}
+          </div>
+        </section>
+
+        <div class="hu19-revisiones">
+          {% for tabla in tablas %}
+            <section class="hu19-tabla-seccion" aria-labelledby="hu19-tabla-{{ forloop.counter }}">
+              <div class="hu19-cab-tabla">
+                <h2 id="hu19-tabla-{{ forloop.counter }}">{{ tabla.titulo }}</h2>
+                <span class="hu19-conteo">{{ tabla.filas|length }} registro{{ tabla.filas|length|pluralize }}</span>
+              </div>
+              {% if tabla.titulo == "Apoderados pendientes" %}
+                <p class="hu19-nota hu19-nota-tabla">Completar identidad, RUT, correo y parentesco del apoderado. El contacto del Excel no crea un apoderado ni un vínculo automáticamente.</p>
+              {% endif %}
+              {% if tabla.filas %}
+                <p class="hu19-ayuda-tabla" id="hu19-ayuda-tabla-{{ forloop.counter }}">Todos los registros están disponibles. Desplázate dentro de la tabla; con el teclado, enfócala y utiliza las flechas.</p>
+              {% endif %}
+              <div class="tabla-contenedor hu19-tabla-scroll{% if tabla.titulo != 'Errores y revisión' %} hu19-tabla-scroll--pendientes{% endif %}"
+                   role="region" tabindex="0" aria-labelledby="hu19-tabla-{{ forloop.counter }}"{% if tabla.filas %} aria-describedby="hu19-ayuda-tabla-{{ forloop.counter }}"{% endif %}>
+                <table class="tabla-ayllu">
+                  <thead>
+                    <tr>{% for columna in tabla.encabezados %}<th scope="col">{{ columna }}</th>{% endfor %}</tr>
+                  </thead>
+                  <tbody>
+                    {% for fila in tabla.filas %}
+                      <tr>
+                        {% for valor in fila %}
+                          <td>
+                            {% if valor == "Teléfono del apoderado disponible; no persistido. Completar identidad, RUT, correo y parentesco del apoderado." %}
+                              <p>Contacto disponible; datos del apoderado pendientes.</p>
+                              <details class="hu19-indicacion">
+                                <summary>Ver indicación completa</summary>
+                                <p>{{ valor }}</p>
+                              </details>
+                            {% else %}
+                              {{ valor|default_if_none:"—"|linebreaksbr }}
+                            {% endif %}
+                          </td>
+                        {% endfor %}
+                      </tr>
+                    {% empty %}
+                      <tr><td class="hu19-tabla-vacia" colspan="{{ tabla.encabezados|length }}">Sin registros en esta sección.</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          {% endfor %}
+        </div>
+
+        {% if not resultado %}
+          <aside class="tarjeta hu19-confirmacion" id="hu19-confirmacion" aria-labelledby="hu19-confirmacion-titulo">
+            <p class="hu19-etapa">Paso 3 · Último paso</p>
+            <h2 id="hu19-confirmacion-titulo">Confirmar importación</h2>
+            {% if proceso.resumen.importables %}
+              <p class="hu19-cantidad-confirmacion"><strong>{{ proceso.resumen.importables }}</strong> jugadores listos para importar</p>
+              <ul class="hu19-condiciones">
+                <li>Solo se importarán las filas válidas. Las filas con errores quedan para revisión.</li>
+                <li>No se crearán usuarios ni apoderados automáticamente.</li>
+              </ul>
+              <form method="post" action="{% url 'importacion_jugadores_confirmar' proceso.id %}">
+                {% csrf_token %}
+                <label class="hu19-consentimiento"><input type="checkbox" name="confirmar" value="si" required> <span>Revisé el resumen y los pendientes y confirmo la importación.</span></label>
+                <button class="boton hu19-boton-confirmar" type="submit">Importar {{ proceso.resumen.importables }} jugadores válidos</button>
+              </form>
+            {% else %}
+              <p class="hu19-sin-importables" role="status">No hay jugadores nuevos válidos para importar. Revisa el reporte y corrige el Excel si corresponde.</p>
+            {% endif %}
+          </aside>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if form %}
+      {% if proceso %}
+        <details class="hu19-otro-archivo"{% if form.errors %} open{% endif %}>
+          <summary>Validar otro archivo <span>Reemplaza el proceso actual</span></summary>
+      {% endif %}
+      <form method="post" enctype="multipart/form-data" class="tarjeta hu19-carga" action="{% url 'importacion_jugadores' %}" aria-labelledby="hu19-carga-titulo">
+        {% csrf_token %}
+        <p class="hu19-etapa">Paso 1 · Archivo y temporada</p>
+        <h2 id="hu19-carga-titulo">{% if proceso %}Seleccionar otro archivo{% else %}Seleccionar archivo y temporada{% endif %}</h2>
+        <p class="hu19-instrucciones">Validar no guarda jugadores. La vista previa vence a los 30 minutos{% if proceso %}; cargar otro Excel reemplaza el proceso anterior{% endif %}.</p>
+        {{ form.non_field_errors }}
+        <div class="hu19-campos">
+          {% for campo in form %}
+            <div class="campo">
+              {{ campo.label_tag }}{{ campo }}
+              {% if campo.help_text %}<small class="ayuda">{{ campo.help_text }}</small>{% endif %}
+              {{ campo.errors }}
+            </div>
+          {% endfor %}
+          <div class="hu19-validar"><button class="boton" type="submit">Validar sin guardar jugadores</button></div>
+        </div>
+      </form>
+      {% if proceso %}</details>{% endif %}
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

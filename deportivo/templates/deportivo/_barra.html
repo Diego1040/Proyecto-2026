@@ -1,0 +1,29 @@
+{# NUEVO (HU-07) - Miguel: barra y pestañas, iguales a las de Administración #}
+<header class="barra">
+  <div class="wrap">
+    <span class="escudo"></span>
+    <b>Ayllu Basket</b>
+    <span class="rol">
+      {{ rol }}
+      <form action="{% url 'logout' %}" method="post" style="margin:0">
+        {% csrf_token %}
+        <button type="submit" class="salir">Cerrar sesión</button>
+      </form>
+    </span>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Secciones">
+  <div class="wrap">
+    {% if rol == "Administración" %}
+      <a class="tab" href="{% url 'validar_fichas' %}">Fichas pendientes</a>
+      <a class="tab" href="{% url 'categorias_jugadores' %}">Categorías</a>
+    {% endif %}
+    {# CAMBIO (HU-09): pestaña Nóminas; la activa depende de la sección #}
+    <a class="tab {% if not seccion %}activa{% endif %}" href="{% url 'deportivo:entrenamientos' %}">Entrenamientos</a>
+    <a class="tab {% if seccion == 'nominas' %}activa{% endif %}" href="{% url 'deportivo:nominas' %}">Nóminas</a>
+    <a class="tab {% if seccion == 'lesiones' %}activa{% endif %}" href="{% url 'deportivo:revisar_lesiones' %}">Lesiones</a>
+    {# FIN CAMBIO #}
+    <a class="tab" href="{% url 'panel' %}">Mi cuenta</a>
+  </div>
+</nav>

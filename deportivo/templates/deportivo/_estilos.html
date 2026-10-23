@@ -1,0 +1,65 @@
+{# NUEVO (HU-07) - Miguel: estilos compartidos, iguales a validar_fichas.html #}
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --naranja:#E8552A;--naranja-hover:#CC4620;--naranja-suave:#FCEBE4;--naranja-texto:#9B3B14;
+  --tinta:#17171A;--papel:#F4F3F1;--blanco:#FFFFFF;--gris:#6E6E74;--linea:#E1DFDB;
+  --verde:#1D7A4F;--verde-fondo:#E2F1E9;--rojo:#B3261E;--rojo-fondo:#FBE9E7;
+  --ambar:#8A6A12;--ambar-fondo:#FFF6E3;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--papel);color:var(--tinta);font-family:"Barlow",system-ui,sans-serif;font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1{font-family:"Barlow Condensed",system-ui,sans-serif;font-weight:700;margin:0;font-size:1.9rem;text-transform:uppercase;letter-spacing:-.01em;line-height:1.05}
+h2{font-family:"Barlow Condensed",system-ui,sans-serif;font-size:1.3rem;text-transform:uppercase;margin:28px 0 10px}
+p{margin:0}
+a{color:inherit}
+button,input,select,textarea{font:inherit}
+:is(a,button,input,select,textarea):focus-visible{outline:2px solid var(--naranja);outline-offset:2px;border-radius:3px}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px}
+
+.barra{background:var(--tinta);color:#fff;position:sticky;top:0;z-index:20}
+.barra .wrap{display:flex;align-items:center;gap:14px;height:60px}
+.escudo{width:32px;height:32px;border-radius:50%;background:var(--naranja);flex:none}
+.barra b{font-family:"Barlow Condensed";font-size:1.2rem;text-transform:uppercase}
+.rol{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:.9rem;color:#B9B7B4}
+.salir{background:none;border:1px solid #3A3A42;color:#fff;border-radius:5px;padding:5px 12px;cursor:pointer;font-size:.85rem}
+.salir:hover{background:#2A2A30}
+
+.tabs{background:var(--blanco);border-bottom:1px solid var(--linea);position:sticky;top:60px;z-index:19;overflow-x:auto}
+.tabs .wrap{display:flex;gap:4px}
+.tab{padding:14px 16px;color:var(--gris);font-weight:500;white-space:nowrap;border-bottom:2px solid transparent;display:flex;align-items:center;gap:7px;text-decoration:none}
+.tab:hover{color:var(--tinta)}
+.tab.activa{color:var(--tinta);font-weight:600;border-bottom-color:var(--naranja)}
+
+main{padding:28px 0 90px}
+.cabecera{margin-bottom:20px}
+.sub{color:var(--gris);font-size:.95rem;margin-top:4px}
+.tarjeta{background:var(--blanco);border:1px solid var(--linea);border-radius:8px}
+.pad{padding:18px}
+.vacio{padding:28px 18px;text-align:center;color:var(--gris)}
+.btn{background:var(--naranja);color:#fff;border:0;border-radius:5px;padding:11px 20px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;text-align:center}
+.btn:hover{background:var(--naranja-hover)}
+.btn.gris{background:var(--blanco);color:var(--tinta);border:1px solid var(--linea)}
+.btn.gris:hover{background:var(--papel)}
+.btn.chico{padding:8px 14px;font-size:.9rem}
+.pill{font-size:.75rem;font-weight:600;padding:3px 9px;border-radius:3px;display:inline-block;white-space:nowrap}
+.pill.cat{background:var(--naranja-suave);color:var(--naranja-texto)}
+.pill.esp{background:var(--ambar-fondo);color:var(--ambar)}
+.pill.ok{background:var(--verde-fondo);color:var(--verde)}
+label.campo{display:grid;gap:5px;font-size:.85rem;color:var(--gris);font-weight:500}
+input,select,textarea{background:var(--blanco);border:1px solid var(--linea);border-radius:5px;padding:10px 12px;color:inherit;width:100%}
+textarea{resize:vertical;min-height:72px}
+.fila{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+.mensajes{display:grid;gap:8px;margin-bottom:18px}
+.mensaje{border-radius:6px;padding:12px 14px;font-size:.92rem;border:1px solid}
+.mensaje.success{background:var(--verde-fondo);border-color:#BFDFCD;color:var(--verde)}
+.mensaje.error{background:var(--rojo-fondo);border-color:#E8C4C0;color:var(--rojo)}
+.aviso{border-radius:6px;padding:12px 14px;font-size:.9rem;margin-bottom:18px;background:var(--ambar-fondo);border:1px solid #F0DEB4;color:#6B5312}
+
+@media(max-width:600px){.fila{grid-template-columns:1fr}}
+</style>
