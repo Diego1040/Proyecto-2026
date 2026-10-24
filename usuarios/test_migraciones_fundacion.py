@@ -130,23 +130,29 @@ class MigracionesFundacionTest(TransactionTestCase):
         asignaciones_originales = list(
             entrenador.categorias.through.objects.order_by("pk").values(),
         )
-        entrenamiento_original = Entrenamiento.objects.filter(pk=entrenamiento.pk).values().get()
+        EntrenamientoAntiguo = self.apps_antiguas.get_model("deportivo", "Entrenamiento")
+        entrenamiento_original = EntrenamientoAntiguo.objects.filter(pk=entrenamiento.pk).values().get()
         asistencia_original = Asistencia.objects.filter(pk=asistencia.pk).values().get()
 
-        self.migrar()
+        executor = MigrationExecutor(connection)
+        executor.migrate(self.hasta)
+        apps_0012 = executor.loader.project_state(self.hasta).apps
+        Jugador0012 = apps_0012.get_model("usuarios", "Jugador")
+        Usuario0012 = apps_0012.get_model("usuarios", "Usuario")
+        Apoderado0012 = apps_0012.get_model("usuarios", "Apoderado")
 
-        cuenta_nueva = Usuario.objects.get(pk=cuenta.pk)
+        cuenta_nueva = Usuario0012.objects.get(pk=cuenta.pk)
         self.assertEqual(cuenta_nueva.rut, "11111111-1")
         self.assertEqual(cuenta_nueva.password, clave)
         self.assertTrue(cuenta_nueva.is_active)
         self.assertFalse(cuenta_nueva.is_staff)
         self.assertEqual(list(cuenta_nueva.groups.values_list("pk", flat=True)), [grupo.pk])
         self.assertIsNotNone(cuenta_nueva.activado_en)
-        self.assertIsNone(Usuario.objects.get(pk=suspendida.pk).activado_en)
-        self.assertFalse(Usuario.objects.get(pk=suspendida.pk).is_active)
-        self.assertIsNone(Usuario.objects.get(pk=sin_clave.pk).activado_en)
-        jugador_nuevo = Jugador.objects.get(pk=adulto.pk)
-        apoderado_nuevo = Apoderado.objects.get(pk=apoderado.pk)
+        self.assertIsNone(Usuario0012.objects.get(pk=suspendida.pk).activado_en)
+        self.assertFalse(Usuario0012.objects.get(pk=suspendida.pk).is_active)
+        self.assertIsNone(Usuario0012.objects.get(pk=sin_clave.pk).activado_en)
+        jugador_nuevo = Jugador0012.objects.get(pk=adulto.pk)
+        apoderado_nuevo = Apoderado0012.objects.get(pk=apoderado.pk)
         self.assertEqual(jugador_nuevo.usuario_id, cuenta.pk)
         self.assertEqual(apoderado_nuevo.usuario_id, cuenta.pk)
         self.assertEqual(apoderado_nuevo.rut, "11111111-1")
@@ -159,7 +165,7 @@ class MigracionesFundacionTest(TransactionTestCase):
         self.assertEqual(Categoria.objects.get(pk=varones.pk).nombre, "Todo Competidor Varones")
         self.assertEqual(Categoria.objects.get(pk=damas.pk).nombre, "Todo Competidor Damas")
         self.assertEqual(jugador_nuevo.categoria_actual_id, varones.pk)
-        self.assertEqual(Jugador.objects.get(pk=jugadora.pk).categoria_actual_id, damas.pk)
+        self.assertEqual(Jugador0012.objects.get(pk=jugadora.pk).categoria_actual_id, damas.pk)
         self.assertTrue(Categoria.objects.get(pk=damas.pk).activa)
         self.assertEqual(list(ReglaCategoria.objects.order_by("pk").values()), reglas_originales)
         self.assertEqual(list(HistorialCategoria.objects.order_by("pk").values()), historial_original)
@@ -170,7 +176,7 @@ class MigracionesFundacionTest(TransactionTestCase):
         solicitud_nueva = SolicitudInscripcion.objects.get(pk=solicitud.pk)
         self.assertEqual(solicitud_nueva.estado, "APROBADA")
         self.assertIsNone(solicitud_nueva.usuario_autorizado_id)
-        self.assertEqual(Entrenamiento.objects.filter(pk=entrenamiento.pk).values().get(), entrenamiento_original)
+        self.assertEqual(EntrenamientoAntiguo.objects.filter(pk=entrenamiento.pk).values().get(), entrenamiento_original)         
         self.assertEqual(Asistencia.objects.filter(pk=asistencia.pk).values().get(), asistencia_original)
         self.assertEqual(Asistencia.objects.get(pk=asistencia.pk).jugador_id, jugadora.pk)
         self.assertEqual(list(PerfilEntrenador.categorias.through.objects.order_by("pk").values()),
@@ -184,7 +190,7 @@ class MigracionesFundacionTest(TransactionTestCase):
         self.assertEqual(obtener_categoria_automatica(
             date(1990, 3, 10), "VARONES", temporada=2026,
         ).pk, varones.pk)
-        jugadora_nueva = Jugador.objects.get(pk=jugadora.pk)
+        jugadora_nueva = Jugador0012.objects.get(pk=jugadora.pk)
         self.assertEqual(jugadora_nueva.rut, "23456789-6")
         asignar_categoria_automatica(jugadora_nueva, temporada=2026)
         self.assertEqual(jugadora_nueva.historial_categorias.count(), 2)
@@ -245,13 +251,18 @@ class MigracionesFundacionTest(TransactionTestCase):
             rut=" 234567896 ", nombres="Ana", apellidos="Apoderada",
         )
 
-        self.migrar()
+        executor = MigrationExecutor(connection)
+        executor.migrate(self.hasta)
+        apps_0012 = executor.loader.project_state(self.hasta).apps
+        Jugador0012 = apps_0012.get_model("usuarios", "Jugador")
+        Usuario0012 = apps_0012.get_model("usuarios", "Usuario")
+        Apoderado0012 = apps_0012.get_model("usuarios", "Apoderado")
 
-        self.assertEqual(Usuario.objects.get(pk=cuenta.pk).rut, "20347119-K")
-        self.assertEqual(Jugador.objects.get(pk=jugador.pk).rut, "11111111-1")
-        self.assertEqual(Apoderado.objects.get(pk=apoderado.pk).rut, "23456789-6")
-        self.assertIsNone(Jugador.objects.get(pk=jugador.pk).usuario_id)
-        self.assertIsNone(Apoderado.objects.get(pk=apoderado.pk).usuario_id)
+        self.assertEqual(Usuario0012.objects.get(pk=cuenta.pk).rut, "20347119-K")
+        self.assertEqual(Jugador0012.objects.get(pk=jugador.pk).rut, "11111111-1")
+        self.assertEqual(Apoderado0012.objects.get(pk=apoderado.pk).rut, "23456789-6")
+        self.assertIsNone(Jugador0012.objects.get(pk=jugador.pk).usuario_id)
+        self.assertIsNone(Apoderado0012.objects.get(pk=apoderado.pk).usuario_id)
 
     def test_rut_de_perfil_distinto_de_cuenta_detiene_migracion(self):
         UsuarioAntiguo = self.apps_antiguas.get_model("usuarios", "Usuario")
@@ -310,9 +321,13 @@ class MigracionesFundacionTest(TransactionTestCase):
             nombres="Alex", apellidos="Jugador", fecha_nacimiento=date(1990, 3, 10),
             rama="VARONES",
         )
-        self.migrar()
-        self.assertEqual(Jugador.objects.get(pk=jugador.pk).email, "perfil@example.com")
-        self.assertEqual(Usuario.objects.get(pk=cuenta.pk).password, clave)
+        executor = MigrationExecutor(connection)
+        executor.migrate(self.hasta)
+        apps_0012 = executor.loader.project_state(self.hasta).apps
+        Jugador0012 = apps_0012.get_model("usuarios", "Jugador")
+        Usuario0012 = apps_0012.get_model("usuarios", "Usuario")
+        self.assertEqual(Jugador0012.objects.get(pk=jugador.pk).email, "perfil@example.com")
+        self.assertEqual(Usuario0012.objects.get(pk=cuenta.pk).password, clave)
 
     def test_colision_de_usuario_detiene_migracion_sin_fusionar_personas(self):
         modelo = self.apps_antiguas.get_model("usuarios", "Usuario")

@@ -1,9 +1,8 @@
 venv/
+.venv/
 __pycache__/
 *.pyc
-db.sqlite3
-.env
-
-.venv/
+*.sqlite3
 db.sqlite3.backup-*
 .env
+*.xlsx

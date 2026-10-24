@@ -37,6 +37,23 @@ class UsuarioChangeForm(UserChangeForm):
 
 
 
+class ImportacionJugadoresForm(forms.Form):
+    archivo = forms.FileField(
+        label="Archivo Excel",
+        widget=forms.ClearableFileInput(attrs={"accept": ".xlsx"}),
+        help_text="Archivo .xlsx con la hoja Hoja1. Tamaño máximo: 5 MB.",
+    )
+    temporada = forms.IntegerField(label="Temporada", min_value=1, max_value=9999)
+
+    def clean_archivo(self):
+        archivo = self.cleaned_data["archivo"]
+        if not archivo.name.lower().endswith(".xlsx"):
+            raise ValidationError("Selecciona un archivo con extensión .xlsx.")
+        if archivo.size > 5 * 1024 * 1024:
+            raise ValidationError("El archivo no puede superar los 5 MB.")
+        return archivo
+
+
 class InscripcionForm(forms.Form):
     nombres = forms.CharField(
         label="Nombres",

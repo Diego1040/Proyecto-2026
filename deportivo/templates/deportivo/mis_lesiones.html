@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+ 
+{% block titulo %}Lesiones y restricciones — Ayllu Basket{% endblock %}
+ 
+{% block extra_css %}
+<style>
+.form-lesion select,.form-lesion textarea{width:100%;background:var(--blanco);border:1px solid var(--linea);border-radius:4px;padding:10px;font:inherit}
+.form-lesion textarea{min-height:90px;resize:vertical}
+.reportes{padding:0;margin-top:20px}
+.reporte{padding:16px;border-top:1px solid var(--linea)}
+.reporte:first-child{border-top:0}
+.reporte h3{margin:6px 0 4px;font-size:1.05rem}
+.reporte p{margin:2px 0;font-size:.92rem;color:var(--gris)}
+.reporte .desc{color:inherit}
+.reporte .pill{display:inline-block;margin:0 6px 4px 0}
+.pill.pendiente{background:#FFF6E3;color:#8A6A12}
+.pill.validado{background:#E2F1E9;color:#1D7A4F}
+.pill.rechazado{background:#FBE9E7;color:#B3261E}
+</style>
+{% endblock %}
+ 
+{% block contenido %}
+<section class="seccion">
+  <div class="wrap">
+    <div class="cab">
+      <div>
+        <p class="etiqueta-seccion">Lesiones</p>
+        <h1>Lesiones y restricciones</h1>
+        <p class="texto-secundario">Informa al cuerpo técnico una lesión, licencia o restricción temporal. El reporte queda pendiente hasta que el entrenador lo revise.</p>
+      </div>
+    </div>
+ 
+    <form method="post" class="tarjeta formulario-ayllu form-lesion" style="padding:20px;margin-top:20px">
+      {% csrf_token %}
+      <h2 style="margin-top:0">Nuevo reporte</h2>
+      <div class="rejilla-form">
+        <div class="campo">
+          <label for="jugador_id">Jugador</label>
+          <select id="jugador_id" name="jugador_id" required>
+            {% for j in jugadores %}<option value="{{ j.pk }}">{{ j.nombres }} {{ j.apellidos }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="campo">
+          <label for="tipo">Tipo</label>
+          <select id="tipo" name="tipo" required>
+            {% for valor, etiqueta in tipos %}<option value="{{ valor }}">{{ etiqueta }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="campo">
+          <label for="fecha_inicio">Desde</label>
+          <input id="fecha_inicio" type="date" name="fecha_inicio" value="{{ hoy|date:'Y-m-d' }}" required>
+        </div>
+        <div class="campo">
+          <label for="fecha_fin">Hasta (estimado, opcional)</label>
+          <input id="fecha_fin" type="date" name="fecha_fin">
+        </div>
+      </div>
+      <div class="campo">
+        <label for="descripcion">Descripción breve</label>
+        <textarea id="descripcion" name="descripcion" maxlength="500" required placeholder="Ej: esguince de tobillo derecho, reposo deportivo por 2 semanas."></textarea>
+        <span class="ayuda">Escribe solo lo necesario para el cuerpo técnico. No adjuntes diagnósticos completos.</span>
+      </div>
+      <button class="boton" type="submit">Enviar reporte</button>
+    </form>
+ 
+    <h2 style="margin-top:32px">Mis reportes</h2>
+    <div class="tarjeta reportes">
+      {% for r in reportes %}
+        <article class="reporte">
+          <span class="pill {{ r.estado|lower }}">{{ r.get_estado_display }}</span>
+          <span class="pill cat">{{ r.get_tipo_display }}</span>
+          <h3>{{ r.jugador.nombres }} {{ r.jugador.apellidos }}</h3>
+          <p>Desde {{ r.fecha_inicio|date:"d/m/Y" }}{% if r.fecha_fin %} hasta {{ r.fecha_fin|date:"d/m/Y" }}{% endif %}</p>
+          <p class="desc">{{ r.descripcion|linebreaksbr }}</p>
+          {% if r.comentario_revision %}<p><b>Comentario del entrenador:</b> {{ r.comentario_revision }}</p>{% endif %}
+        </article>
+      {% empty %}
+        <p style="padding:20px;margin:0">Todavía no has enviado reportes.</p>
+      {% endfor %}
+    </div>
+ 
+    <p style="margin-top:20px"><a class="enlace" href="{% url 'panel' %}">← Volver a mi panel</a></p>
+  </div>
+</section>
+{% endblock %}
