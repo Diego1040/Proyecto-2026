@@ -1,7 +1,9 @@
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.core.exceptions import ValidationError
-from django.db import models
+from datetime import date
+
+from django.db import models, transaction
 from django.utils import timezone
 
 from .validators import (
@@ -914,4 +916,198 @@ class Auditoria(models.Model):
         return (
             f"{self.accion} - "
             f"{self.entidad} #{self.entidad_id}"
+        )
+
+
+class PeriodoInactividad(models.Model):
+    class Motivo(models.TextChoices):
+        LESION = "LESION", "Lesión"
+        RECESO_PERSONAL = "RECESO_PERSONAL", "Receso personal"
+        OTRO = "OTRO", "Otro"
+
+    jugador = models.ForeignKey(
+        Jugador,
+        on_delete=models.PROTECT,
+        related_name="periodos_inactividad",
+    )
+
+    motivo = models.CharField(
+        max_length=20,
+        choices=Motivo.choices,
+    )
+
+    fecha_inicio = models.DateField()
+
+    fecha_reactivacion = models.DateField(
+        null=True,
+        blank=True,
+        help_text=(
+            "Fecha efectiva de reincorporación. "
+            "Déjala vacía mientras siga inactivo."
+        ),
+    )
+
+    observaciones = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    registrado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="inactividades_registradas",
+    )
+
+    reactivado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="inactividades_reactivadas",
+    )
+
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "periodo de inactividad"
+        verbose_name_plural = "periodos de inactividad"
+        ordering = ["-fecha_inicio"]
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=["jugador"],
+                condition=models.Q(
+                    fecha_reactivacion__isnull=True
+                ),
+                name="un_periodo_abierto_por_jugador",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(fecha_reactivacion__isnull=True)
+                    | models.Q(
+                        fecha_reactivacion__gte=models.F(
+                            "fecha_inicio"
+                        )
+                    )
+                ),
+                name="fecha_reactivacion_valida",
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        errores = {}
+
+        hoy = timezone.localdate()
+
+        if self.fecha_inicio and self.fecha_inicio > hoy:
+            errores["fecha_inicio"] = (
+                "La fecha de inicio no puede estar en el futuro."
+            )
+
+        if (
+            self.fecha_reactivacion
+            and self.fecha_reactivacion > hoy
+        ):
+            errores["fecha_reactivacion"] = (
+                "La reactivación debe registrarse cuando "
+                "el jugador efectivamente se reincorpore."
+            )
+
+        if (
+            self.fecha_inicio
+            and self.fecha_reactivacion
+            and self.fecha_reactivacion < self.fecha_inicio
+        ):
+            errores["fecha_reactivacion"] = (
+                "La fecha de reactivación no puede ser anterior "
+                "a la fecha de inicio."
+            )
+
+        if self._state.adding and self.fecha_reactivacion:
+            errores["fecha_reactivacion"] = (
+                "Primero registra la inactividad. "
+                "La reincorporación se registra después."
+            )
+
+        if self._state.adding and self.jugador_id:
+            if self.jugador.estado == Jugador.Estado.PENDIENTE:
+                errores["jugador"] = (
+                    "Solo se puede registrar inactividad "
+                    "para un jugador ya aprobado."
+                )
+
+        if self.jugador_id and self.fecha_inicio:
+            fin_nuevo = self.fecha_reactivacion or date.max
+
+            existentes = (
+                type(self).objects.filter(
+                    jugador_id=self.jugador_id
+                )
+                .exclude(pk=self.pk)
+            )
+
+            for existente in existentes:
+                fin_existente = (
+                    existente.fecha_reactivacion or date.max
+                )
+
+                se_superponen = (
+                    self.fecha_inicio <= fin_existente
+                    and existente.fecha_inicio <= fin_nuevo
+                )
+
+                if se_superponen:
+                    errores["fecha_inicio"] = (
+                        "Este período se superpone con otro "
+                        "registro de inactividad del jugador."
+                    )
+                    break
+
+        if errores:
+            raise ValidationError(errores)
+
+    def save(self, *args, **kwargs):
+        using = (
+            kwargs.get("using")
+            or self._state.db
+            or "default"
+        )
+
+        with transaction.atomic(using=using):
+            self.full_clean()
+            super().save(*args, **kwargs)
+
+            tiene_periodo_abierto = (
+                type(self).objects.using(using).filter(
+                    jugador_id=self.jugador_id,
+                    fecha_reactivacion__isnull=True,
+                ).exists()
+            )
+
+            jugador = (
+                Jugador.objects.using(using)
+                .select_for_update()
+                .get(pk=self.jugador_id)
+            )
+
+            if tiene_periodo_abierto:
+                nuevo_estado = Jugador.Estado.INACTIVO
+            elif jugador.estado == Jugador.Estado.INACTIVO:
+                nuevo_estado = Jugador.Estado.ACTIVO
+            else:
+                nuevo_estado = jugador.estado
+
+            if jugador.estado != nuevo_estado:
+                Jugador.objects.using(using).filter(
+                    pk=jugador.pk
+                ).update(estado=nuevo_estado)
+
+    def __str__(self):
+        return (
+            f"{self.jugador} - {self.get_motivo_display()} "
+            f"({self.fecha_inicio:%d/%m/%Y})"
         )

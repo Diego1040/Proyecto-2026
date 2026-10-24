@@ -13,6 +13,7 @@ from .models import (
     HistorialCategoria,
     AlertaSalud,
     Auditoria,
+    PeriodoInactividad,
 )
 
 
@@ -202,6 +203,15 @@ class JugadorAdmin(admin.ModelAdmin):
     list_editable = (
         "becado",
     )
+
+    def get_readonly_fields(self, request, obj=None):
+        if (
+            obj
+            and obj.estado != Jugador.Estado.PENDIENTE
+        ):
+            return ("estado",)
+
+        return ()
 
 
 @admin.register(Apoderado)
@@ -402,3 +412,102 @@ class AuditoriaAdmin(admin.ModelAdmin):
     ordering = (
         "-fecha",
     )
+
+
+@admin.register(PeriodoInactividad)
+class PeriodoInactividadAdmin(admin.ModelAdmin):
+    list_display = (
+        "jugador",
+        "motivo",
+        "fecha_inicio",
+        "fecha_reactivacion",
+        "registrado_por",
+        "reactivado_por",
+    )
+
+    list_filter = (
+        "motivo",
+        "fecha_inicio",
+        "fecha_reactivacion",
+    )
+
+    search_fields = (
+        "jugador__rut",
+        "jugador__nombres",
+        "jugador__apellidos",
+        "observaciones",
+    )
+
+    autocomplete_fields = (
+        "jugador",
+        "registrado_por",
+        "reactivado_por",
+    )
+
+    def get_fields(self, request, obj=None):
+        if obj is None:
+            return (
+                "jugador",
+                "motivo",
+                "fecha_inicio",
+                "observaciones",
+            )
+
+        return (
+            "jugador",
+            "motivo",
+            "fecha_inicio",
+            "fecha_reactivacion",
+            "observaciones",
+            "registrado_por",
+            "reactivado_por",
+            "creado_en",
+            "actualizado_en",
+        )
+
+    def get_readonly_fields(self, request, obj=None):
+        campos_auditoria = (
+            "registrado_por",
+            "reactivado_por",
+            "creado_en",
+            "actualizado_en",
+        )
+
+        if obj is None:
+            return ()
+
+        if obj.fecha_reactivacion is not None:
+            return (
+                "jugador",
+                "motivo",
+                "fecha_inicio",
+                "fecha_reactivacion",
+                "observaciones",
+                *campos_auditoria,
+            )
+
+        return (
+            "jugador",
+            "motivo",
+            "fecha_inicio",
+            *campos_auditoria,
+        )
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.registrado_por = request.user
+        else:
+            anterior = PeriodoInactividad.objects.get(
+                pk=obj.pk
+            )
+
+            if (
+                anterior.fecha_reactivacion is None
+                and obj.fecha_reactivacion is not None
+            ):
+                obj.reactivado_por = request.user
+
+        super().save_model(request, obj, form, change)
+
+    def has_delete_permission(self, request, obj=None):
+        return False

@@ -9,7 +9,7 @@ from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
 
 from finanzas.models import Beca, Cuota
-from usuarios.models import Jugador
+from usuarios.models import Jugador, PeriodoInactividad
 
 
 # Valor provisional mientras se define la tarifa oficial.
@@ -97,16 +97,32 @@ class Command(BaseCommand):
     )
 )
 
-        # Seleccionar jugadores activos sin beca en el perÃ­odo.
+                # Buscar inactividades que se superponen con el mes.
+        # Así no se crean cuotas retroactivas de meses congelados.
+        inactividades_del_periodo = (
+            PeriodoInactividad.objects.filter(
+                jugador_id=OuterRef("pk"),
+                fecha_inicio__lte=fin_periodo,
+            ).filter(
+                Q(fecha_reactivacion__isnull=True)
+                | Q(fecha_reactivacion__gte=periodo)
+            )
+        )
+
+        # Seleccionar jugadores activos sin beca en el período.
         jugadores = (
             Jugador.objects.filter(
                 estado=Jugador.Estado.ACTIVO,
             )
             .annotate(
                 tiene_beca_en_periodo=Exists(becas_del_periodo),
+                tiene_inactividad_en_periodo=Exists(
+                    inactividades_del_periodo
+                ),
             )
             .filter(
                 tiene_beca_en_periodo=False,
+                tiene_inactividad_en_periodo=False,
             )
             .order_by("pk")
         )
