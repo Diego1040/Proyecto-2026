@@ -16,7 +16,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 
 from usuarios.models import ApoderadoJugador
 
-from .models import Beca, Cuota, Pago
+from .models import Beca, Cuota, Pago, sumar_meses
 
 from .webpay_service import (
     obtener_transaccion_webpay,

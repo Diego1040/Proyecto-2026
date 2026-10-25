@@ -6,6 +6,9 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
+
+
+from finanzas.models import Cuota
  
 from usuarios.models import Auditoria, Categoria, Jugador, Apoderado, ApoderadoJugador
  
@@ -608,7 +611,75 @@ class NominaTest(TestCase):
         self.client.force_login(self.entrenador)
         self.assertEqual(self.client.get(reverse("deportivo:ver_nomina", args=[nomina.pk])).status_code, 404)
         self.assertEqual(self.client.get(reverse("deportivo:nomina_pdf", args=[nomina.pk])).status_code, 404)
+
 # FIN NUEVO (HU-09)
+
+    def crear_cuotas_vencidas(self, jugador, periodos):
+        for periodo in periodos:
+            Cuota.objects.create(
+                jugador=jugador,
+                concepto="Mensualidad",
+                periodo=periodo,
+                monto=15000,
+                fecha_vencimiento=periodo.replace(day=10),
+                estado=Cuota.Estado.PENDIENTE,
+            )
+
+    def test_bloquea_nomina_con_dos_mensualidades_vencidas(self):
+        self.crear_cuotas_vencidas(
+            self.tomas,
+            [date(2025, 1, 1), date(2025, 2, 1)],
+        )
+
+        self.client.force_login(self.entrenador)
+        respuesta = self.client.post(
+            reverse("deportivo:nueva_nomina"),
+            self.datos(),
+        )
+
+        self.assertFalse(Nomina.objects.exists())
+        self.assertEqual(respuesta.status_code, 302)
+        self.assertIn(
+            "categoria=",
+            respuesta.url,
+        )
+
+    def test_beca_completa_exime_del_bloqueo_por_morosidad(self):
+        self.tomas.becado = True
+        self.tomas.save(update_fields=["becado"])
+
+        self.crear_cuotas_vencidas(
+            self.tomas,
+            [date(2025, 1, 1), date(2025, 2, 1)],
+        )
+
+        self.client.force_login(self.entrenador)
+        respuesta = self.client.post(
+            reverse("deportivo:nueva_nomina"),
+            self.datos(),
+        )
+
+        self.assertRedirects(
+            respuesta,
+            reverse("deportivo:ver_nomina", args=[Nomina.objects.get().pk]),
+        )
+        self.assertEqual(Nomina.objects.count(), 1)
+
+    def test_una_mensualidad_vencida_no_bloquea_nomina(self):
+        self.crear_cuotas_vencidas(
+            self.tomas,
+            [date(2025, 1, 1)],
+        )
+
+        self.client.force_login(self.entrenador)
+        respuesta = self.client.post(
+            reverse("deportivo:nueva_nomina"),
+            self.datos(),
+        )
+
+        self.assertEqual(Nomina.objects.count(), 1)
+        self.assertEqual(respuesta.status_code, 302)
+
 
 #HU-20
 class HistorialNominasTest(TestCase):

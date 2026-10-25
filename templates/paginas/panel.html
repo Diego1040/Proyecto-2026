@@ -39,10 +39,14 @@
         <article class="tarjeta opcion-panel">
           <div class="opcion-panel-contenido">
             <p class="etiqueta-seccion">Jugador</p>
+
+
             <h2>Mi perfil deportivo</h2>
             <p>Consulta tus datos, categoría, asistencia e historial.</p>
           </div>
           <a class="boton" href="{% url 'perfil_jugador' %}">Ver perfil</a>
+          <a class="boton-linea" href="{% url 'finanzas:mis_cuotas' %}">Estado de cuenta y pagos</a>
+
           <a class="boton-linea" href="{% url 'deportivo:mis_lesiones' %}">Reportar lesión</a>{# NUEVO (HU-08) #}
         </article>
       {% endif %}

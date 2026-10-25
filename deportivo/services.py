@@ -5,11 +5,12 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 from django.db.models import Q
-from usuarios.models import Categoria
+from usuarios.models import AlertaSalud, Categoria
 from .models import Evento
 from .permisos import categorias_visibles, es_entrenador
 from usuarios.models import Jugador
 from usuarios.services import registrar_auditoria
+from finanzas.services import jugador_bloqueado_por_morosidad
 
 from .models import Asistencia, Nomina, NominaJugador, ReporteLesion
 from .permisos import es_administracion
@@ -376,6 +377,16 @@ def crear_nomina(*, usuario, categoria, titulo, fecha, lugar="", evento=None, ju
     if len(elegidos) != len(ids):
         errores.append("Hay jugadores que no pertenecen a la categoría o no están activos.")
 
+    for candidato in elegidos:
+        jugador = candidato["jugador"]
+
+        if jugador_bloqueado_por_morosidad(jugador):
+            errores.append(
+                f"{jugador.nombres} {jugador.apellidos} no puede incluirse "
+                "en la nómina porque acumula dos o más mensualidades "
+                "vencidas e impagas."
+            )
+
     if errores:
         raise ValidationError(errores)
 
@@ -499,6 +510,34 @@ def crear_reporte_lesion(*, usuario, jugador, tipo, descripcion, fecha_inicio, f
         detalle={"jugador_id": jugador.pk, "tipo": tipo},
     )
     return reporte
+
+
+def _sincronizar_alerta_salud_lesion(reporte):
+    """
+    Crea o reactiva la alerta de salud de un reporte validado.
+    """
+    if reporte.estado != ReporteLesion.Estado.VALIDADO:
+        return None
+
+    fecha_fin = (
+        reporte.fecha_fin.strftime("%d/%m/%Y")
+        if reporte.fecha_fin
+        else "Sin fecha de término"
+    )
+
+    descripcion_alerta = (
+        f"{reporte.descripcion}\n"
+        f"Tipo de reporte: {reporte.get_tipo_display()}\n"
+        f"Vigencia: {reporte.fecha_inicio.strftime('%d/%m/%Y')} "
+        f"hasta {fecha_fin}"
+    )
+
+    return AlertaSalud.objects.update_or_create(
+        jugador=reporte.jugador,
+        tipo=reporte.get_tipo_display(),
+        descripcion=descripcion_alerta,
+        defaults={"activa": True},
+    )
  
  
 @transaction.atomic
@@ -521,6 +560,9 @@ def revisar_reporte_lesion(*, usuario, reporte, decision, comentario=""):
     reporte.revisado_en = timezone.now()
     reporte.comentario_revision = comentario
     reporte.save(update_fields=["estado", "revisado_por", "revisado_en", "comentario_revision"])
+
+    if decision == ReporteLesion.Estado.VALIDADO:
+        _sincronizar_alerta_salud_lesion(reporte)
  
     registrar_auditoria(
         usuario=usuario,

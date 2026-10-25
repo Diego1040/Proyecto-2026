@@ -56,7 +56,7 @@ class HU11WebpayTests(TestCase):
             jugador=self.jugador,
             concepto="Cuota de prueba",
             periodo=date(2026, 10, 1),
-            monto=Decimal("25000"),
+            monto=Decimal("15000"),
             fecha_vencimiento=date(2026, 10, 31),
             estado=Cuota.Estado.PENDIENTE,
         )
@@ -114,7 +114,7 @@ class HU11WebpayTests(TestCase):
 
         pago = Pago.objects.get(cuota=self.cuota)
 
-        self.assertEqual(pago.monto, Decimal("25000"))
+        self.assertEqual(pago.monto, Decimal("15000"))
         self.assertEqual(pago.token_ws, "token-nuevo")
         self.assertEqual(pago.estado, Pago.Estado.INICIADO)
 

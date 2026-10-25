@@ -12,10 +12,12 @@ MESES_IMPAGOS_PARA_BLOQUEO = 2
 
 def jugador_bloqueado_por_morosidad(jugador, fecha=None):
     """
-    Retorna True cuando un jugador acumula dos o más
-    mensualidades vencidas e impagas, excluyendo períodos
-    cubiertos por una beca completa registrada.
+    Retorna True si el jugador no tiene beca completa y acumula
+    dos o más períodos mensuales vencidos e impagos.
     """
+    if getattr(jugador, "becado", False):
+        return False
+
     if fecha is None:
         fecha = timezone.localdate()
 
@@ -28,26 +30,6 @@ def jugador_bloqueado_por_morosidad(jugador, fecha=None):
     periodos_impagos = set()
 
     for cuota in cuotas_vencidas:
-        ultimo_dia = monthrange(
-            cuota.periodo.year,
-            cuota.periodo.month,
-        )[1]
-
-        fin_periodo = date(
-            cuota.periodo.year,
-            cuota.periodo.month,
-            ultimo_dia,
-        )
-
-        periodo_cubierto_por_beca = Beca.objects.filter(
-            jugador=jugador,
-            fecha_inicio__lte=fin_periodo,
-            fecha_termino__gte=cuota.periodo,
-        ).exists()
-
-        if periodo_cubierto_por_beca:
-            continue
-
         periodos_impagos.add(cuota.periodo)
 
         if len(periodos_impagos) >= MESES_IMPAGOS_PARA_BLOQUEO:
