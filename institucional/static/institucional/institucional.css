@@ -1,0 +1,23 @@
+.institucional{padding-top:38px;padding-bottom:64px;min-height:60vh}
+.institucional h1{font-size:clamp(2rem,5vw,3.1rem);margin-bottom:18px}
+.institucional h2{font-size:1.5rem;margin-bottom:12px}
+.institucional .tarjeta{background:var(--blanco);border:1px solid var(--linea);border-radius:6px;padding:24px;margin:20px 0}
+.cab-institucional{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.institucional small{display:block;color:var(--gris)}
+.institucional .boton{font:inherit;font-weight:600;cursor:pointer;border:0;padding:10px 18px}
+.institucional .boton-secundario{border:1px solid var(--linea);background:transparent;color:var(--tinta)}
+.institucional .acciones-form{margin-top:20px}
+.formulario-institucional{max-width:850px}
+.formulario-institucional form>p{margin-bottom:20px}
+.formulario-institucional label{display:block;font-weight:600;margin-bottom:5px}
+.formulario-institucional input,.formulario-institucional select,.formulario-institucional textarea{width:100%;padding:10px;border:1px solid var(--linea);border-radius:4px;font:inherit;background:var(--blanco);color:var(--tinta)}
+.formulario-institucional .helptext{display:block;color:var(--gris);font-size:.88rem}
+.institucional .errorlist{padding:12px 20px;background:var(--naranja-suave);color:var(--naranja-texto);margin-bottom:16px}
+.institucional .pill{border-radius:4px;padding:5px 10px;background:var(--papel);font-size:.88rem}
+.institucional .texto-largo{white-space:pre-wrap;overflow-wrap:anywhere;margin:14px 0}
+.institucional .tabla-ayllu td{overflow-wrap:anywhere}
+.institucional-subnav{display:none}
+.evento-disciplinario{border-top:1px solid var(--linea);padding:16px 0}
+.evento-disciplinario summary{cursor:pointer;color:var(--naranja-texto);margin-top:10px}
+@media(max-width:900px){.institucional-subnav{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px}.institucional-subnav a{padding:8px 12px;border:1px solid var(--linea);border-radius:4px;background:var(--blanco)}}
+@media(max-width:700px){.institucional .panel-opciones{grid-template-columns:1fr}.institucional .tarjeta{padding:18px}.institucional .datos-detalle{grid-template-columns:1fr}.institucional .acciones-form>*{max-width:100%}.institucional .boton{padding:10px 14px}}

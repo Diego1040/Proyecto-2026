@@ -1,0 +1,21 @@
+{% extends "institucional/base.html" %}
+{% block institucional %}
+<p class="etiqueta-seccion">Comité de Disciplina · Confidencial</p><h1>Expediente</h1>
+<article class="tarjeta">
+  <div class="cab-institucional"><h2>{{ sancion.jugador }}</h2><span class="pill">{{ sancion.get_estado_display }}</span></div>
+  <dl class="datos-detalle"><dt>Fecha</dt><dd>{{ sancion.fecha|date:"d/m/Y" }}</dd><dt>Registrado por</dt><dd>{{ sancion.creada_por.get_full_name|default:sancion.creada_por.rut }}</dd><dt>Último cambio</dt><dd>{{ sancion.actualizada_en|date:"d/m/Y H:i" }} · {{ sancion.actualizada_por.get_full_name|default:sancion.actualizada_por.rut }}</dd>
+  {% if sancion.resuelta_en %}<dt>Cierre registrado por</dt><dd>{{ sancion.resuelta_por.get_full_name|default:sancion.resuelta_por.rut }} · {{ sancion.resuelta_en|date:"d/m/Y H:i" }}</dd>{% endif %}</dl>
+  <h3>Motivo</h3><div class="texto-largo">{{ sancion.motivo }}</div>
+  <h3>Resolución</h3><div class="texto-largo">{{ sancion.resolucion|default:"Pendiente de resolución." }}</div>
+  {% if sancion.estado != 'ANULADA' %}<div class="acciones-form">
+    {% if institucional_accesos.corregir_sanciones %}<a class="boton boton-secundario" href="{% url 'institucional:sancion_corregir' sancion.pk %}">Corregir con justificación</a>{% endif %}
+    {% if institucional_accesos.resolver_sanciones %}{% if sancion.estado == 'REGISTRADA' %}<a class="boton" href="{% url 'institucional:sancion_resolver' sancion.pk %}">Resolver</a>{% endif %}<a class="enlace" href="{% url 'institucional:sancion_anular' sancion.pk %}">Anular con justificación</a>{% endif %}
+  </div>{% endif %}
+</article>
+<section class="tarjeta"><h2>Bitácora privada</h2>
+{% for evento in eventos %}<article class="evento-disciplinario"><p><b>{{ evento.get_accion_display }}</b> · {{ evento.fecha|date:"d/m/Y H:i" }} · {{ evento.actor.get_full_name|default:evento.actor.rut }}</p>
+{% if evento.justificacion %}<p>{{ evento.justificacion|linebreaksbr }}</p>{% endif %}
+{% if evento.cambios %}<details><summary>Consultar cambios registrados</summary><div class="tabla-contenedor"><table class="tabla-ayllu"><thead><tr><th>Campo</th><th>Antes</th><th>Después</th></tr></thead><tbody>{% for cambio in evento.cambios %}<tr><td>{{ cambio.campo }}</td><td>{{ cambio.antes|linebreaksbr }}</td><td>{{ cambio.despues|linebreaksbr }}</td></tr>{% endfor %}</tbody></table></div></details>{% endif %}
+</article>{% endfor %}</section>
+<a class="enlace" href="{% url 'institucional:sanciones' %}">Volver a expedientes</a>
+{% endblock %}

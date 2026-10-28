@@ -1,0 +1,11 @@
+{% extends "institucional/base.html" %}
+{% block institucional %}
+<p class="etiqueta-seccion">Institucional</p><h1>{{ titulo }}</h1>
+<div class="tarjeta formulario-institucional">
+  {% if archivo_actual %}<p>PDF actual: {{ archivo_actual }}. Si adjuntas otro archivo se reemplazará solamente el del borrador.</p>{% endif %}
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}{{ form.as_p }}
+    <div class="acciones-form"><button class="boton" type="submit">Guardar</button><a href="{% url 'institucional:inicio' %}">Volver al área institucional</a></div>
+  </form>
+</div>
+{% endblock %}

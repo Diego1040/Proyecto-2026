@@ -1,0 +1,8 @@
+{% extends "institucional/base.html" %}
+{% block institucional %}
+<div class="cab-institucional"><div><p class="etiqueta-seccion">Acceso restringido</p><h1>Comité de Disciplina</h1></div>{% if institucional_accesos.registrar_sanciones %}<a class="boton" href="{% url 'institucional:sancion_nueva' %}">Registrar sanción</a>{% endif %}</div>
+<p>La información de los expedientes es confidencial.</p>
+<div class="tarjeta tabla-contenedor"><table class="tabla-ayllu"><thead><tr><th>Jugador</th><th>Fecha</th><th>Estado</th><th></th></tr></thead><tbody>
+{% for sancion in sanciones %}<tr><td>{{ sancion.jugador }}</td><td>{{ sancion.fecha|date:"d/m/Y" }}</td><td>{{ sancion.get_estado_display }}</td><td><a class="enlace" href="{% url 'institucional:sancion_detalle' sancion.pk %}">Consultar expediente</a></td></tr>{% empty %}<tr><td colspan="4">No hay expedientes registrados.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -41,6 +42,7 @@ INSTALLED_APPS = [
     'usuarios.apps.UsuariosConfig',
     'deportivo',
     'finanzas',
+    'institucional.apps.InstitucionalConfig',
 ]
 
 AUTH_USER_MODEL = 'usuarios.Usuario'
@@ -67,6 +69,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'institucional.context_processors.accesos_institucionales',
             ],
         },
     },
@@ -127,6 +130,14 @@ STATICFILES_DIRS = [
 ]
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Documentos permanentes privados; nunca se sirven mediante MEDIA_URL.
+INSTITUCIONAL_PRIVATE_ROOT = Path(os.environ.get(
+    'AYLLU_INSTITUCIONAL_PRIVATE_ROOT',
+    BASE_DIR.parent / 'ayllubasket-institucional-privado',
+))
+INSTITUCIONAL_PDF_MAX_BYTES = 5 * 1024 * 1024
+INSTITUCIONAL_PDF_MAX_PAGES = 200
 
 # Autenticacion
 LOGIN_URL = 'login'

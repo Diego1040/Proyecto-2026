@@ -1,0 +1,7 @@
+{% extends "institucional/base.html" %}
+{% block institucional %}
+<p class="etiqueta-seccion">Administración</p><h1>Autorizaciones de consulta</h1>
+<p>Verifica la pertenencia al club antes de autorizar una cuenta histórica o institucional. Esta autorización permite consultar actas y normativa; no concede acceso al Comité.</p>
+<div class="tarjeta formulario-institucional"><form method="post">{% csrf_token %}{{ form.as_p }}<button class="boton" type="submit">Registrar cambio</button></form></div>
+<section class="tarjeta"><h2>Cuentas con autorización manual</h2><ul>{% for cuenta in cuentas %}<li>{{ cuenta.rut }} — {{ cuenta.get_full_name|default:"Sin nombre registrado" }}</li>{% empty %}<li>No hay autorizaciones manuales.</li>{% endfor %}</ul></section>
+{% endblock %}

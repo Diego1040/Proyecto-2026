@@ -1,0 +1,8 @@
+{% extends "institucional/base.html" %}
+{% block institucional %}
+<div class="cab-institucional"><div><p class="etiqueta-seccion">Secretaría del club</p><h1>Actas y acuerdos</h1></div>
+{% if institucional_accesos.gestionar_actas %}<a class="boton" href="{% url 'institucional:acta_nueva' %}">Nueva acta</a>{% endif %}</div>
+<div class="tarjeta tabla-contenedor"><table class="tabla-ayllu"><thead><tr><th>Acta</th><th>Reunión</th><th>Versión</th><th>Estado</th><th></th></tr></thead><tbody>
+{% for version in versiones %}<tr><td>{{ version.titulo }}<small>{{ version.acta.codigo }}</small></td><td>{{ version.fecha_reunion|date:"d/m/Y" }}</td><td>{{ version.numero }}</td><td>{{ version.get_estado_display }}</td><td><a class="enlace" href="{% url 'institucional:acta_detalle' version.acta_id %}">Consultar</a></td></tr>{% empty %}<tr><td colspan="5">No hay actas disponibles.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

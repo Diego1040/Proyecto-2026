@@ -6,6 +6,8 @@ from django.db import IntegrityError, transaction
 from django.views.decorators.http import require_GET, require_POST
 from django.db.models import Prefetch, Q  # <<< NUEVO (HU-05)
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils.html import format_html
 from deportivo.permisos import es_administracion, es_entrenador  # NUEVO (HU-07)
 from deportivo.services import resumen_asistencia_mes  # NUEVO (HU-07)
 from .forms import (
@@ -55,6 +57,13 @@ def panel(request):
     if request.user.groups.filter(
         name="Tesorería"
     ).exists():
+        from institucional.permisos import puede_acceder
+
+        if puede_acceder(request.user):
+            messages.info(request, format_html(
+                'También tienes acceso al área institucional. <a href="{}">Ingresar al área institucional</a>.',
+                reverse("institucional:inicio"),
+            ))
         return redirect("finanzas:tesoreria")
 
 

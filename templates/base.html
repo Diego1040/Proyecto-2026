@@ -31,6 +31,10 @@
       
 {% if user.is_authenticated %}
 
+  {% if institucional_disponible %}
+    <a href="{% url 'institucional:inicio' %}">Institucional</a>
+  {% endif %}
+
   <a href="{% url 'panel' %}" class="boton chico">
     Mi cuenta
   </a>
@@ -88,6 +92,7 @@
           <li><a href="{% url 'inicio' %}#academia">Academia</a></li>
           <li><a href="{% url 'inicio' %}#club">El club</a></li>
           <li><a href="{% url 'inicio' %}#noticias">Noticias</a></li>
+          {% if institucional_disponible %}<li><a href="{% url 'institucional:inicio' %}">Área institucional</a></li>{% endif %}
         </ul>
       </div>
       <div>

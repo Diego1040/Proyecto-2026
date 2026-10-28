@@ -1,0 +1,11 @@
+{% extends "institucional/base.html" %}
+{% block titulo %}Reglamentos y normativas — Ayllu Basket{% endblock %}
+{% block institucional %}
+<div class="cab-institucional"><div><p class="etiqueta-seccion">Documentación del club</p><h1>Reglamentos y normativas</h1></div>
+{% if institucional_accesos.gestionar_normativa %}<a class="boton" href="{% url 'institucional:documento_nuevo' %}">Nuevo documento</a>{% endif %}</div>
+{% if not institucional_accesos.gestionar_normativa %}<p>Se muestran únicamente las versiones vigentes.{% if not institucional_accesos.normativa %} Los documentos internos requieren una cuenta habilitada del club.{% endif %}</p>{% endif %}
+<div class="tabla-contenedor tarjeta"><table class="tabla-ayllu">
+  <thead><tr><th>Documento</th><th>Tipo</th><th>Versión</th><th>Fecha</th><th>Vigencia</th><th>Visibilidad</th><th></th></tr></thead>
+  <tbody>{% for version in versiones %}<tr><td>{{ version.titulo }}<small>{{ version.documento.codigo }}</small></td><td>{{ version.documento.get_tipo_display }}</td><td>{{ version.version }}</td><td>{{ version.fecha_documento|date:"d/m/Y" }}</td><td>{{ version.get_estado_display }}{% if version.estado == 'VIGENTE' %}<small>Desde {{ version.vigente_desde|date:"d/m/Y" }}</small>{% endif %}</td><td>{{ version.get_visibilidad_display }}</td><td><a class="enlace" href="{% url 'institucional:documento_detalle' version.documento_id %}">Consultar</a></td></tr>{% empty %}<tr><td colspan="7">No hay documentos disponibles.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}
