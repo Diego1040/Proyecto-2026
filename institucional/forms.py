@@ -6,7 +6,26 @@ from .models import DocumentoNormativo, VersionDocumentoNormativo
 from .validators import validar_pdf
 
 
-class VersionDocumentoForm(forms.Form):
+class JustificacionVersionMixin:
+    def __init__(self, *args, requiere_justificacion=True, **kwargs):
+        super().__init__(*args, **kwargs)
+        campo = self.fields["motivo_cambio"]
+        campo.required = requiere_justificacion
+        if requiere_justificacion:
+            campo.help_text = "Obligatoria para una corrección o una versión posterior."
+        elif not self.initial.get("motivo_cambio"):
+            campo.widget = forms.HiddenInput()
+        else:
+            campo.label = "Justificación registrada"
+            campo.help_text = "Se conserva la justificación de este borrador."
+
+    def clean_motivo_cambio(self):
+        if not self.fields["motivo_cambio"].required and "motivo_cambio" not in self.data:
+            return self.initial.get("motivo_cambio", "")
+        return self.cleaned_data["motivo_cambio"]
+
+
+class VersionDocumentoForm(JustificacionVersionMixin, forms.Form):
     titulo = forms.CharField(label="Título", max_length=200)
     version = forms.CharField(label="Versión", max_length=32)
     visibilidad = forms.ChoiceField(
@@ -31,9 +50,18 @@ class DocumentoNuevoForm(VersionDocumentoForm):
     tipo = forms.ChoiceField(choices=DocumentoNormativo.Tipo.choices)
     field_order = ["codigo", "tipo", "titulo", "version", "visibilidad", "fecha_documento", "vigente_desde", "archivo", "motivo_cambio"]
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, requiere_justificacion=False, **kwargs)
+
+
+class CuentaChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, cuenta):
+        nombre = cuenta.get_full_name()
+        return f"{nombre} — {cuenta.rut}" if nombre else cuenta.rut
+
 
 class MiembroForm(forms.Form):
-    destinatario = forms.ModelChoiceField(label="Cuenta existente", queryset=Usuario.objects.none())
+    destinatario = CuentaChoiceField(label="Cuenta existente", queryset=Usuario.objects.none(), empty_label="Selecciona una cuenta")
     accion = forms.ChoiceField(label="Acción", choices=[("autorizar", "Autorizar consulta institucional"), ("revocar", "Revocar autorización manual")])
     motivo = forms.CharField(label="Motivo y comprobación de pertenencia", widget=forms.Textarea(attrs={"rows": 3}))
 
@@ -42,7 +70,7 @@ class MiembroForm(forms.Form):
         self.fields["destinatario"].queryset = Usuario.objects.order_by("rut")
 
 
-class VersionActaForm(forms.Form):
+class VersionActaForm(JustificacionVersionMixin, forms.Form):
     titulo = forms.CharField(label="Título", max_length=200)
     fecha_reunion = forms.DateField(label="Fecha de reunión", widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
     acuerdos = forms.CharField(widget=forms.Textarea(attrs={"rows": 8}))
@@ -60,9 +88,12 @@ class ActaNuevaForm(VersionActaForm):
     codigo = forms.CharField(label="Número de acta", max_length=60)
     field_order = ["codigo", "titulo", "fecha_reunion", "acuerdos", "archivo", "motivo_cambio"]
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, requiere_justificacion=False, **kwargs)
+
 
 class SancionNuevaForm(forms.Form):
-    jugador = forms.ModelChoiceField(queryset=Jugador.objects.none())
+    jugador = forms.ModelChoiceField(queryset=Jugador.objects.none(), empty_label="Selecciona un jugador")
     fecha = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
     motivo = forms.CharField(widget=forms.Textarea(attrs={"rows": 5}))
 
@@ -73,7 +104,7 @@ class SancionNuevaForm(forms.Form):
 
 
 class SancionCorreccionForm(SancionNuevaForm):
-    resolucion = forms.CharField(label="Resolución", required=False, widget=forms.Textarea(attrs={"rows": 4}))
+    resolucion = forms.CharField(label="Texto de resolución", required=False, widget=forms.Textarea(attrs={"rows": 4}), help_text="Corregir este texto no cambia el estado del expediente. Para cerrarlo, utiliza Resolver expediente.")
     justificacion = forms.CharField(label="Justificación de la corrección", widget=forms.Textarea(attrs={"rows": 3}))
     revision = forms.IntegerField(widget=forms.HiddenInput, min_value=1)
 
@@ -84,4 +115,5 @@ class SancionResolucionForm(forms.Form):
 
 
 class SancionAnulacionForm(SancionResolucionForm):
-    justificacion = forms.CharField(label="Justificación de la anulación", widget=forms.Textarea(attrs={"rows": 3}))
+    resolucion = forms.CharField(label="Resolución de anulación", widget=forms.Textarea(attrs={"rows": 5}), help_text="Registra la decisión que deja sin efecto el expediente.")
+    justificacion = forms.CharField(label="Justificación de la anulación", widget=forms.Textarea(attrs={"rows": 3}), help_text="Explica el fundamento de la decisión. Ambos campos son obligatorios.")

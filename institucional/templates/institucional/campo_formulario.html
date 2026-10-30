@@ -1,0 +1,4 @@
+<label for="{{ campo.id_for_label }}">{{ campo.label }}{% if campo.field.required %} <span class="campo-obligatorio" aria-hidden="true">*</span>{% endif %}</label>
+{{ campo }}
+{{ campo.errors }}
+{% if campo.help_text %}<small class="helptext" id="{{ campo.auto_id }}_helptext">{{ campo.help_text }}</small>{% endif %}

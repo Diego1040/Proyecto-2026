@@ -1,11 +1,40 @@
 {% extends "institucional/base.html" %}
 {% block institucional %}
 <p class="etiqueta-seccion">Institucional</p><h1>{{ titulo }}</h1>
+{% if documento_original or acta_original %}
+<section class="contexto-formulario" aria-label="Documento de referencia">
+  <p class="etiqueta-seccion">{% if documento_original %}Documento de referencia{% else %}Acta de referencia{% endif %}</p>
+  <h2>{% if documento_original %}{{ documento_original.codigo }}{% else %}{{ acta_original.codigo }}{% endif %} · {{ version_referencia.titulo }}</h2>
+  <p>{% if documento_original %}Versión {{ version_referencia.version }}{% else %}Versión {{ version_referencia.numero }}{% endif %} · {{ version_referencia.get_estado_display }}</p>
+</section>
+{% endif %}
+{% if expediente %}
+<section class="contexto-formulario" aria-label="Expediente de referencia">
+  <h2>Expediente {{ expediente.pk }}</h2>
+  <dl class="datos-detalle"><dt>Jugador</dt><dd>{{ expediente.jugador }}</dd><dt>Fecha</dt><dd>{{ expediente.fecha|date:"d/m/Y" }}</dd><dt>Estado actual</dt><dd>{{ expediente.get_estado_display }}</dd></dl>
+</section>
+{% endif %}
 <div class="tarjeta formulario-institucional">
   {% if archivo_actual %}<p>PDF actual: {{ archivo_actual }}. Si adjuntas otro archivo se reemplazará solamente el del borrador.</p>{% endif %}
+  <p class="ayuda-formulario">Los campos con asterisco (*) son obligatorios.</p>
   <form method="post" enctype="multipart/form-data">
-    {% csrf_token %}{{ form.as_p }}
-    <div class="acciones-form"><button class="boton" type="submit">Guardar</button><a href="{% url 'institucional:inicio' %}">Volver al área institucional</a></div>
+    {% csrf_token %}{{ form.non_field_errors }}
+    {% for campo in form.hidden_fields %}{{ campo }}{{ campo.errors }}{% endfor %}
+    <div class="rejilla-institucional">
+      {% for campo in form.visible_fields %}
+        {% if campo.name == 'resolucion' and resolucion_opcional %}
+          <details class="campo-institucional campo-amplio resolucion-opcional"{% if campo.value or campo.errors %} open{% endif %}>
+            <summary>Texto de resolución (opcional)</summary>
+            {% include "institucional/campo_formulario.html" %}
+          </details>
+        {% else %}
+          <div class="campo-institucional{% if campo.name == 'titulo' or campo.name == 'acuerdos' or campo.name == 'archivo' or campo.name == 'motivo_cambio' or campo.name == 'jugador' or campo.name == 'motivo' or campo.name == 'resolucion' or campo.name == 'justificacion' %} campo-amplio{% endif %}">
+            {% include "institucional/campo_formulario.html" %}
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+    <div class="acciones-form"><button class="boton" type="submit">{{ texto_boton }}</button><a class="enlace" href="{{ volver_url }}">{{ volver_texto }}</a></div>
   </form>
 </div>
 {% endblock %}

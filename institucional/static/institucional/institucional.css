@@ -1,23 +1,63 @@
-.institucional{padding-top:38px;padding-bottom:64px;min-height:60vh}
+.institucional{padding-top:38px;padding-bottom:64px;min-height:60vh;min-width:0}
 .institucional h1{font-size:clamp(2rem,5vw,3.1rem);margin-bottom:18px}
 .institucional h2{font-size:1.5rem;margin-bottom:12px}
-.institucional .tarjeta{background:var(--blanco);border:1px solid var(--linea);border-radius:6px;padding:24px;margin:20px 0}
+.institucional .tarjeta{background:var(--blanco);border:1px solid var(--linea);border-radius:6px;padding:24px;margin:20px 0;min-width:0}
 .cab-institucional{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
 .institucional small{display:block;color:var(--gris)}
-.institucional .boton{font:inherit;font-weight:600;cursor:pointer;border:0;padding:10px 18px}
+.institucional .boton{font:inherit;font-weight:600;cursor:pointer;border:0;padding:10px 18px;max-width:100%;text-align:center}
 .institucional .boton-secundario{border:1px solid var(--linea);background:transparent;color:var(--tinta)}
 .institucional .acciones-form{margin-top:20px}
 .formulario-institucional{max-width:850px}
 .formulario-institucional form>p{margin-bottom:20px}
 .formulario-institucional label{display:block;font-weight:600;margin-bottom:5px}
-.formulario-institucional input,.formulario-institucional select,.formulario-institucional textarea{width:100%;padding:10px;border:1px solid var(--linea);border-radius:4px;font:inherit;background:var(--blanco);color:var(--tinta)}
-.formulario-institucional .helptext{display:block;color:var(--gris);font-size:.88rem}
-.institucional .errorlist{padding:12px 20px;background:var(--naranja-suave);color:var(--naranja-texto);margin-bottom:16px}
-.institucional .pill{border-radius:4px;padding:5px 10px;background:var(--papel);font-size:.88rem}
+.formulario-institucional input,.formulario-institucional select,.formulario-institucional textarea{width:100%;min-width:0;max-width:100%;padding:10px;border:1px solid var(--linea);border-radius:4px;font:inherit;background:var(--blanco);color:var(--tinta)}
+.formulario-institucional .helptext{display:block;color:var(--gris);font-size:.88rem;margin-top:6px}
+.institucional .errorlist{padding:10px 20px;background:var(--naranja-suave);color:var(--naranja-texto);margin:6px 0 12px;overflow-wrap:anywhere}
+.institucional .pill{display:inline-block;border-radius:4px;padding:5px 10px;background:var(--papel);font-size:.88rem}
 .institucional .texto-largo{white-space:pre-wrap;overflow-wrap:anywhere;margin:14px 0}
-.institucional .tabla-ayllu td{overflow-wrap:anywhere}
+.institucional .tabla-ayllu td{overflow-wrap:break-word;word-break:normal}
 .institucional-subnav{display:none}
-.evento-disciplinario{border-top:1px solid var(--linea);padding:16px 0}
+.evento-disciplinario{border-top:1px solid var(--linea);padding:16px 0;min-width:0}
 .evento-disciplinario summary{cursor:pointer;color:var(--naranja-texto);margin-top:10px}
 @media(max-width:900px){.institucional-subnav{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px}.institucional-subnav a{padding:8px 12px;border:1px solid var(--linea);border-radius:4px;background:var(--blanco)}}
 @media(max-width:700px){.institucional .panel-opciones{grid-template-columns:1fr}.institucional .tarjeta{padding:18px}.institucional .datos-detalle{grid-template-columns:1fr}.institucional .acciones-form>*{max-width:100%}.institucional .boton{padding:10px 14px}}
+
+.institucional h1,.institucional h2{overflow-wrap:anywhere}
+.cab-institucional>*{min-width:0;max-width:100%}
+.institucional .boton:disabled{background:var(--linea);color:var(--tinta);cursor:not-allowed}
+.institucional .acciones-form>*{min-width:0;max-width:100%}
+.institucional .acciones-form a{overflow-wrap:anywhere}
+.institucional .panel-opciones .tarjeta p{margin-bottom:12px}
+.formulario-institucional textarea{resize:vertical}
+.rejilla-institucional{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.campo-institucional{min-width:0}
+.campo-amplio{grid-column:1/-1}
+.campo-obligatorio{color:var(--naranja-texto)}
+.ayuda-formulario{color:var(--gris);font-size:.9rem;margin-bottom:20px}
+.contexto-formulario{max-width:850px;border-left:3px solid var(--naranja);padding:12px 18px;margin:8px 0 24px;background:var(--blanco);overflow-wrap:anywhere}
+.contexto-formulario h2{font-size:1.25rem}
+.contexto-formulario .datos-detalle{margin:0}
+.resolucion-opcional{border:1px solid var(--linea);border-radius:4px;padding:14px}
+.resolucion-opcional summary{cursor:pointer;font-weight:600;color:var(--naranja-texto)}
+.resolucion-opcional[open] summary{margin-bottom:14px}
+.institucional [aria-invalid="true"]{border-color:var(--naranja-texto)}
+.institucional .estado-publicada,.institucional .estado-vigente,.institucional .estado-resuelta{color:#1D6545;background:#E2F1E9}
+.institucional .estado-borrador,.institucional .estado-registrada{color:var(--naranja-texto);background:var(--naranja-suave)}
+.institucional .estado-historica,.institucional .estado-anulada{color:var(--gris);background:var(--papel)}
+.indicador-version{font-weight:600;color:var(--naranja-texto);margin:10px 0}
+.nota-institucional{padding:12px 16px;border-left:3px solid var(--naranja);background:var(--naranja-suave);margin:14px 0;overflow-wrap:anywhere}
+.institucional .tabla-contenedor{min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:auto;scrollbar-color:var(--naranja) var(--papel)}
+.institucional .tabla-contenedor:focus-visible{outline:2px solid var(--naranja);outline-offset:3px}
+.institucional .tabla-contenedor::-webkit-scrollbar{height:10px}
+.institucional .tabla-contenedor::-webkit-scrollbar-track{background:var(--papel)}
+.institucional .tabla-contenedor::-webkit-scrollbar-thumb{background:var(--naranja);border-radius:5px}
+.institucional .tabla-ayllu{min-width:700px}
+.institucional .tabla-normativa{min-width:930px}
+.institucional .tabla-ayllu .col-titulo{min-width:220px;max-width:430px}
+.institucional .tabla-ayllu .col-fecha,.institucional .tabla-ayllu .col-breve,.institucional .tabla-ayllu .col-acciones{white-space:nowrap}
+.institucional .tabla-cambios{min-width:760px;table-layout:fixed}
+.institucional .tabla-cambios th:first-child{width:120px}
+.institucional .tabla-cambios td{vertical-align:top;overflow-wrap:anywhere}
+.ayuda-tabla{display:none;color:var(--naranja-texto);font-size:.9rem;margin-bottom:12px}
+@media(max-width:1100px){.ayuda-tabla{display:block}}
+@media(max-width:700px){.institucional .panel-opciones,.rejilla-institucional{grid-template-columns:minmax(0,1fr)}.institucional .datos-detalle{grid-template-columns:minmax(0,1fr)}.campo-amplio{grid-column:auto}.contexto-formulario{padding:12px}}

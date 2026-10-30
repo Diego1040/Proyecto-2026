@@ -3,16 +3,20 @@
 {% block institucional %}
 <p class="etiqueta-seccion">{{ documento.get_tipo_display }} · {{ documento.codigo }}</p>
 <h1>Documento normativo</h1>
-{% if institucional_accesos.gestionar_normativa %}<p><a class="enlace" href="{% url 'institucional:documento_version_nueva' documento.pk %}">Crear nueva versión</a></p>{% endif %}
+{% if institucional_accesos.gestionar_normativa %}
+  {% if hay_borrador %}<p class="nota-institucional">Hay un borrador pendiente. Edítalo o publícalo antes de crear otra versión.</p>
+  {% else %}<p><a class="enlace" href="{% url 'institucional:documento_version_nueva' documento.pk %}">Crear nueva versión</a></p>{% endif %}
+{% endif %}
 {% for version in versiones %}<article class="tarjeta version-institucional">
-  <div class="cab-institucional"><h2>{{ version.titulo }}</h2><span class="pill">{{ version.get_estado_display }}</span></div>
-  <dl class="datos-detalle"><dt>Versión</dt><dd>{{ version.version }}</dd><dt>Visibilidad</dt><dd>{{ version.get_visibilidad_display }}</dd><dt>Fecha</dt><dd>{{ version.fecha_documento|date:"d/m/Y" }}</dd><dt>Vigente desde</dt><dd>{{ version.vigente_desde|date:"d/m/Y" }}</dd>
+  <div class="cab-institucional"><h2>{{ version.titulo }}</h2><span class="pill estado-{{ version.estado|lower }}">{{ version.get_estado_display }} · Versión {{ version.version }}</span></div>
+  <dl class="datos-detalle"><dt>Visibilidad</dt><dd>{{ version.get_visibilidad_display }}</dd><dt>Fecha del documento</dt><dd>{{ version.fecha_documento|date:"d/m/Y" }}</dd><dt>Vigente desde</dt><dd>{{ version.vigente_desde|date:"d/m/Y" }}</dd>
   {% if version.publicado_en %}<dt>Publicación</dt><dd>{{ version.publicado_en|date:"d/m/Y H:i" }}</dd>{% endif %}</dl>
   {% if institucional_accesos.normativa and version.motivo_cambio %}<p><b>Justificación:</b> {{ version.motivo_cambio|linebreaksbr }}</p>{% endif %}
+  {% if version.estado == 'BORRADOR' and not version.archivo %}<p class="nota-institucional" id="pdf-pendiente-{{ version.pk }}">Falta adjuntar el PDF obligatorio para publicar. Puedes incorporarlo al editar el borrador.</p>{% endif %}
   <div class="acciones-form">
     {% if version.archivo %}<a class="boton boton-secundario" href="{% url 'institucional:documento_descargar' version.pk %}">Descargar PDF</a>{% endif %}
     {% if institucional_accesos.gestionar_normativa and version.estado == 'BORRADOR' %}<a class="enlace" href="{% url 'institucional:documento_editar' version.pk %}">Editar borrador</a>{% endif %}
-    {% if institucional_accesos.publicar_normativa and version.estado == 'BORRADOR' %}<form method="post" action="{% url 'institucional:documento_publicar' version.pk %}">{% csrf_token %}<button type="submit" class="boton">Publicar como vigente</button></form>{% endif %}
+    {% if institucional_accesos.publicar_normativa and version.estado == 'BORRADOR' %}<form method="post" action="{% url 'institucional:documento_publicar' version.pk %}">{% csrf_token %}<button type="submit" class="boton"{% if not version.archivo %} disabled aria-describedby="pdf-pendiente-{{ version.pk }}"{% endif %}>Publicar como vigente</button></form>{% endif %}
   </div>
 </article>{% endfor %}
 {% include "institucional/historial_documental.html" %}

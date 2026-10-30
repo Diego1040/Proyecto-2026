@@ -1,9 +1,13 @@
 {% extends "institucional/base.html" %}
 {% block institucional %}
 <p class="etiqueta-seccion">Acta {{ acta.codigo }}</p><h1>Actas y acuerdos</h1>
-{% if institucional_accesos.gestionar_actas %}<p><a class="enlace" href="{% url 'institucional:acta_version_nueva' acta.pk %}">Crear corrección justificada</a></p>{% endif %}
+{% if institucional_accesos.gestionar_actas %}
+  {% if hay_borrador %}<p class="nota-institucional">Hay un borrador pendiente. Edítalo o publícalo antes de crear otra corrección.</p>
+  {% else %}<p><a class="enlace" href="{% url 'institucional:acta_version_nueva' acta.pk %}">Crear corrección justificada</a></p>{% endif %}
+{% endif %}
 {% for version in versiones %}<article class="tarjeta version-institucional">
-  <div class="cab-institucional"><h2>{{ version.titulo }}</h2><span class="pill">{{ version.get_estado_display }} · Versión {{ version.numero }}</span></div>
+  <div class="cab-institucional"><h2>{{ version.titulo }}</h2><span class="pill estado-{{ version.estado|lower }}">{{ version.get_estado_display }} · Versión {{ version.numero }}</span></div>
+  {% if version.estado == 'PUBLICADA' %}<p class="indicador-version">{% if version.pk == ultima_publicada.pk %}Última versión publicada{% else %}Publicación anterior · Se conserva como antecedente{% endif %}</p>{% endif %}
   <p>Reunión del {{ version.fecha_reunion|date:"d/m/Y" }}{% if version.publicado_en %} · Publicada el {{ version.publicado_en|date:"d/m/Y H:i" }}{% endif %}</p>
   <h3>Acuerdos</h3><div class="texto-largo">{{ version.acuerdos }}</div>
   {% if version.motivo_cambio %}<p><b>Justificación de la corrección:</b> {{ version.motivo_cambio|linebreaksbr }}</p>{% endif %}

@@ -1,8 +1,13 @@
 {% extends "institucional/base.html" %}
 {% block institucional %}
-<div class="cab-institucional"><div><p class="etiqueta-seccion">Acceso restringido</p><h1>Comité de Disciplina</h1></div>{% if institucional_accesos.registrar_sanciones %}<a class="boton" href="{% url 'institucional:sancion_nueva' %}">Registrar sanción</a>{% endif %}</div>
+<div class="cab-institucional"><div><p class="etiqueta-seccion">Acceso restringido</p><h1 id="titulo-expedientes">Comité de Disciplina</h1></div>{% if institucional_accesos.registrar_sanciones %}<a class="boton" href="{% url 'institucional:sancion_nueva' %}">Registrar sanción</a>{% endif %}</div>
 <p>La información de los expedientes es confidencial.</p>
-<div class="tarjeta tabla-contenedor"><table class="tabla-ayllu"><thead><tr><th>Jugador</th><th>Fecha</th><th>Estado</th><th></th></tr></thead><tbody>
-{% for sancion in sanciones %}<tr><td>{{ sancion.jugador }}</td><td>{{ sancion.fecha|date:"d/m/Y" }}</td><td>{{ sancion.get_estado_display }}</td><td><a class="enlace" href="{% url 'institucional:sancion_detalle' sancion.pk %}">Consultar expediente</a></td></tr>{% empty %}<tr><td colspan="4">No hay expedientes registrados.</td></tr>{% endfor %}
-</tbody></table></div>
+<div class="tarjeta tarjeta-tabla">
+  <p class="ayuda-tabla" id="ayuda-expedientes">← Desliza la tabla para ver todas las columnas y acciones →</p>
+  <div class="tabla-contenedor" role="region" tabindex="0" aria-labelledby="titulo-expedientes" aria-describedby="ayuda-expedientes">
+    <table class="tabla-ayllu"><thead><tr><th scope="col">Jugador</th><th scope="col">Fecha</th><th scope="col">Estado</th><th scope="col">Acciones</th></tr></thead><tbody>
+    {% for sancion in sanciones %}<tr><td class="col-titulo">{{ sancion.jugador }}</td><td class="col-fecha">{{ sancion.fecha|date:"d/m/Y" }}</td><td class="col-breve"><span class="pill estado-{{ sancion.estado|lower }}">{{ sancion.get_estado_display }}</span></td><td class="col-acciones"><a class="enlace" href="{% url 'institucional:sancion_detalle' sancion.pk %}">Consultar expediente</a></td></tr>{% empty %}<tr><td colspan="4">No hay expedientes registrados.</td></tr>{% endfor %}
+    </tbody></table>
+  </div>
+</div>
 {% endblock %}

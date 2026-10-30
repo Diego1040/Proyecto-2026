@@ -6,6 +6,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
@@ -35,8 +36,12 @@ def acceso_requerido(comprobar):
 
 def _error_formulario(form, error):
     if isinstance(error, ValidationError):
-        for mensaje in error.messages:
-            form.add_error(None, mensaje)
+        if hasattr(error, "error_dict"):
+            for campo, errores in error.error_dict.items():
+                form.add_error(campo if campo in form.fields else None, errores)
+        else:
+            for mensaje in error.messages:
+                form.add_error(None, mensaje)
     else:
         form.add_error(None, "La versión o el código ya existe, o hubo un cambio simultáneo. Actualiza y vuelve a intentarlo.")
 
@@ -75,7 +80,10 @@ def documento_detalle(request, pk):
     if not lista:
         raise Http404
     historial = _historial("VersionDocumentoNormativo", lista) if permisos.puede_gestionar_normativa(request.user) else []
-    return render(request, "institucional/documento_detalle.html", {"documento": lista[0].documento, "versiones": lista, "historial": historial})
+    return render(request, "institucional/documento_detalle.html", {
+        "documento": lista[0].documento, "versiones": lista, "historial": historial,
+        "hay_borrador": any(v.estado == v.Estado.BORRADOR for v in lista),
+    })
 
 
 @acceso_requerido(permisos.puede_gestionar_normativa)
@@ -90,7 +98,10 @@ def documento_nuevo(request):
         else:
             messages.success(request, "Borrador creado. Revisa y publica cuando esté listo.")
             return redirect("institucional:documento_detalle", pk=version.documento_id)
-    return render(request, "institucional/formulario.html", {"form": form, "titulo": "Nuevo documento normativo"})
+    return render(request, "institucional/formulario.html", {
+        "form": form, "titulo": "Nuevo documento normativo", "texto_boton": "Guardar borrador",
+        "volver_url": reverse("institucional:documentos"), "volver_texto": "Cancelar y volver a normativa",
+    })
 
 
 @acceso_requerido(permisos.puede_gestionar_normativa)
@@ -101,7 +112,8 @@ def documento_version(request, pk=None, version_id=None):
     if version and version.estado != version.Estado.BORRADOR:
         raise Http404
     inicial = {campo: getattr(version, campo) for campo in ("titulo", "version", "visibilidad", "fecha_documento", "vigente_desde", "motivo_cambio")} if version else {}
-    form = VersionDocumentoForm(request.POST or None, request.FILES or None, initial=inicial)
+    form = VersionDocumentoForm(request.POST or None, request.FILES or None, initial=inicial,
+                                requiere_justificacion=not version or version.numero > 1)
     if request.method == "POST" and form.is_valid():
         try:
             if version:
@@ -113,7 +125,14 @@ def documento_version(request, pk=None, version_id=None):
         else:
             messages.success(request, "Borrador guardado.")
             return redirect("institucional:documento_detalle", pk=documento.pk)
-    return render(request, "institucional/formulario.html", {"form": form, "titulo": "Editar borrador" if version else "Nueva versión normativa", "archivo_actual": version.archivo_nombre if version else ""})
+    return render(request, "institucional/formulario.html", {
+        "form": form, "titulo": "Editar borrador normativo" if version else "Nueva versión normativa",
+        "archivo_actual": version.archivo_nombre if version else "", "documento_original": documento,
+        "version_referencia": version or documento.versiones.first(),
+        "texto_boton": "Guardar borrador" if version else "Crear borrador de nueva versión",
+        "volver_url": reverse("institucional:documento_detalle", args=[documento.pk]),
+        "volver_texto": "Cancelar y volver al documento",
+    })
 
 
 @acceso_requerido(permisos.puede_publicar_normativa)
@@ -200,7 +219,11 @@ def acta_detalle(request, pk):
     if not lista:
         raise Http404
     historial = _historial("VersionActa", lista) if permisos.puede_gestionar_actas(request.user) else []
-    return render(request, "institucional/acta_detalle.html", {"acta": lista[0].acta, "versiones": lista, "historial": historial})
+    return render(request, "institucional/acta_detalle.html", {
+        "acta": lista[0].acta, "versiones": lista, "historial": historial,
+        "hay_borrador": any(v.estado == v.Estado.BORRADOR for v in lista),
+        "ultima_publicada": next((v for v in lista if v.estado == v.Estado.PUBLICADA), None),
+    })
 
 
 @acceso_requerido(permisos.puede_gestionar_actas)
@@ -215,7 +238,10 @@ def acta_nueva(request):
         else:
             messages.success(request, "Borrador de acta creado.")
             return redirect("institucional:acta_detalle", pk=version.acta_id)
-    return render(request, "institucional/formulario.html", {"form": form, "titulo": "Nueva acta"})
+    return render(request, "institucional/formulario.html", {
+        "form": form, "titulo": "Nueva acta", "texto_boton": "Guardar borrador",
+        "volver_url": reverse("institucional:actas"), "volver_texto": "Cancelar y volver a actas",
+    })
 
 
 @acceso_requerido(permisos.puede_gestionar_actas)
@@ -228,7 +254,8 @@ def acta_version(request, pk=None, version_id=None):
     referencia = version or acta.versiones.first()
     inicial = {campo: getattr(referencia, campo) for campo in ("titulo", "fecha_reunion", "acuerdos")} if referencia else {}
     inicial["motivo_cambio"] = version.motivo_cambio if version else ""
-    form = VersionActaForm(request.POST or None, request.FILES or None, initial=inicial)
+    form = VersionActaForm(request.POST or None, request.FILES or None, initial=inicial,
+                          requiere_justificacion=not version or version.numero > 1)
     if request.method == "POST" and form.is_valid():
         try:
             if version:
@@ -240,7 +267,14 @@ def acta_version(request, pk=None, version_id=None):
         else:
             messages.success(request, "Borrador de acta guardado.")
             return redirect("institucional:acta_detalle", pk=acta.pk)
-    return render(request, "institucional/formulario.html", {"form": form, "titulo": "Editar borrador de acta" if version else "Corregir acta mediante nueva versión", "archivo_actual": version.archivo_nombre if version else ""})
+    return render(request, "institucional/formulario.html", {
+        "form": form, "titulo": "Editar borrador de acta" if version else "Corregir acta mediante nueva versión",
+        "archivo_actual": version.archivo_nombre if version else "", "acta_original": acta,
+        "version_referencia": referencia,
+        "texto_boton": "Guardar borrador" if version else "Crear borrador de corrección",
+        "volver_url": reverse("institucional:acta_detalle", args=[acta.pk]),
+        "volver_texto": "Cancelar y volver al acta",
+    })
 
 
 @acceso_requerido(permisos.puede_publicar_actas)
@@ -291,7 +325,10 @@ def sancion_nueva(request):
         else:
             messages.success(request, "Expediente registrado en el área del Comité.")
             return redirect("institucional:sancion_detalle", pk=sancion.pk)
-    return render(request, "institucional/formulario.html", {"form": form, "titulo": "Registrar sanción"})
+    return render(request, "institucional/formulario.html", {
+        "form": form, "titulo": "Registrar sanción", "texto_boton": "Registrar sanción",
+        "volver_url": reverse("institucional:sanciones"), "volver_texto": "Cancelar y volver a expedientes",
+    })
 
 
 @acceso_requerido(permisos.puede_consultar_sanciones)
@@ -307,6 +344,9 @@ def sancion_accion(request, pk, accion):
     if corregir:
         inicial.update(jugador=sancion.jugador, fecha=sancion.fecha, motivo=sancion.motivo, resolucion=sancion.resolucion)
     form = clases[accion](request.POST or None, initial=inicial)
+    if corregir and sancion.estado == "RESUELTA":
+        form.fields["resolucion"].required = True
+        form.fields["resolucion"].help_text = "Obligatoria en un expediente resuelto. La corrección conserva su estado."
     if request.method == "POST" and form.is_valid():
         operacion = {"corregir": services.corregir_sancion, "resolver": services.resolver_sancion, "anular": services.anular_sancion}[accion]
         try:
@@ -317,4 +357,10 @@ def sancion_accion(request, pk, accion):
             messages.success(request, "Cambio registrado en la bitácora privada.")
             return redirect("institucional:sancion_detalle", pk=pk)
     titulos = {"corregir": "Corregir expediente", "resolver": "Resolver expediente", "anular": "Anular expediente"}
-    return render(request, "institucional/formulario.html", {"form": form, "titulo": titulos[accion]})
+    botones = {"corregir": "Guardar corrección", "resolver": "Resolver expediente", "anular": "Anular expediente"}
+    return render(request, "institucional/formulario.html", {
+        "form": form, "titulo": titulos[accion], "texto_boton": botones[accion], "expediente": sancion,
+        "resolucion_opcional": corregir and sancion.estado == "REGISTRADA",
+        "volver_url": reverse("institucional:sancion_detalle", args=[pk]),
+        "volver_texto": "Cancelar y volver al expediente",
+    })
