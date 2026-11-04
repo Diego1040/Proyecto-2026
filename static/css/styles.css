@@ -128,8 +128,8 @@ footer a:hover{color:var(--naranja)}
 .suscribir button:hover{background:var(--naranja-hover)}
 .legal{margin-top:44px;padding-top:22px;border-top:1px solid #2E2E33;font-size:.85rem;color:#8B8A88}
 @media(max-width:900px){.pie{grid-template-columns:1fr 1fr}}
-@media(max-width:600px){.pie{grid-template-columns:1fr;gap:30px}}
-
+.pie>*{min-width:0}
+@media(max-width:600px){.pie{grid-template-columns:minmax(0,1fr);gap:30px}.suscribir{flex-wrap:wrap}.suscribir input{flex-basis:100%}.suscribir button{flex:1}}
 /* ===================================================================
    Añadidos al extraer las maquetas a Django
    (no estaban en el mockup: nav con sesión iniciada y pantalla de acceso)
