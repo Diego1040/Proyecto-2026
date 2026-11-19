@@ -1,4 +1,3 @@
-﻿# Proyecto-2026
 # Plataforma Ayllu Basket
 
 Plataforma web para el **Club Deportivo Ayllu Basket** (Arica): inscripción de jugadores, asistencia y nóminas, cuotas y pagos en línea con Webpay Plus, y gestión institucional del club.
