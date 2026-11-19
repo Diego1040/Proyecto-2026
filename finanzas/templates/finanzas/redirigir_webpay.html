@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Continuar a Webpay | Ayllu Basket</title>
+</head>
+<body>
+    <h1>Conectando con Webpay Plus</h1>
+    <p>Te estamos redirigiendo a la plataforma segura de Transbank.</p>
+
+    <form id="form-webpay" action="{{ webpay_url }}" method="post">
+        <input type="hidden" name="token_ws" value="{{ token_ws }}">
+        <button type="submit">Continuar a Webpay</button>
+    </form>
+
+    <script>
+        document.getElementById("form-webpay").submit();
+    </script>
+</body>
+</html>

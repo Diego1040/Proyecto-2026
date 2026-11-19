@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Resultado del pago | Ayllu Basket</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 700px; margin: 40px auto; padding: 0 18px; }
+        .resultado { border: 1px solid #ddd; border-radius: 8px; padding: 22px; }
+    </style>
+</head>
+<body>
+    <section class="resultado">
+        {% if resultado == "confirmado" %}
+            <h1>Pago confirmado</h1>
+        {% elif resultado == "rechazado" %}
+            <h1>Pago rechazado</h1>
+        {% elif resultado == "cancelado" %}
+            <h1>Pago cancelado</h1>
+        {% elif resultado == "pendiente" %}
+            <h1>Pago pendiente de verificación</h1>
+        {% else %}
+            <h1>No se pudo confirmar el pago</h1>
+        {% endif %}
+
+        <p>{{ mensaje }}</p>
+
+        {% if pago %}
+            <p>Orden: {{ pago.orden_compra }}</p>
+            <p>Monto: ${{ pago.monto|floatformat:0 }}</p>
+            <p>Estado registrado: {{ pago.get_estado_display }}</p>
+        {% endif %}
+
+        <p><a href="{% url 'finanzas:mis_cuotas' %}">Volver a mis cuotas</a></p>
+    </section>
+</body>
+</html>

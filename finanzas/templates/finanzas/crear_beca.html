@@ -1,0 +1,210 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ayllu Basket — Registrar beca</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --naranja: #E8552A;
+            --naranja-hover: #CC4620;
+            --tinta: #17171A;
+            --papel: #F4F3F1;
+            --blanco: #FFFFFF;
+            --gris: #6E6E74;
+            --linea: #E1DFDB;
+            --rojo: #B3261E;
+            --morado: #5B3A8E;
+            --morado-fondo: #EEE8F7;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: var(--papel);
+            color: var(--tinta);
+            font-family: "Barlow", sans-serif;
+            font-size: 16px;
+            line-height: 1.55;
+        }
+
+        header {
+            background: var(--tinta);
+            color: white;
+            padding: 18px 24px;
+            font-family: "Barlow Condensed", sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        main {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 30px 20px 60px;
+        }
+
+        h1 {
+            font-family: "Barlow Condensed", sans-serif;
+            font-size: 2rem;
+            text-transform: uppercase;
+            margin: 0;
+        }
+
+        .sub {
+            color: var(--gris);
+            margin: 5px 0 22px;
+        }
+
+        .tarjeta {
+            background: var(--blanco);
+            border: 1px solid var(--linea);
+            border-radius: 8px;
+            padding: 22px;
+        }
+
+        .campo {
+            display: grid;
+            gap: 6px;
+            margin-bottom: 18px;
+            font-weight: 600;
+        }
+
+        .campo small {
+            color: var(--gris);
+            font-weight: 400;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 11px 12px;
+            border: 1px solid var(--linea);
+            border-radius: 5px;
+            background: white;
+            color: var(--tinta);
+            font: inherit;
+        }
+
+        textarea { resize: vertical; }
+
+        input:focus, select:focus, textarea:focus {
+            outline: 2px solid var(--naranja);
+            outline-offset: 1px;
+        }
+
+        .errores {
+            color: var(--rojo);
+            font-size: .9rem;
+            margin-top: 4px;
+        }
+
+        .aviso {
+            background: var(--morado-fondo);
+            color: #4A2F74;
+            border-radius: 6px;
+            padding: 13px 15px;
+            margin-bottom: 20px;
+            font-size: .92rem;
+        }
+
+        .acciones {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 24px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 11px 17px;
+            border: 0;
+            border-radius: 5px;
+            background: var(--naranja);
+            color: white;
+            font: inherit;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .btn:hover { background: var(--naranja-hover); }
+
+        .btn-sec {
+            background: white;
+            color: var(--tinta);
+            border: 1px solid var(--linea);
+        }
+
+        .btn-sec:hover { background: var(--papel); }
+
+        @media (max-width: 500px) {
+            main { padding: 22px 12px; }
+            .tarjeta { padding: 16px; }
+            .acciones { flex-direction: column; }
+            .acciones .btn { text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <header>Ayllu Basket · Administración financiera</header>
+
+    <main>
+        <h1>Registrar beca</h1>
+        <p class="sub">Registro administrativo de un período de apoyo económico.</p>
+
+        <div class="aviso">
+            La beca cubre seis meses. Su vigencia y renovación deben ser evaluadas por
+            la administración del club. La información es confidencial y solo debe
+            estar disponible para los roles autorizados.
+        </div>
+
+        <section class="tarjeta">
+            <form method="post">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="errores">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
+
+                {% for field in form %}
+                    <div class="campo">
+                        <label for="{{ field.id_for_label }}">
+                            {{ field.label }}
+                        </label>
+
+                        {{ field }}
+
+                        {% if field.help_text %}
+                            <small>{{ field.help_text }}</small>
+                        {% endif %}
+
+                        {% if field.errors %}
+                            <div class="errores">
+                                {{ field.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+
+                <div class="acciones">
+                    <button class="btn" type="submit">
+                        Registrar beca
+                    </button>
+
+                    <a class="btn btn-sec"
+                       href="{% url 'finanzas:listar_becas' %}">
+                        Cancelar
+                    </a>
+                </div>
+            </form>
+        </section>
+    </main>
+</body>
+</html>

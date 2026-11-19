@@ -1,0 +1,1 @@
+{% if historial %}<section class="tarjeta"><h2>Historial de gestión</h2><ul>{% for evento in historial %}<li><time>{{ evento.fecha|date:"d/m/Y H:i" }}</time> · {{ evento.accion }} · {{ evento.actor.get_full_name|default:evento.actor.rut }}</li>{% endfor %}</ul></section>{% endif %}

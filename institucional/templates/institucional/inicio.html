@@ -1,0 +1,12 @@
+{% extends "institucional/base.html" %}
+{% block institucional %}
+<p class="etiqueta-seccion">Club Deportivo Ayllu Basket</p>
+<h1>Área institucional</h1>
+<p class="texto-secundario">Documentos y espacios disponibles según tu autorización.</p>
+<div class="panel-opciones">
+  {% if institucional_accesos.comite %}<article class="tarjeta"><h2>Comité de Disciplina</h2><p>Expedientes y bitácora del Comité.</p><a class="boton" href="{% url 'institucional:sanciones' %}">Ingresar al Comité</a></article>{% endif %}
+  {% if institucional_accesos.actas %}<article class="tarjeta"><h2>Actas y acuerdos</h2><p>Consulta las actas publicadas y sus versiones anteriores.</p><a class="boton" href="{% url 'institucional:actas' %}">Consultar actas</a></article>{% endif %}
+  {% if institucional_accesos.normativa %}<article class="tarjeta"><h2>Reglamentos y documentos</h2><p>Consulta los documentos vigentes del club.</p><a class="boton" href="{% url 'institucional:documentos' %}">Consultar normativa</a></article>{% endif %}
+  {% if institucional_accesos.miembros %}<article class="tarjeta"><h2>Autorizaciones de consulta</h2><p>Autoriza o revoca cuentas existentes con una justificación.</p><a class="boton boton-secundario" href="{% url 'institucional:miembros' %}">Gestionar autorizaciones</a></article>{% endif %}
+</div>
+{% endblock %}

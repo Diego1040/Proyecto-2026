@@ -1,0 +1,137 @@
+{# NUEVO (HU-07) - Miguel. CAMBIO (HU-06): planificación con hora, objetivo y responsable #}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<title>Ayllu Basket — Entrenamientos</title>
+{% include "deportivo/_estilos.html" %}
+<style>
+.entr{display:flex;align-items:center;gap:12px;padding:14px 16px;border-top:1px solid var(--linea);flex-wrap:wrap}
+.entr:first-child{border-top:0}
+.entr .info{flex:1;min-width:200px}
+.entr .info b{display:block;font-weight:600}
+.entr .info small{color:var(--gris);font-size:.84rem;display:block}
+.entr .acciones{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.fecha{min-width:64px;text-align:center;border:1px solid var(--linea);border-radius:6px;padding:6px 4px;line-height:1.15}
+.fecha b{display:block;font-family:"Barlow Condensed";font-size:1.35rem}
+.fecha span{font-size:.75rem;color:var(--gris);text-transform:uppercase}
+</style>
+</head>
+<body>
+{% include "deportivo/_barra.html" %}
+
+<main><div class="wrap">
+
+  <div class="cabecera">
+    <h1>Entrenamientos</h1>
+    <p class="sub">Planifica la semana y pasa lista desde el celular el día del entrenamiento.</p>
+  </div>
+
+  {% if messages %}
+    <div class="mensajes">
+      {% for mensaje in messages %}
+        <div class="mensaje {{ mensaje.tags }}">{{ mensaje }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if categorias %}
+    <form method="post" class="tarjeta pad" style="display:grid;gap:14px">
+      {% csrf_token %}
+      <h2 style="margin:0">Planificar entrenamiento</h2>
+      <div class="fila">
+        <label class="campo">Categoría
+          <select name="categoria_id" required>
+            {% for categoria in categorias %}
+              <option value="{{ categoria.pk }}">{{ categoria }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="campo">Nombre
+          <input type="text" name="nombre" placeholder="Entrenamiento técnico" required>
+        </label>
+      </div>
+      <div class="fila">
+        <label class="campo">Fecha
+          <input type="date" name="fecha" value="{{ hoy|date:'Y-m-d' }}" required>
+        </label>
+        <label class="campo">Hora de inicio
+          <input type="time" name="hora_inicio" required>
+        </label>
+      </div>
+      <div class="fila">
+        <label class="campo">Duración (minutos)
+          <input type="number" name="duracion" value="90" min="1" required>
+        </label>
+        <label class="campo">Responsable
+          <select name="responsable_id" required>
+            <option value="">Elige un entrenador</option>
+            {% for r in responsables %}
+              <option value="{{ r.pk }}" {% if r == user %}selected{% endif %}>{{ r.get_full_name|default:r.rut }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <label class="campo">Objetivo
+        <textarea name="objetivo" required placeholder="Ej: defensa en zona y transición rápida."></textarea>
+      </label>
+      <div><button type="submit" class="btn">Planificar</button></div>
+    </form>
+  {% else %}
+    <div class="aviso">
+      Todavía no tienes categorías asignadas. Pídele a Administración que te las asigne.
+    </div>
+  {% endif %}
+
+  <h2>Próximos entrenamientos</h2>
+  <div class="tarjeta">
+    {% for e in proximos %}
+      <div class="entr">
+        <span class="fecha"><b>{{ e.fecha|date:"d" }}</b><span>{{ e.fecha|date:"M" }}</span></span>
+        <span class="info">
+          <b>{{ e.nombre }}</b>
+          <small>{{ e.fecha|date:"l" }}{% if e.hora_inicio %} · {{ e.hora_inicio|time:"H:i" }}{% endif %} · {{ e.duracion }} min{% if e.responsable %} · {{ e.responsable.get_full_name|default:e.responsable.rut }}{% endif %}</small>
+          {% if e.objetivo %}<small>Objetivo: {{ e.objetivo }}</small>{% endif %}
+        </span>
+        <span class="acciones">
+          <span class="pill cat">{{ e.categoria }}</span>
+          <a class="btn gris chico" href="{% url 'deportivo:editar_planificacion' e.pk %}">Editar</a>
+          {% if e.fecha == hoy %}
+            <a class="btn chico" href="{% url 'deportivo:tomar_asistencia' e.pk %}">Pasar lista</a>
+          {% endif %}
+        </span>
+      </div>
+    {% empty %}
+      <p class="vacio">No hay entrenamientos planificados.</p>
+    {% endfor %}
+  </div>
+
+  <h2>Entrenamientos anteriores</h2>
+  <div class="tarjeta">
+    {% for fila in filas %}
+      {% with e=fila.entrenamiento %}
+      <div class="entr">
+        <span class="fecha"><b>{{ e.fecha|date:"d" }}</b><span>{{ e.fecha|date:"M" }}</span></span>
+        <span class="info">
+          <b>{{ e.nombre }}</b>
+          <small>{% if e.hora_inicio %}{{ e.hora_inicio|time:"H:i" }} · {% endif %}{{ e.duracion }} min{% if e.responsable %} · {{ e.responsable.get_full_name|default:e.responsable.rut }}{% endif %}</small>
+        </span>
+        <span class="acciones">
+          <span class="pill cat">{{ e.categoria }}</span>
+          {% if fila.registradas %}
+            <span class="pill ok">{{ fila.presentes }}/{{ fila.registradas }}</span>
+          {% else %}
+            <span class="pill esp">Sin lista</span>
+          {% endif %}
+          <a class="btn gris chico" href="{% url 'deportivo:editar_planificacion' e.pk %}">Ver</a>
+          <a class="btn gris chico" href="{% url 'deportivo:tomar_asistencia' e.pk %}">Asistencia</a>
+        </span>
+      </div>
+      {% endwith %}
+    {% empty %}
+      <p class="vacio">Todavía no hay entrenamientos anteriores.</p>
+    {% endfor %}
+  </div>
+
+</div></main>
+</body>
+</html>

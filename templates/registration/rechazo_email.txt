@@ -1,0 +1,6 @@
+Tu solicitud de inscripción en Ayllu Basket fue rechazada.
+
+Motivo:
+{% autoescape off %}{{ motivo }}{% endautoescape %}
+
+Para recibir orientación sobre tu solicitud, contacta a la administración del club Ayllu Basket por sus canales habituales.

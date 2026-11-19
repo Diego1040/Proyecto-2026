@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+ 
+{% block titulo %}Calendario deportivo — Ayllu Basket{% endblock %}
+ 
+{% block extra_css %}
+<style>
+.eventos{padding:0;margin-top:20px}
+.evento{display:flex;gap:14px;align-items:flex-start;padding:16px;border-top:1px solid var(--linea)}
+.evento:first-child{border-top:0}
+.evento .dia{min-width:64px;text-align:center;border:1px solid var(--linea);border-radius:6px;padding:6px 4px;line-height:1.15}
+.evento .dia b{display:block;font-family:"Barlow Condensed";font-size:1.5rem}
+.evento .dia span{font-size:.75rem;color:var(--gris);text-transform:uppercase}
+.evento .info{flex:1;min-width:0}
+.evento .info h3{margin:6px 0 4px;font-size:1.05rem}
+.evento .info p{margin:2px 0;font-size:.92rem;color:var(--gris)}
+.evento .info .desc{color:inherit}
+.evento form{margin:0}
+.form-evento select,.form-evento textarea,#filtro{width:100%;background:var(--blanco);border:1px solid var(--linea);border-radius:4px;padding:10px;font:inherit}
+.form-evento textarea{min-height:70px;resize:vertical}
+@media (max-width:640px){
+  .evento{flex-wrap:wrap}
+}
+</style>
+{% endblock %}
+ 
+{% block contenido %}
+<section class="seccion">
+  <div class="wrap">
+    <div class="cab">
+      <div>
+        <p class="etiqueta-seccion">Calendario</p>
+        <h1>Calendario deportivo</h1>
+        <p class="texto-secundario">Partidos, viajes, campeonatos y actividades del club.</p>
+      </div>
+    </div>
+ 
+    {% if puede_publicar %}
+      <form method="post" class="tarjeta formulario-ayllu form-evento" style="padding:20px;margin-top:20px">
+        {% csrf_token %}
+        <h2 style="margin-top:0">Publicar evento</h2>
+        <div class="rejilla-form">
+          <div class="campo">
+            <label for="tipo">Tipo</label>
+            <select id="tipo" name="tipo" required>
+              {% for valor, etiqueta in tipos %}
+                <option value="{{ valor }}">{{ etiqueta }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="campo">
+            <label for="categoria_id">Categoría</label>
+            <select id="categoria_id" name="categoria_id" {% if not es_admin %}required{% endif %}>
+              {% if es_admin %}<option value="">Todo el club</option>{% endif %}
+              {% for categoria in categorias_publicar %}
+                <option value="{{ categoria.pk }}">{{ categoria }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="campo">
+            <label for="titulo">Título</label>
+            <input id="titulo" type="text" name="titulo" maxlength="150" placeholder="Ayllu vs. Arica Basket" required>
+          </div>
+          <div class="campo">
+            <label for="lugar">Lugar</label>
+            <input id="lugar" type="text" name="lugar" maxlength="200" placeholder="Gimnasio Epicentro" required>
+          </div>
+          <div class="campo">
+            <label for="fecha">Fecha</label>
+            <input id="fecha" type="date" name="fecha" min="{{ hoy|date:'Y-m-d' }}" required>
+          </div>
+          <div class="campo">
+            <label for="hora">Hora</label>
+            <input id="hora" type="time" name="hora" required>
+          </div>
+        </div>
+        <div class="campo">
+          <label for="descripcion">Descripción (opcional)</label>
+          <textarea id="descripcion" name="descripcion" placeholder="Citación 30 minutos antes, llevar uniforme oficial."></textarea>
+        </div>
+        <button class="boton" type="submit">Publicar evento</button>
+      </form>
+    {% endif %}
+ 
+    {% if mis_categorias %}
+      <form method="get" class="tarjeta filtro-solicitudes" style="padding:16px">
+        <div class="campo">
+          <label for="filtro">Filtrar por categoría</label>
+          <select id="filtro" name="categoria">
+            <option value="">Todas mis categorías</option>
+            {% for categoria in mis_categorias %}
+              <option value="{{ categoria.pk }}" {% if filtro and filtro.pk == categoria.pk %}selected{% endif %}>{{ categoria }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button class="boton chico" type="submit">Filtrar</button>
+      </form>
+    {% endif %}
+ 
+    <div class="tarjeta eventos">
+      {% for evento in eventos %}
+        <article class="evento">
+          <div class="dia">
+            <b>{{ evento.fecha|date:"d" }}</b>
+            <span>{{ evento.fecha|date:"M" }}</span>
+          </div>
+          <div class="info">
+            <span class="pill cat">{{ evento.get_tipo_display }}</span>
+            <span class="pill">{{ evento.categoria|default:"Todo el club" }}</span>
+            <h3>{{ evento.titulo }}</h3>
+            <p>{{ evento.fecha|date:"l d/m/Y" }} · {{ evento.hora|time:"H:i" }} hrs</p>
+            <p>{{ evento.lugar }}</p>
+            {% if evento.descripcion %}<p class="desc">{{ evento.descripcion|linebreaksbr }}</p>{% endif %}
+          </div>
+          {% if evento.se_puede_eliminar %}
+            <form method="post" action="{% url 'deportivo:eliminar_evento' evento.pk %}">
+              {% csrf_token %}
+              <button class="boton-linea" type="submit" style="padding:6px 14px">Eliminar</button>
+            </form>
+          {% endif %}
+        </article>
+      {% empty %}
+        <p style="padding:20px;margin:0">No hay eventos programados{% if filtro %} para {{ filtro }}{% endif %}.</p>
+      {% endfor %}
+    </div>
+ 
+    <p style="margin-top:20px"><a class="enlace" href="{% url 'panel' %}">← Volver a mi panel</a></p>
+  </div>
+</section>
+{% endblock %}

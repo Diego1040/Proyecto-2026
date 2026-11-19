@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block titulo %}Solicitud recibida — Ayllu Basket{% endblock %}
+
+{% block contenido %}
+<section class="acceso"><div class="wrap">
+  <h1>Solicitud recibida</h1>
+  <p>Si los datos corresponden a una cuenta autorizada pendiente de activación, recibirás un enlace en tu correo.</p>
+  <a href="{% url 'login' %}">Volver al ingreso</a>
+</div></section>
+{% endblock %}

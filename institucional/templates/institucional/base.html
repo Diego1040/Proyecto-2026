@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo %}Institucional — Ayllu Basket{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'institucional/institucional.css' %}">{% endblock %}
+{% block nav %}
+  {% if institucional_acceso_tesoreria %}<a href="{% url 'finanzas:tesoreria' %}">Tesorería</a>{% endif %}
+  {% if institucional_accesos.actas %}<a href="{% url 'institucional:actas' %}">Actas</a>{% endif %}
+  <a href="{% url 'institucional:documentos' %}">Reglamentos y normativas</a>
+  {% if institucional_accesos.miembros %}<a href="{% url 'institucional:miembros' %}">Autorizaciones</a>{% endif %}
+  {% if institucional_accesos.comite %}<a href="{% url 'institucional:sanciones' %}">Comité</a>{% endif %}
+{% endblock %}
+{% block contenido %}
+<main class="institucional wrap">
+  <nav class="institucional-subnav" aria-label="Secciones institucionales">
+    {% if institucional_disponible %}<a href="{% url 'institucional:inicio' %}">Inicio institucional</a>{% else %}<a href="{% url 'inicio' %}">Inicio del club</a>{% endif %}
+    {% if institucional_acceso_tesoreria %}<a href="{% url 'finanzas:tesoreria' %}">Tesorería</a>{% endif %}
+    {% if institucional_accesos.actas %}<a href="{% url 'institucional:actas' %}">Actas</a>{% endif %}
+    <a href="{% url 'institucional:documentos' %}">Reglamentos y normativas</a>
+    {% if institucional_accesos.comite %}<a href="{% url 'institucional:sanciones' %}">Comité</a>{% endif %}
+    {% if institucional_accesos.miembros %}<a href="{% url 'institucional:miembros' %}">Autorizaciones</a>{% endif %}
+  </nav>
+  {% block institucional %}{% endblock %}
+</main>
+{% endblock %}

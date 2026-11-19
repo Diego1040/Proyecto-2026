@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<title>Ayllu Basket — Lesiones</title>
+{% include "deportivo/_estilos.html" %}
+<style>
+.rep{padding:16px;border-top:1px solid var(--linea)}
+.rep:first-child{border-top:0}
+.rep b{font-weight:600}
+.rep small{color:var(--gris);font-size:.84rem;display:block}
+.rep .desc{margin:8px 0}
+.decidir{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:end;margin-top:10px}
+.btn.rojo{background:var(--blanco);color:var(--rojo);border:1px solid var(--rojo)}
+.btn.rojo:hover{background:var(--rojo-fondo)}
+.pill.validado{background:var(--verde-fondo);color:var(--verde)}
+.pill.rechazado{background:var(--rojo-fondo);color:var(--rojo)}
+@media(max-width:600px){.decidir{grid-template-columns:1fr 1fr}.decidir textarea{grid-column:1/-1}}
+</style>
+</head>
+<body>
+{% include "deportivo/_barra.html" %}
+ 
+<main><div class="wrap">
+ 
+  <div class="cabecera">
+    <h1>Lesiones y restricciones</h1>
+    <p class="sub">Revisa los reportes de apoderados y jugadores. Validar un reporte no justifica ausencias ni cambia la asistencia automáticamente.</p>
+  </div>
+ 
+  {% if messages %}
+    <div class="mensajes">
+      {% for mensaje in messages %}
+        <div class="mensaje {{ mensaje.tags }}">{{ mensaje }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+ 
+  <h2>Pendientes ({{ pendientes|length }})</h2>
+  <div class="tarjeta">
+    {% for r in pendientes %}
+      <div class="rep">
+        <span class="pill cat">{{ r.get_tipo_display }}</span>
+        <p style="margin-top:6px"><b>{{ r.jugador.nombres }} {{ r.jugador.apellidos }}</b></p>
+        <small>{{ r.jugador.categoria_actual }} · desde {{ r.fecha_inicio|date:"d/m/Y" }}{% if r.fecha_fin %} hasta {{ r.fecha_fin|date:"d/m/Y" }}{% endif %} · reportado por {{ r.reportado_por.get_full_name|default:r.reportado_por.rut }} el {{ r.reportado_en|date:"d/m/Y" }}</small>
+        <p class="desc">{{ r.descripcion|linebreaksbr }}</p>
+        <form method="post" class="decidir">
+          {% csrf_token %}
+          <input type="hidden" name="reporte_id" value="{{ r.pk }}">
+          <textarea name="comentario" rows="1" style="min-height:44px" placeholder="Comentario (obligatorio si rechazas)"></textarea>
+          <button class="btn chico" name="decision" value="VALIDADO" type="submit">Validar</button>
+          <button class="btn rojo chico" name="decision" value="RECHAZADO" type="submit">Rechazar</button>
+        </form>
+      </div>
+    {% empty %}
+      <p class="vacio">No hay reportes pendientes.</p>
+    {% endfor %}
+  </div>
+ 
+  <h2>Revisados recientemente</h2>
+  <div class="tarjeta">
+    {% for r in revisados %}
+      <div class="rep">
+        <span class="pill {{ r.estado|lower }}">{{ r.get_estado_display }}</span>
+        <span class="pill cat">{{ r.get_tipo_display }}</span>
+        <p style="margin-top:6px"><b>{{ r.jugador.nombres }} {{ r.jugador.apellidos }}</b></p>
+        <small>{{ r.jugador.categoria_actual }} · desde {{ r.fecha_inicio|date:"d/m/Y" }}{% if r.fecha_fin %} hasta {{ r.fecha_fin|date:"d/m/Y" }}{% endif %} · revisado por {{ r.revisado_por.get_full_name|default:r.revisado_por.rut }}</small>
+        {% if r.comentario_revision %}<p class="desc">{{ r.comentario_revision }}</p>{% endif %}
+      </div>
+    {% empty %}
+      <p class="vacio">Todavía no hay reportes revisados.</p>
+    {% endfor %}
+  </div>
+ 
+</div></main>
+</body>
+</html>

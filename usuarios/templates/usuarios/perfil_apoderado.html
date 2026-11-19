@@ -1,0 +1,207 @@
+
+{% extends "base.html" %}
+{% load static %}
+
+{% block titulo %}Mi pupilo — Ayllu Basket{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/portal-apoderado.css' %}">
+{% endblock %}
+
+{% block contenido %}
+<main class="portal-apoderado">
+  <div class="pa-wrap">
+
+    <header class="pa-heading">
+      <div>
+        <span class="pa-eyebrow">PORTAL DEL APODERADO · HU-04</span>
+        <h1>Mi pupilo</h1>
+        <p>Consulta la información de los jugadores vinculados a tu cuenta.</p>
+      </div>
+      <div class="pa-user">
+        <span class="pa-avatar">
+          {{ apoderado.nombres|first|upper }}{{ apoderado.apellidos|first|upper }}
+        </span>
+        <span>{{ apoderado.nombres }} {{ apoderado.apellidos }}</span>
+      </div>
+    </header>
+
+    <nav class="pa-tabs" aria-label="Secciones del apoderado">
+      <a class="pa-tab pa-tab--active"
+         href="{% url 'perfil_apoderado' %}"
+         aria-current="page">Mi pupilo</a>
+
+      <a class="pa-tab" href="{% url 'finanzas:mis_cuotas' %}">
+        Estado de cuenta
+      </a>
+
+      <a class="pa-tab" href="{% url 'deportivo:mis_lesiones' %}">
+        Reportar lesión
+      </a>
+
+      <a class="pa-tab" href="{% url 'agregar_jugador_apoderado' %}">
+        Inscripción
+      </a>
+    </nav>
+
+    <section class="pa-section-heading">
+      <div>
+        <h2>Jugadores asociados</h2>
+        <p>Información personal y deportiva de tus pupilos.</p>
+      </div>
+      <a class="pa-button"
+         href="{% url 'agregar_jugador_apoderado' %}">
+        + Agregar jugador
+      </a>
+    </section>
+
+    {% if vinculos %}
+      <div class="pa-players">
+
+        {% for vinculo in vinculos %}
+          <article class="pa-card pa-player">
+
+            <div class="pa-player-header">
+              <div class="pa-player-identity">
+                <span class="pa-player-avatar">
+                  {{ vinculo.jugador.nombres|first|upper }}{{ vinculo.jugador.apellidos|first|upper }}
+                </span>
+                <div>
+                  <span class="pa-label">JUGADOR ASOCIADO</span>
+                  <h3>{{ vinculo.jugador.nombres }} {{ vinculo.jugador.apellidos }}</h3>
+                  <p>{{ vinculo.parentesco|capfirst }}</p>
+                </div>
+              </div>
+
+              {% if vinculo.jugador.estado == "ACTIVO" %}
+                <span class="pa-status pa-status--active">Activo</span>
+              {% elif vinculo.jugador.estado == "INACTIVO" %}
+                <span class="pa-status pa-status--inactive">Inactivo</span>
+              {% else %}
+                <span class="pa-status pa-status--pending">
+                  {{ vinculo.jugador.get_estado_display }}
+                </span>
+              {% endif %}
+            </div>
+
+            <div class="pa-player-category">
+              {{ vinculo.jugador.categoria_actual|default:"Sin categoría asignada" }}
+              <span>·</span>
+              {{ vinculo.jugador.get_rama_display }}
+            </div>
+
+            <div class="pa-data-grid">
+              <div class="pa-data">
+                <span>RUT</span>
+                <strong>{{ vinculo.jugador.rut }}</strong>
+              </div>
+
+              <div class="pa-data">
+                <span>Fecha de nacimiento</span>
+                <strong>{{ vinculo.jugador.fecha_nacimiento|date:"d/m/Y" }}</strong>
+              </div>
+
+              <div class="pa-data">
+                <span>Fecha de ingreso</span>
+                <strong>{{ vinculo.jugador.fecha_ingreso|date:"d/m/Y"|default:"Sin registrar" }}</strong>
+              </div>
+
+              <div class="pa-data">
+                <span>Procedencia</span>
+                <strong>{{ vinculo.jugador.get_procedencia_display }}</strong>
+              </div>
+
+              {% if not vinculo.puede_gestionar %}
+                <div class="pa-data">
+                  <span>Permisos</span>
+                  <strong>Solo consulta</strong>
+                </div>
+              {% endif %}
+            </div>
+
+            <div class="pa-request">
+              <span>Estado de solicitud</span>
+
+              {% with ultima=vinculo.jugador.solicitudes_ordenadas.0 %}
+                {% if ultima %}
+                  <span class="pa-request-status
+                    {% if ultima.estado == 'APROBADA' %}pa-request--approved
+                    {% elif ultima.estado == 'RECHAZADA' %}pa-request--rejected
+                    {% elif ultima.estado == 'EN_REVISION' %}pa-request--review
+                    {% else %}pa-request--pending{% endif %}">
+                    {{ ultima.get_estado_display }}
+                  </span>
+                {% else %}
+                  <span class="pa-request-status pa-request--neutral">
+                    Sin solicitudes
+                  </span>
+                {% endif %}
+
+                {% if ultima.motivo_rechazo %}
+                  <div class="pa-rejection">
+                    <strong>Motivo del rechazo</strong>
+                    <p>{{ ultima.motivo_rechazo }}</p>
+                  </div>
+                {% endif %}
+              {% endwith %}
+            </div>
+
+            <div class="pa-attendance">
+              {% include "usuarios/resumen_asistencia.html" with asistencia=vinculo.jugador.asistencia_mes %}
+            </div>
+
+          </article>
+        {% endfor %}
+
+      </div>
+    {% else %}
+      <article class="pa-card pa-empty">
+        <h3>No tienes jugadores vinculados</h3>
+        <p>Puedes enviar una solicitud para incorporar un jugador a tu cuenta.</p>
+        <a class="pa-button" href="{% url 'agregar_jugador_apoderado' %}">
+          Agregar primer jugador
+        </a>
+      </article>
+    {% endif %}
+
+    <section class="pa-card pa-contact">
+      <div class="pa-section-heading">
+        <div>
+          <h2>Mis datos de contacto</h2>
+          <p>Actualiza tu teléfono y correo electrónico.</p>
+        </div>
+      </div>
+
+      <form method="post" class="pa-contact-form" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="contacto">
+
+        {% for error in contacto_form.non_field_errors %}
+          <p class="pa-error">{{ error }}</p>
+        {% endfor %}
+
+        <div class="pa-form-grid">
+          {% for field in contacto_form %}
+            <div class="pa-field">
+              {{ field.label_tag }}
+              {{ field }}
+              {% for error in field.errors %}
+                <span class="pa-error">{{ error }}</span>
+              {% endfor %}
+            </div>
+          {% endfor %}
+        </div>
+
+        <button class="pa-button" type="submit">
+          Guardar cambios
+        </button>
+      </form>
+    </section>
+
+    <div class="pa-back">
+      <a href="{% url 'panel' %}">← Volver al panel general</a>
+    </div>
+
+  </div>
+</main>
+{% endblock %}

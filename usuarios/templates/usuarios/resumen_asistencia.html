@@ -1,0 +1,12 @@
+<h3>Asistencia del mes</h3>
+{% if asistencia.total %}
+  <dl class="datos-perfil">
+    <dt>Entrenamientos registrados</dt><dd>{{ asistencia.total }}</dd>
+    <dt>Presentes</dt><dd>{{ asistencia.presentes }}</dd>
+    <dt>Inasistencias</dt><dd>{{ asistencia.ausentes }}</dd>
+    <dt>Justificadas</dt><dd>{{ asistencia.justificadas }}</dd>
+    <dt>Asistencia</dt><dd>{{ asistencia.porcentaje }}%</dd>
+  </dl>
+{% else %}
+  <p class="texto-secundario">Sin asistencias registradas este mes.</p>
+{% endif %}

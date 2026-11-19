@@ -14,6 +14,7 @@
   --verde:#1D7A4F;--verde-fondo:#E2F1E9;--rojo:#B3261E;--rojo-fondo:#FBE9E7;
   --ambar:#8A6A12;--ambar-fondo:#FFF6E3;
 }
+
 *{box-sizing:border-box}
 body{margin:0;background:var(--papel);color:var(--tinta);font-family:"Barlow",system-ui,sans-serif;font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
 h1{font-family:"Barlow Condensed",system-ui,sans-serif;font-weight:700;margin:0;font-size:1.9rem;text-transform:uppercase;letter-spacing:-.01em;line-height:1.05}
@@ -23,12 +24,14 @@ button{font:inherit}
 :is(a,button,input,select,textarea):focus-visible{outline:2px solid var(--naranja);outline-offset:2px;border-radius:3px}
 .wrap{max-width:960px;margin:0 auto;padding:0 20px}
 
+
 .barra{background:var(--tinta);color:#fff;position:sticky;top:0;z-index:20}
 .barra .wrap{display:flex;align-items:center;gap:14px;height:60px}
 .escudo{width:32px;height:32px;border-radius:50%;background:var(--naranja);flex:none}
 .barra b{font-family:"Barlow Condensed";font-size:1.2rem;text-transform:uppercase}
 .rol{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:.9rem;color:#B9B7B4}
 .avatar{width:30px;height:30px;border-radius:50%;background:#3A3A42;display:grid;place-items:center;font-size:.75rem;font-weight:600;color:#fff}
+
 
 .tabs{background:var(--blanco);border-bottom:1px solid var(--linea);position:sticky;top:60px;z-index:19;overflow-x:auto}
 .tabs .wrap{display:flex;gap:4px}
@@ -37,6 +40,7 @@ button{font:inherit}
 .tab[aria-selected="true"]{color:var(--tinta);border-bottom-color:var(--naranja);font-weight:600}
 .badge{background:var(--naranja);color:#fff;font-size:.72rem;font-weight:600;border-radius:9px;padding:1px 7px}
 .url{font-family:ui-monospace,Menlo,monospace;font-size:.78rem;color:var(--gris);padding:8px 0 0}
+
 
 main{padding:24px 0 70px}
 .cabecera{margin-bottom:20px}
@@ -61,6 +65,7 @@ input,select,textarea{background:var(--blanco);border:1px solid var(--linea);bor
 textarea{resize:vertical;min-height:72px}
 .aviso{display:flex;gap:10px;border-radius:6px;padding:12px 14px;font-size:.9rem;margin-bottom:18px;background:var(--ambar-fondo);border:1px solid #F0DEB4;color:#6B5312}
 
+
 /* fichas */
 .ficha{border-top:1px solid var(--linea);padding:16px}
 .ficha:first-child{border-top:0}
@@ -74,10 +79,12 @@ textarea{resize:vertical;min-height:72px}
 .detalle span{display:block;font-size:.78rem;color:var(--gris)}
 .rechazo{margin-top:14px;display:grid;gap:10px}
 
+
 /* categorias */
 table{width:100%;border-collapse:collapse}
 th,td{text-align:left;padding:11px 14px;border-top:1px solid var(--linea);font-size:.92rem}
 th{background:#FBFAF9;border-top:0;font-size:.79rem;color:var(--gris);font-weight:600}
+
 
 /* importar */
 .dropzone{border:2px dashed var(--linea);border-radius:8px;padding:34px 20px;text-align:center;background:var(--blanco)}

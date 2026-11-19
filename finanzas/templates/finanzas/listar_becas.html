@@ -1,0 +1,302 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ayllu Basket — Gestión administrativa de becas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --naranja: #E8552A;
+            --naranja-hover: #CC4620;
+            --tinta: #17171A;
+            --papel: #F4F3F1;
+            --blanco: #FFFFFF;
+            --gris: #6E6E74;
+            --linea: #E1DFDB;
+            --verde: #1D7A4F;
+            --rojo: #B3261E;
+            --morado: #5B3A8E;
+            --morado-fondo: #EEE8F7;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: var(--papel);
+            color: var(--tinta);
+            font-family: "Barlow", sans-serif;
+            font-size: 16px;
+            line-height: 1.55;
+        }
+
+        .barra {
+            background: var(--tinta);
+            color: white;
+            padding: 18px 24px;
+        }
+
+        .barra b {
+            font-family: "Barlow Condensed", sans-serif;
+            font-size: 1.3rem;
+            text-transform: uppercase;
+        }
+
+        main {
+            max-width: 1050px;
+            margin: 0 auto;
+            padding: 30px 20px 60px;
+        }
+
+        h1 {
+            font-family: "Barlow Condensed", sans-serif;
+            font-size: 2rem;
+            text-transform: uppercase;
+            margin: 0;
+        }
+
+        .sub {
+            color: var(--gris);
+            margin: 5px 0 22px;
+        }
+
+        .tarjeta {
+            background: var(--blanco);
+            border: 1px solid var(--linea);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .acciones {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+
+        .btn {
+            display: inline-block;
+            background: var(--naranja);
+            color: white;
+            border: 0;
+            border-radius: 5px;
+            padding: 10px 16px;
+            font: inherit;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .btn:hover { background: var(--naranja-hover); }
+
+        .btn-sec {
+            background: white;
+            color: var(--tinta);
+            border: 1px solid var(--linea);
+        }
+
+        .btn-sec:hover { background: var(--papel); }
+
+        .tabla-contenedor { overflow-x: auto; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 720px;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 13px 15px;
+            border-bottom: 1px solid var(--linea);
+            vertical-align: middle;
+        }
+
+        th {
+            background: #FBFAF9;
+            color: var(--gris);
+            font-size: .82rem;
+            font-weight: 600;
+        }
+
+        tr:last-child td { border-bottom: 0; }
+
+        .estado {
+            display: inline-block;
+            border-radius: 4px;
+            padding: 3px 8px;
+            font-size: .8rem;
+            font-weight: 600;
+            background: var(--morado-fondo);
+            color: var(--morado);
+        }
+
+        .estado.final {
+            background: #EDECEA;
+            color: #4A4A4E;
+        }
+
+        .estado.renovada {
+            background: #E2F1E9;
+            color: var(--verde);
+        }
+
+        .form-accion { display: inline; }
+
+        .btn-mini {
+            font: inherit;
+            font-size: .83rem;
+            font-weight: 600;
+            padding: 6px 9px;
+            border-radius: 4px;
+            border: 1px solid var(--linea);
+            background: white;
+            color: var(--tinta);
+            cursor: pointer;
+            margin: 2px;
+        }
+
+        .btn-mini:hover { background: var(--papel); }
+
+        .btn-finalizar {
+            color: var(--rojo);
+            border-color: #E8C8C5;
+        }
+
+        .mensaje {
+            background: #E2F1E9;
+            color: #1D7A4F;
+            border-radius: 6px;
+            padding: 12px 14px;
+            margin-bottom: 16px;
+        }
+
+        .vacio {
+            padding: 30px 18px;
+            text-align: center;
+            color: var(--gris);
+        }
+
+        .privacidad {
+            margin-top: 18px;
+            padding: 13px 15px;
+            border-radius: 6px;
+            background: var(--morado-fondo);
+            color: #4A2F74;
+            font-size: .9rem;
+        }
+
+        @media (max-width: 600px) {
+            main { padding: 22px 12px; }
+            .acciones { align-items: stretch; flex-direction: column; }
+            .acciones .btn { text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <header class="barra">
+        <b>Ayllu Basket · Administración financiera</b>
+    </header>
+
+    <main>
+        <h1>Gestión de becas</h1>
+        <p class="sub">Administración de períodos de beca y sus renovaciones.</p>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="mensaje">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="acciones">
+            <a class="btn" href="{% url 'finanzas:crear_beca' %}">
+                + Registrar beca
+            </a>
+            <a class="btn btn-sec" href="{% url 'finanzas:tesoreria' %}">
+                Volver a Tesorería
+            </a>
+        </div>
+
+        <section class="tarjeta">
+            {% if becas %}
+                <div class="tabla-contenedor">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Jugador</th>
+                                <th>Inicio</th>
+                                <th>Término</th>
+                                <th>Estado administrativo</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for beca in becas %}
+                                <tr>
+                                    <td>
+                                        {{ beca.jugador.nombres }}
+                                        {{ beca.jugador.apellidos }}
+                                    </td>
+                                    <td>{{ beca.fecha_inicio|date:"d/m/Y" }}</td>
+                                    <td>{{ beca.fecha_termino|date:"d/m/Y" }}</td>
+                                    <td>
+                                        {% if beca.estado == "ACTIVA" %}
+                                            <span class="estado">Activa</span>
+                                        {% elif beca.estado == "RENOVADA" %}
+                                            <span class="estado renovada">Renovada</span>
+                                        {% else %}
+                                            <span class="estado final">Finalizada</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if beca.estado == "ACTIVA" %}
+                                            {% if beca.fecha_termino < hoy %}
+                                                <form class="form-accion"
+                                                      method="post"
+                                                      action="{% url 'finanzas:renovar_beca' beca.id %}">
+                                                    {% csrf_token %}
+                                                    <button class="btn-mini" type="submit">
+                                                        Renovar
+                                                    </button>
+                                                </form>
+                                            {% endif %}
+
+                                            <form class="form-accion"
+                                                  method="post"
+                                                  action="{% url 'finanzas:finalizar_beca' beca.id %}"
+                                                  onsubmit="return confirm('¿Confirmas finalizar esta beca?');">
+                                                {% csrf_token %}
+                                                <button class="btn-mini btn-finalizar" type="submit">
+                                                    Finalizar
+                                                </button>
+                                            </form>
+                                        {% else %}
+                                            <span>Sin acciones</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="vacio">
+                    <p><strong>No hay becas registradas.</strong></p>
+                    <p>Cuando registres una beca, aparecerá en esta lista.</p>
+                </div>
+            {% endif %}
+        </section>
+
+        <div class="privacidad">
+            Acceso restringido a Administración y Tesorería. Esta información es confidencial
+            y no debe mostrarse en los paneles de apoderados ni alumnos.
+        </div>
+    </main>
+</body>
+</html>
