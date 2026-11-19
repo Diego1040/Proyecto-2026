@@ -10,6 +10,10 @@
         .btn { background: #e8552a; color: white; border: 0; padding: 10px 16px; border-radius: 5px; cursor: pointer; }
         .estado { font-weight: bold; }
         .mensaje { padding: 10px; background: #f4f3f1; margin: 8px 0; }
+
+
+
+
     </style>
 </head>
 <body>
@@ -120,5 +124,9 @@
     {% empty %}
         <p>No tienes cuotas registradas.</p>
     {% endfor %}
+
+    <a class="btn" href="{% url 'perfil_apoderado' %}">
+    ← Volver a Mi pupilo
+</a>
 </body>
 </html>

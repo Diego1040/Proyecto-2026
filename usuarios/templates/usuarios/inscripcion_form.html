@@ -372,9 +372,15 @@ Inscripción — Ayllu Basket
           Enviar solicitud
         </button>
 
-        <a class="enlace" href="{% url 'inicio' %}">
-          Volver al inicio
-        </a>
+        {% if modo_apoderado %}
+    <a class="enlace" href="{% url 'perfil_apoderado' %}">
+        ← Volver a Mi pupilo
+    </a>
+{% else %}
+    <a class="enlace" href="{% url 'inicio' %}">
+        ← Volver al inicio
+    </a>
+{% endif %}
       </div>
 
     </form>
