@@ -13,7 +13,8 @@ from usuarios.models import (
     Usuario,
 )
 
-from .models import Cuota, Pago
+from .models import Beca, Cuota, Pago
+from .services import obtener_resumen_morosidad
 
 
 class HU11WebpayTests(TestCase):
@@ -403,3 +404,75 @@ class HU11WebpayTests(TestCase):
         )
 
         obtener_transaccion.return_value.create.assert_called_once()
+
+
+
+class ResumenMorosidadTests(TestCase):
+
+    def crear_jugador(self, rut, nombres):
+        return Jugador.objects.create(
+            rut=rut,
+            nombres=nombres,
+            apellidos="Prueba",
+            fecha_nacimiento=date(2012, 5, 10),
+            rama=Jugador.Rama.VARONES,
+            estado=Jugador.Estado.ACTIVO,
+        )
+
+    def crear_cuotas_vencidas(self, jugador, periodos):
+        for periodo in periodos:
+            Cuota.objects.create(
+                jugador=jugador,
+                concepto="Mensualidad",
+                periodo=periodo,
+                monto=Decimal("15000"),
+                fecha_vencimiento=periodo.replace(day=10),
+                estado=Cuota.Estado.PENDIENTE,
+            )
+
+    def test_lista_morosos_y_excluye_beca_vigente(self):
+        hoy = timezone.localdate()
+
+        moroso = self.crear_jugador("22333444-K", "Jugador Uno")
+        becado = self.crear_jugador("22333445-8", "Jugador Dos")
+        un_mes = self.crear_jugador("22333446-6", "Jugador Tres")
+
+        periodos = [
+            date(2025, 1, 1),
+            date(2025, 2, 1),
+        ]
+
+        self.crear_cuotas_vencidas(moroso, periodos)
+        self.crear_cuotas_vencidas(becado, periodos)
+        self.crear_cuotas_vencidas(un_mes, periodos[:1])
+
+        Beca.objects.create(
+            jugador=becado,
+            fecha_inicio=hoy - timedelta(days=30),
+        )
+
+        resultado = obtener_resumen_morosidad(fecha=hoy)
+
+        self.assertEqual(len(resultado), 1)
+        self.assertEqual(resultado[0]["jugador"].pk, moroso.pk)
+        self.assertEqual(resultado[0]["meses_impagos"], 2)
+        self.assertEqual(resultado[0]["deuda_vencida"], Decimal("30000"))
+
+    def test_beca_vencida_no_excluye_del_listado(self):
+        hoy = timezone.localdate()
+        jugador = self.crear_jugador("22333447-4", "Jugador Cuatro")
+
+        self.crear_cuotas_vencidas(
+            jugador,
+            [date(2025, 1, 1), date(2025, 2, 1)],
+        )
+
+        Beca.objects.create(
+            jugador=jugador,
+            fecha_inicio=hoy - timedelta(days=220),
+        )
+
+        resultado = obtener_resumen_morosidad(fecha=hoy)
+
+        self.assertEqual(len(resultado), 1)
+        self.assertEqual(resultado[0]["jugador"].pk, jugador.pk)

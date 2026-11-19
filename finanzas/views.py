@@ -55,6 +55,12 @@ from reportlab.platypus import (
 )
 
 
+from .services import (
+    MESES_IMPAGOS_PARA_BLOQUEO,
+    obtener_resumen_morosidad,
+)
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -945,6 +951,8 @@ def contexto_tesoreria(request):
         .order_by("-creado_en")[:10]
     )
 
+    morosos = obtener_resumen_morosidad(fecha=hoy)
+
     return {
         "hoy": hoy,
         "recaudado_mes": recaudado_mes,
@@ -953,6 +961,8 @@ def contexto_tesoreria(request):
         "pagos_manuales_mes": pagos_manuales_mes,
         "pagina": pagina,
         "ultimos_pagos": ultimos_pagos,
+        "morosos": morosos,
+        "umbral_morosidad": MESES_IMPAGOS_PARA_BLOQUEO,
     }
 
 
@@ -1185,6 +1195,7 @@ def renovar_beca(request, beca_id):
     nueva_fecha_inicio = beca_anterior.fecha_termino + timedelta(days=1)
 
     # Comprobar que no exista otra beca que se superponga.
+
     nueva_fecha_termino = (
         sumar_meses(nueva_fecha_inicio, 6) - timedelta(days=1)
     )

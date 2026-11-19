@@ -10,7 +10,11 @@ from .models import Evento
 from .permisos import categorias_visibles, es_entrenador
 from usuarios.models import Jugador
 from usuarios.services import registrar_auditoria
-from finanzas.services import jugador_bloqueado_por_morosidad
+
+from finanzas.services import (
+    jugador_bloqueado_por_morosidad,
+    obtener_resumen_morosidad,
+)
 
 from .models import Asistencia, Nomina, NominaJugador, ReporteLesion
 from .permisos import es_administracion
@@ -323,8 +327,8 @@ def asistencia_reciente(jugador, dias=DIAS_ASISTENCIA_NOMINA, hoy=None):
 
 def candidatos_nomina(categoria):
     """
-    Jugadores activos de la categoría con su asistencia reciente.
-    No se excluye a nadie por deudas: la selección es manual del entrenador.
+    Jugadores activos de la categoría con asistencia,
+    restricciones deportivas y disponibilidad administrativa.
     """
     jugadores = Jugador.objects.filter(
         categoria_actual=categoria,
@@ -332,11 +336,23 @@ def candidatos_nomina(categoria):
     ).order_by("apellidos", "nombres")
 
     restricciones = restricciones_vigentes(jugadores)
+
+    # Consultar una sola vez los jugadores que alcanzan
+    # el umbral de morosidad y no tienen beca vigente.
+    morosos_ids = {
+        registro["jugador"].pk
+        for registro in obtener_resumen_morosidad()
+    }
+
     return [
-        {"jugador": j, "asistencia": asistencia_reciente(j), "restriccion": restricciones.get(j.pk)}
+        {
+            "jugador": j,
+            "asistencia": asistencia_reciente(j),
+            "restriccion": restricciones.get(j.pk),
+            "bloqueado_morosidad": j.pk in morosos_ids,
+        }
         for j in jugadores
     ]
-
 
 def partidos_para_nomina(categorias):
     """Partidos y campeonatos próximos del calendario (HU-10) de esas categorías."""

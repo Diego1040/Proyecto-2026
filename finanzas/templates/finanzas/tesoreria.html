@@ -140,15 +140,72 @@ input,select,textarea{background:var(--blanco);border:1px solid var(--linea);bor
   outline: 2px solid var(--naranja);
   outline-offset: 3px;
 }
+
+
+.marca-tesoreria {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    color: #fff;
+    text-decoration: none;
+    flex: none;
+}
+
+.marca-tesoreria .escudo {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--naranja);
+    flex: none;
+}
+
+.marca-tesoreria .marca-texto {
+    display: flex;
+    flex-direction: column;
+    line-height: 1;
+}
+
+.marca-tesoreria b {
+    font-family: "Barlow Condensed";
+    font-size: 1.35rem;
+    text-transform: uppercase;
+    color: #fff;
+}
+
+.marca-tesoreria small {
+    margin-top: 4px;
+    color: #8B8A88;
+    font-size: .75rem;
+    letter-spacing: .06em;
+}
+
+.marca-tesoreria:hover {
+    opacity: .85;
+}
 </style>
 </head>
 <body>
 
 <header class="barra">
   <div class="wrap">
-    <span class="escudo"></span>
-    <b>Ayllu Basket</b>
-    <span class="rol">Tesorería <span class="avatar">MR</span></span>
+
+    <a class="marca-tesoreria" href="{% url 'inicio' %}"
+       aria-label="Ir a la página principal de Ayllu Basket">
+
+      <span class="escudo"></span>
+
+      <span class="marca-texto">
+        <b>Ayllu Basket</b>
+        <small>Club deportivo</small>
+      </span>
+
+    </a>
+
+    <span class="rol">
+      Tesorería
+      <span class="avatar">MR</span>
+    </span>
+
   </div>
 </header>
 
@@ -364,53 +421,89 @@ input,select,textarea{background:var(--blanco);border:1px solid var(--linea);bor
   </div>
 </section>
 
-<!-- ===== HU-15 / HU-22 MOROSIDAD ===== -->
+
+<!-- ===== HU-15 MOROSIDAD ===== -->
 <section id="v-morosidad" class="oculto">
+
   <div class="cabecera">
     <h1>Alertas de morosidad</h1>
-    <p class="sub">HU-15 · La alerta es informativa: no excluye al jugador de entrenamientos ni de nóminas.</p>
+    <p class="sub">
+      HU-15 · Jugadores con dos o más períodos mensuales vencidos e impagos.
+    </p>
   </div>
 
   <div class="aviso">
     <span aria-hidden="true">&#9432;</span>
-    <span>El entrenador no ve esta pantalla ni ninguna marca de deuda en su listado de jugadores.</span>
+    <span>
+      El bloqueo por morosidad afecta únicamente la inclusión en nóminas
+      deportivas. No impide asistir a entrenamientos. Los jugadores con
+      beca completa vigente están exentos.
+    </span>
   </div>
 
-  <div class="tarjeta pad" style="margin-bottom:16px;display:flex;gap:14px;align-items:end;flex-wrap:wrap">
-    <label class="campo" style="max-width:220px">Generar alerta a partir de
-      <select><option>1 cuota impaga</option><option selected>2 cuotas impagas</option><option>3 cuotas impagas</option></select>
-    </label>
-    <button class="btn gris chico">Guardar umbral</button>
+  <div class="resumen">
+    <div class="kpi">
+      <span>Jugadores que alcanzan el umbral</span>
+      <b>{{ morosos|length }}</b>
+    </div>
+
+    <div class="kpi">
+      <span>Umbral de bloqueo</span>
+      <b>{{ umbral_morosidad }} meses</b>
+    </div>
   </div>
 
   <div class="tarjeta">
-    <div class="fila-j">
-      <span class="ini">JF</span>
-      <span class="nom">Joaquín Flores Tapia<small>U15 Varones · 2 cuotas · $50.000</small></span>
-      <span class="acc">
-        <small class="sub" style="font-size:.83rem">Último aviso: 2 sep</small>
-        <button class="btn gris chico" data-cobrar>Reenviar aviso</button>
-      </span>
-    </div>
-    <div class="fila-j">
-      <span class="ini">VR</span>
-      <span class="nom">Vicente Rojas Cid<small>U15 Varones · 3 cuotas · $75.000</small></span>
-      <span class="acc">
-        <small class="sub" style="font-size:.83rem">Último aviso: 11 sep</small>
-        <button class="btn gris chico" data-cobrar disabled title="Debe pasar al menos una semana">Reenviar aviso</button>
-      </span>
-    </div>
-    <div class="fila-j">
-      <span class="ini">FA</span>
-      <span class="nom">Florencia Araya Pinto<small>U11 · 2 cuotas · $50.000</small></span>
-      <span class="acc">
-        <small class="sub" style="font-size:.83rem">Sin avisos</small>
-        <button class="btn gris chico" data-cobrar>Enviar aviso</button>
-      </span>
-    </div>
+
+    {% for registro in morosos %}
+
+      <div class="fila-j">
+
+        <span class="ini">
+          {{ registro.jugador.nombres|first|upper }}{{ registro.jugador.apellidos|first|upper }}
+        </span>
+
+        <span class="nom">
+          {{ registro.jugador.nombres }}
+          {{ registro.jugador.apellidos }}
+
+          <small>
+            {{ registro.jugador.categoria_actual|default:"Sin categoría" }}
+            · {{ registro.meses_impagos }} períodos vencidos
+          </small>
+        </span>
+
+        <span class="acc">
+          <span class="pill no">Alcanza umbral</span>
+
+          <strong>
+            ${{ registro.deuda_vencida|floatformat:0 }}
+          </strong>
+        </span>
+
+      </div>
+
+    {% empty %}
+
+      <div class="pad">
+        <h2>No hay jugadores en morosidad crítica</h2>
+        <p class="sub">
+          Actualmente no hay jugadores que acumulen dos o más
+          períodos vencidos e impagos sin una beca vigente.
+        </p>
+      </div>
+
+    {% endfor %}
+
   </div>
-  <p class="sub" style="margin-top:12px">Cada envío queda registrado con fecha y destinatario. No se puede reenviar dos veces en la misma semana.</p>
+
+  <p class="sub" style="margin-top:12px">
+    El listado se actualiza automáticamente según los registros de cuotas
+    y las becas vigentes.
+  </p>
+
 </section>
+
 
 <!-- ===== HU-14 BECAS ===== -->
 <section id="v-becas" class="oculto">

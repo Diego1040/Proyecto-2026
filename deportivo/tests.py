@@ -1,5 +1,5 @@
 from datetime import date, timedelta
- 
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.management import call_command
@@ -8,33 +8,33 @@ from django.urls import reverse
 from django.utils import timezone
 
 
-from finanzas.models import Cuota
- 
+from finanzas.models import Beca, Cuota
+
 from usuarios.models import Auditoria, Categoria, Jugador, Apoderado, ApoderadoJugador
- 
+
 from .models import Asistencia, Entrenamiento, PerfilEntrenador, Evento, ReporteLesion
- 
- 
+
+
 class AsistenciaTest(TestCase):
- 
+
     @classmethod
     def setUpTestData(cls):
         call_command("cargar_categorias", verbosity=0)
         Usuario = get_user_model()
- 
+
         cls.u15 = Categoria.objects.get(nombre="U15 Varones")
         cls.u13 = Categoria.objects.get(nombre="U13 Damas")
- 
+
         cls.entrenador = Usuario.objects.create_user(rut="33333333-3", password="clave-segura-123")
         cls.entrenador.groups.add(Group.objects.get_or_create(name="Entrenador")[0])
         perfil = PerfilEntrenador.objects.create(usuario=cls.entrenador)
         perfil.categorias.add(cls.u15)
- 
+
         cls.secretaria = Usuario.objects.create_user(rut="22222222-2", password="clave-segura-123")
         cls.secretaria.groups.add(Group.objects.get_or_create(name="Administración")[0])
- 
+
         cls.otro = Usuario.objects.create_user(rut="11111111-1", password="clave-segura-123")
- 
+
         cls.tomas = Jugador.objects.create(
             rut="22333444-K", nombres="Tomas", apellidos="Vergara",
             fecha_nacimiento=date(2012, 2, 1), rama=Categoria.Rama.VARONES,
@@ -45,7 +45,7 @@ class AsistenciaTest(TestCase):
             fecha_nacimiento=date(2012, 12, 20), rama=Categoria.Rama.VARONES,
             estado=Jugador.Estado.PENDIENTE, categoria_actual=cls.u15,
         )
- 
+
     def crear_entrenamiento(self, fecha=None, categoria=None):
         return Entrenamiento.objects.create(
             categoria=categoria or self.u15,
@@ -54,18 +54,18 @@ class AsistenciaTest(TestCase):
             fecha=fecha or timezone.localdate(),
             creado_por=self.entrenador,
         )
- 
+
     def test_panel_ofrece_acceso_a_entrenamientos(self):
         self.client.force_login(self.entrenador)
         respuesta = self.client.get(reverse("panel"))
         self.assertContains(respuesta, reverse("deportivo:entrenamientos"))
- 
+
     def test_usuario_sin_rol_no_entra(self):
         self.client.force_login(self.otro)
         respuesta = self.client.get(reverse("deportivo:entrenamientos"))
         self.assertEqual(respuesta.status_code, 302)
         self.assertNotEqual(respuesta.url, reverse("deportivo:entrenamientos"))
- 
+
     def test_entrenador_crea_entrenamiento_de_su_categoria(self):
         self.client.force_login(self.entrenador)
         self.client.post(reverse("deportivo:entrenamientos"), {
@@ -76,7 +76,7 @@ class AsistenciaTest(TestCase):
             "responsable_id": self.entrenador.pk,
         })
         self.assertTrue(Entrenamiento.objects.filter(categoria=self.u15, creado_por=self.entrenador).exists())
- 
+
     def test_no_crea_entrenamiento_con_datos_vacios(self):
         self.client.force_login(self.entrenador)
         self.client.post(reverse("deportivo:entrenamientos"), {
@@ -84,7 +84,7 @@ class AsistenciaTest(TestCase):
             "fecha": "", "duracion": "",
         })
         self.assertFalse(Entrenamiento.objects.exists())
- 
+
     def test_entrenador_no_crea_en_categoria_ajena(self):
         self.client.force_login(self.entrenador)
         self.client.post(reverse("deportivo:entrenamientos"), {
@@ -92,20 +92,20 @@ class AsistenciaTest(TestCase):
             "fecha": timezone.localdate().isoformat(), "duracion": 60,
         })
         self.assertFalse(Entrenamiento.objects.filter(categoria=self.u13).exists())
- 
+
     def test_entrenador_no_ve_entrenamiento_de_categoria_ajena(self):
         ajeno = self.crear_entrenamiento(categoria=self.u13)
         self.client.force_login(self.entrenador)
         respuesta = self.client.get(reverse("deportivo:tomar_asistencia", args=[ajeno.pk]))
         self.assertEqual(respuesta.status_code, 404)
- 
+
     def test_lista_solo_muestra_jugadores_activos(self):
         e = self.crear_entrenamiento()
         self.client.force_login(self.entrenador)
         respuesta = self.client.get(reverse("deportivo:tomar_asistencia", args=[e.pk]))
         self.assertContains(respuesta, "Tomas")
         self.assertNotContains(respuesta, "Martin")
- 
+
     def test_registra_asistencia_con_fecha_y_usuario(self):
         e = self.crear_entrenamiento()
         self.client.force_login(self.entrenador)
@@ -116,7 +116,7 @@ class AsistenciaTest(TestCase):
         self.assertEqual(asistencia.estado, "AUSENTE")
         self.assertEqual(asistencia.registrado_por, self.entrenador)
         self.assertIsNotNone(asistencia.registrado_en)
- 
+
     def test_no_registra_jugador_pendiente_aunque_lo_envien(self):
         e = self.crear_entrenamiento()
         self.client.force_login(self.entrenador)
@@ -124,7 +124,7 @@ class AsistenciaTest(TestCase):
             f"estado_{self.pendiente.pk}": "PRESENTE",
         })
         self.assertFalse(Asistencia.objects.filter(jugador=self.pendiente).exists())
- 
+
     def test_entrenador_no_modifica_despues_de_48_horas(self):
         e = self.crear_entrenamiento(fecha=timezone.localdate() - timedelta(days=4))
         self.client.force_login(self.entrenador)
@@ -132,15 +132,15 @@ class AsistenciaTest(TestCase):
             f"estado_{self.tomas.pk}": "PRESENTE",
         })
         self.assertFalse(Asistencia.objects.filter(entrenamiento=e).exists())
- 
+
     def test_administracion_modifica_antigua_solo_con_motivo(self):
         e = self.crear_entrenamiento(fecha=timezone.localdate() - timedelta(days=4))
         self.client.force_login(self.secretaria)
         url = reverse("deportivo:tomar_asistencia", args=[e.pk])
- 
+
         self.client.post(url, {f"estado_{self.tomas.pk}": "PRESENTE"})
         self.assertFalse(Asistencia.objects.filter(entrenamiento=e).exists())
- 
+
         self.client.post(url, {
             f"estado_{self.tomas.pk}": "PRESENTE",
             "motivo": "El entrenador avisó que sí asistió",
@@ -150,10 +150,10 @@ class AsistenciaTest(TestCase):
         self.assertTrue(
             Auditoria.objects.filter(accion="ASISTENCIA_MODIFICADA_FUERA_DE_PLAZO").exists()
         )
- 
+
     def test_apoderado_ve_asistencia_del_mes(self):
         from usuarios.models import Apoderado, ApoderadoJugador
- 
+
         apoderado = Apoderado.objects.create(
             usuario=self.otro, rut="11111111-1",
             nombres="Carolina", apellidos="Vergara", telefono="1",
@@ -162,50 +162,50 @@ class AsistenciaTest(TestCase):
             apoderado=apoderado, jugador=self.tomas, parentesco="Madre",
             es_principal=True, puede_gestionar=True, activo=True,
         )
- 
+
         for estado in ["PRESENTE", "PRESENTE", "PRESENTE", "AUSENTE"]:
             e = self.crear_entrenamiento()
             Asistencia.objects.create(
                 entrenamiento=e, jugador=self.tomas,
                 estado=estado, registrado_por=self.entrenador,
             )
- 
+
         self.client.force_login(self.otro)
         self.assertContains(self.client.get(reverse("panel")), reverse("perfil_apoderado"))
         respuesta = self.client.get(reverse("perfil_apoderado"))
         self.assertContains(respuesta, "75%")
- 
- 
- 
+
+
+
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # NUEVO (HU-06) - Miguel: pruebas de la planificacion
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 class PlanificacionTest(TestCase):
- 
+
     @classmethod
     def setUpTestData(cls):
         call_command("cargar_categorias", verbosity=0)
         Usuario = get_user_model()
         grupo = Group.objects.get_or_create(name="Entrenador")[0]
- 
+
         cls.u15 = Categoria.objects.get(nombre="U15 Varones")
         cls.u13 = Categoria.objects.get(nombre="U13 Damas")
- 
+
         cls.entrenador = Usuario.objects.create_user(rut="33333333-3", password="clave-segura-123")
         cls.entrenador.groups.add(grupo)
         PerfilEntrenador.objects.create(usuario=cls.entrenador).categorias.add(cls.u15)
- 
+
         cls.ayudante = Usuario.objects.create_user(rut="44444444-4", password="clave-segura-123")
         cls.ayudante.groups.add(grupo)
         PerfilEntrenador.objects.create(usuario=cls.ayudante).categorias.add(cls.u15)
- 
+
         cls.otro_entrenador = Usuario.objects.create_user(rut="55555555-5", password="clave-segura-123")
         cls.otro_entrenador.groups.add(grupo)
         PerfilEntrenador.objects.create(usuario=cls.otro_entrenador).categorias.add(cls.u13)
- 
+
         cls.secretaria = Usuario.objects.create_user(rut="22222222-2", password="clave-segura-123")
         cls.secretaria.groups.add(Group.objects.get_or_create(name="Administración")[0])
- 
+
     def datos(self, **cambios):
         base = {
             "categoria_id": self.u15.pk,
@@ -218,7 +218,7 @@ class PlanificacionTest(TestCase):
         }
         base.update(cambios)
         return base
- 
+
     def crear(self, fecha=None):
         return Entrenamiento.objects.create(
             categoria=self.u15, nombre="Técnico", duracion=90,
@@ -226,7 +226,7 @@ class PlanificacionTest(TestCase):
             hora_inicio="18:30", objetivo="Defensa en zona",
             responsable=self.entrenador, creado_por=self.entrenador,
         )
- 
+
     def test_planifica_con_fecha_hora_objetivo_y_responsable(self):
         self.client.force_login(self.entrenador)
         self.client.post(reverse("deportivo:entrenamientos"), self.datos(responsable_id=self.ayudante.pk))
@@ -234,18 +234,18 @@ class PlanificacionTest(TestCase):
         self.assertEqual(e.hora_inicio.strftime("%H:%M"), "18:30")
         self.assertEqual(e.objetivo, "Defensa en zona")
         self.assertEqual(e.responsable, self.ayudante)
- 
+
     def test_objetivo_hora_y_responsable_son_obligatorios(self):
         self.client.force_login(self.entrenador)
         for campo in ["objetivo", "hora_inicio", "responsable_id"]:
             self.client.post(reverse("deportivo:entrenamientos"), self.datos(**{campo: ""}))
         self.assertFalse(Entrenamiento.objects.exists())
- 
+
     def test_responsable_debe_ser_de_la_categoria(self):
         self.client.force_login(self.entrenador)
         self.client.post(reverse("deportivo:entrenamientos"), self.datos(responsable_id=self.otro_entrenador.pk))
         self.assertFalse(Entrenamiento.objects.exists())
- 
+
     def test_crear_queda_en_el_historial(self):
         self.client.force_login(self.entrenador)
         self.client.post(reverse("deportivo:entrenamientos"), self.datos())
@@ -253,7 +253,7 @@ class PlanificacionTest(TestCase):
         self.assertTrue(Auditoria.objects.filter(
             accion="PLANIFICACION_CREADA", entidad_id=e.pk,
         ).exists())
- 
+
     def test_editar_guarda_antes_y_despues(self):
         e = self.crear()
         self.client.force_login(self.entrenador)
@@ -263,12 +263,12 @@ class PlanificacionTest(TestCase):
         )
         e.refresh_from_db()
         self.assertEqual(e.objetivo, "Tiro libre")
- 
+
         registro = Auditoria.objects.get(accion="PLANIFICACION_MODIFICADA", entidad_id=e.pk)
         self.assertEqual(registro.detalle["objetivo"], {"antes": "Defensa en zona", "despues": "Tiro libre"})
         self.assertEqual(registro.detalle["hora_inicio"], {"antes": "18:30", "despues": "19:00"})
         self.assertEqual(registro.usuario, self.entrenador)
- 
+
     def test_historial_se_ve_en_pantalla(self):
         e = self.crear()
         self.client.force_login(self.entrenador)
@@ -276,14 +276,14 @@ class PlanificacionTest(TestCase):
         respuesta = self.client.get(reverse("deportivo:editar_planificacion", args=[e.pk]))
         self.assertContains(respuesta, "Tiro libre")
         self.assertContains(respuesta, "Defensa en zona")
- 
+
     def test_entrenador_no_edita_entrenamiento_pasado(self):
         e = self.crear(fecha=timezone.localdate() - timedelta(days=1))
         self.client.force_login(self.entrenador)
         self.client.post(reverse("deportivo:editar_planificacion", args=[e.pk]), self.datos(objetivo="Cambio"))
         e.refresh_from_db()
         self.assertEqual(e.objetivo, "Defensa en zona")
- 
+
     def test_administracion_si_corrige_entrenamiento_pasado(self):
         e = self.crear(fecha=timezone.localdate() - timedelta(days=1))
         self.client.force_login(self.secretaria)
@@ -293,17 +293,17 @@ class PlanificacionTest(TestCase):
         )
         e.refresh_from_db()
         self.assertEqual(e.objetivo, "Corregido")
- 
+
     def test_entrenador_no_ve_planificacion_de_otra_categoria(self):
         e = self.crear()
         self.client.force_login(self.otro_entrenador)
         respuesta = self.client.get(reverse("deportivo:editar_planificacion", args=[e.pk]))
         self.assertEqual(respuesta.status_code, 404)
- 
+
     def test_entrenamiento_con_asistencia_no_se_puede_borrar(self):
         from django.db.models import ProtectedError
         from usuarios.models import Jugador
- 
+
         e = self.crear(fecha=timezone.localdate())
         jugador = Jugador.objects.create(
             rut="22333444-K", nombres="Tomas", apellidos="Vergara",
@@ -644,9 +644,12 @@ class NominaTest(TestCase):
             respuesta.url,
         )
 
-    def test_beca_completa_exime_del_bloqueo_por_morosidad(self):
-        self.tomas.becado = True
-        self.tomas.save(update_fields=["becado"])
+
+    def test_beca_completa_vigente_exime_del_bloqueo_por_morosidad(self):
+        Beca.objects.create(
+            jugador=self.tomas,
+            fecha_inicio=timezone.localdate() - timedelta(days=30),
+        )
 
         self.crear_cuotas_vencidas(
             self.tomas,
@@ -659,11 +662,33 @@ class NominaTest(TestCase):
             self.datos(),
         )
 
+        self.assertEqual(Nomina.objects.count(), 1)
         self.assertRedirects(
             respuesta,
             reverse("deportivo:ver_nomina", args=[Nomina.objects.get().pk]),
         )
-        self.assertEqual(Nomina.objects.count(), 1)
+
+    def test_beca_vencida_no_exime_del_bloqueo_por_morosidad(self):
+        Beca.objects.create(
+            jugador=self.tomas,
+            fecha_inicio=timezone.localdate() - timedelta(days=220),
+        )
+
+        self.crear_cuotas_vencidas(
+            self.tomas,
+            [date(2025, 1, 1), date(2025, 2, 1)],
+        )
+
+        self.client.force_login(self.entrenador)
+        respuesta = self.client.post(
+            reverse("deportivo:nueva_nomina"),
+            self.datos(),
+        )
+
+        self.assertFalse(Nomina.objects.exists())
+        self.assertEqual(respuesta.status_code, 302)
+        self.assertIn("categoria=", respuesta.url)
+
 
     def test_una_mensualidad_vencida_no_bloquea_nomina(self):
         self.crear_cuotas_vencidas(
@@ -679,6 +704,34 @@ class NominaTest(TestCase):
 
         self.assertEqual(Nomina.objects.count(), 1)
         self.assertEqual(respuesta.status_code, 302)
+
+
+
+
+    def test_entrenador_ve_restriccion_sin_detalle_financiero(self):
+        self.crear_cuotas_vencidas(
+            self.tomas,
+            [date(2025, 1, 1), date(2025, 2, 1)],
+        )
+
+        self.client.force_login(self.entrenador)
+
+        respuesta = self.client.get(
+            reverse("deportivo:nueva_nomina"),
+            {"categoria": self.u15.pk},
+        )
+
+        self.assertEqual(respuesta.status_code, 200)
+
+        candidato = next(
+            c for c in respuesta.context["candidatos"]
+            if c["jugador"].pk == self.tomas.pk
+        )
+
+        self.assertTrue(candidato["bloqueado_morosidad"])
+        self.assertContains(respuesta, "No habilitado para nómina")
+        self.assertContains(respuesta, "disabled")
+        self.assertNotContains(respuesta, "30.000")
 
 
 #HU-20
@@ -755,23 +808,23 @@ class HistorialNominasTest(TestCase):
 # HU-20
 
 class LesionTest(TestCase):
- 
+
     @classmethod
     def setUpTestData(cls):
         call_command("cargar_categorias", verbosity=0)
         Usuario = get_user_model()
- 
+
         cls.u15 = Categoria.objects.get(nombre="U15 Varones")
         cls.u13 = Categoria.objects.get(nombre="U13 Damas")
- 
+
         cls.entrenador = Usuario.objects.create_user(rut="33333333-3", password="clave-segura-123")
         cls.entrenador.groups.add(Group.objects.get_or_create(name="Entrenador")[0])
         PerfilEntrenador.objects.create(usuario=cls.entrenador).categorias.add(cls.u15)
- 
+
         cls.entrenador_u13 = Usuario.objects.create_user(rut="55555555-5", password="clave-segura-123")
         cls.entrenador_u13.groups.add(Group.objects.get_or_create(name="Entrenador")[0])
         PerfilEntrenador.objects.create(usuario=cls.entrenador_u13).categorias.add(cls.u13)
- 
+
         # Apoderada de Tomás (U15)
         cls.mama = Usuario.objects.create_user(rut="12345678-5", password="clave-segura-123")
         apoderada = Apoderado.objects.create(
@@ -784,14 +837,14 @@ class LesionTest(TestCase):
             estado=Jugador.Estado.ACTIVO, categoria_actual=cls.u15,
         )
         ApoderadoJugador.objects.create(apoderado=apoderada, jugador=cls.tomas, parentesco="MADRE", es_principal=True)
- 
+
         cls.sofia = Jugador.objects.create(
             rut="21111222-0", nombres="Sofia", apellidos="Rojas",
             fecha_nacimiento=date(2014, 5, 5), rama=Categoria.Rama.DAMAS,
             estado=Jugador.Estado.ACTIVO, categoria_actual=cls.u13,
         )
         cls.otro = Usuario.objects.create_user(rut="11111111-1", password="clave-segura-123")
- 
+
     def datos(self, **cambios):
         base = {
             "jugador_id": self.tomas.pk,
@@ -802,7 +855,7 @@ class LesionTest(TestCase):
         }
         base.update(cambios)
         return base
- 
+
     def reporte(self, **cambios):
         datos = {
             "jugador": self.tomas, "tipo": "LESION", "descripcion": "Esguince",
@@ -810,42 +863,42 @@ class LesionTest(TestCase):
         }
         datos.update(cambios)
         return ReporteLesion.objects.create(**datos)
- 
+
     # ---------- reportar ----------
- 
+
     def test_panel_ofrece_reportar_lesion_al_apoderado(self):
         self.client.force_login(self.mama)
         self.assertContains(self.client.get(reverse("panel")), reverse("deportivo:mis_lesiones"))
- 
+
     def test_apoderada_reporta_y_queda_pendiente(self):
         self.client.force_login(self.mama)
         self.client.post(reverse("deportivo:mis_lesiones"), self.datos())
- 
+
         reporte = ReporteLesion.objects.get()
         self.assertEqual(reporte.estado, ReporteLesion.Estado.PENDIENTE)
         self.assertEqual(reporte.reportado_por, self.mama)
         auditoria = Auditoria.objects.get(accion="LESION_REPORTADA")
         self.assertNotIn("Esguince", str(auditoria.detalle))  # no guarda datos de salud
- 
+
     def test_no_reporta_jugador_ajeno(self):
         self.client.force_login(self.mama)
         self.client.post(reverse("deportivo:mis_lesiones"), self.datos(jugador_id=self.sofia.pk))
         self.assertFalse(ReporteLesion.objects.exists())
- 
+
     def test_no_reporta_con_datos_vacios_o_fechas_invertidas(self):
         self.client.force_login(self.mama)
         self.client.post(reverse("deportivo:mis_lesiones"), self.datos(descripcion=""))
         ayer = (timezone.localdate() - timedelta(days=1)).isoformat()
         self.client.post(reverse("deportivo:mis_lesiones"), self.datos(fecha_fin=ayer))
         self.assertFalse(ReporteLesion.objects.exists())
- 
+
     def test_usuario_sin_jugadores_no_entra(self):
         self.client.force_login(self.otro)
         respuesta = self.client.get(reverse("deportivo:mis_lesiones"))
         self.assertRedirects(respuesta, reverse("panel"))
- 
+
     # ---------- validar ----------
- 
+
     def test_entrenador_ve_reportes_de_su_categoria(self):
         self.reporte()
         self.reporte(jugador=self.sofia, descripcion="Tendinitis")
@@ -853,7 +906,7 @@ class LesionTest(TestCase):
         respuesta = self.client.get(reverse("deportivo:revisar_lesiones"))
         self.assertContains(respuesta, "Esguince")
         self.assertNotContains(respuesta, "Tendinitis")
- 
+
     def test_entrenador_valida_sin_cambiar_asistencia(self):
         reporte = self.reporte()
         entrenamiento = Entrenamiento.objects.create(
@@ -864,30 +917,30 @@ class LesionTest(TestCase):
             entrenamiento=entrenamiento, jugador=self.tomas,
             estado=Asistencia.Estado.AUSENTE, registrado_por=self.entrenador,
         )
- 
+
         self.client.force_login(self.entrenador)
         self.client.post(reverse("deportivo:revisar_lesiones"), {"reporte_id": reporte.pk, "decision": "VALIDADO"})
- 
+
         reporte.refresh_from_db()
         asistencia.refresh_from_db()
         self.assertEqual(reporte.estado, ReporteLesion.Estado.VALIDADO)
         self.assertEqual(reporte.revisado_por, self.entrenador)
         self.assertEqual(asistencia.estado, Asistencia.Estado.AUSENTE)  # no justifica automáticamente
         self.assertTrue(Auditoria.objects.filter(accion="LESION_VALIDADO", entidad_id=reporte.pk).exists())
- 
+
     def test_rechazo_exige_motivo(self):
         reporte = self.reporte()
         self.client.force_login(self.entrenador)
         self.client.post(reverse("deportivo:revisar_lesiones"), {"reporte_id": reporte.pk, "decision": "RECHAZADO"})
         reporte.refresh_from_db()
         self.assertEqual(reporte.estado, ReporteLesion.Estado.PENDIENTE)
- 
+
         self.client.post(reverse("deportivo:revisar_lesiones"), {
             "reporte_id": reporte.pk, "decision": "RECHAZADO", "comentario": "Falta certificado",
         })
         reporte.refresh_from_db()
         self.assertEqual(reporte.estado, ReporteLesion.Estado.RECHAZADO)
- 
+
     def test_entrenador_no_revisa_otra_categoria(self):
         reporte = self.reporte()
         self.client.force_login(self.entrenador_u13)
@@ -895,12 +948,12 @@ class LesionTest(TestCase):
         self.assertEqual(respuesta.status_code, 404)
         reporte.refresh_from_db()
         self.assertEqual(reporte.estado, ReporteLesion.Estado.PENDIENTE)
- 
+
     def test_apoderada_no_puede_revisar(self):
         self.client.force_login(self.mama)
         respuesta = self.client.get(reverse("deportivo:revisar_lesiones"))
         self.assertEqual(respuesta.status_code, 302)
- 
+
     def test_nomina_avisa_lesion_validada_sin_excluir(self):
         self.reporte(estado=ReporteLesion.Estado.VALIDADO)
         self.client.force_login(self.entrenador)

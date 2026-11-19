@@ -28,15 +28,18 @@
 </head>
 <body>
 {% include "deportivo/_barra.html" %}
- 
+
 <main><div class="wrap">
- 
+
   <div class="cabecera">
     <a href="{% url 'deportivo:nominas' %}" class="volver">← Nóminas</a>
     <h1 style="margin-top:8px">Nueva nómina</h1>
-    <p class="sub">La selección es manual: el sistema no excluye jugadores automáticamente.</p>
+    <p class="sub">
+    La selección es manual. Los jugadores con restricciones administrativas
+    aparecen identificados y no pueden incluirse en la nómina.
+</p>
   </div>
- 
+
   {% if messages %}
     <div class="mensajes">
       {% for mensaje in messages %}
@@ -44,7 +47,7 @@
       {% endfor %}
     </div>
   {% endif %}
- 
+
   {% if not categoria %}
     {# PASO 1: elegir partido del calendario o categoría #}
     {% if partidos %}
@@ -61,7 +64,7 @@
         {% endfor %}
       </div>
     {% endif %}
- 
+
     <h2>{% if partidos %}O elige solo la categoría{% else %}Elige la categoría{% endif %}</h2>
     <form method="get" class="tarjeta pad paso">
       <label class="campo">Categoría
@@ -71,14 +74,14 @@
       </label>
       <button class="btn" type="submit">Continuar</button>
     </form>
- 
+
   {% else %}
     {# PASO 2: datos del partido y selección de jugadores #}
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="categoria" value="{{ categoria.pk }}">
       {% if evento %}<input type="hidden" name="evento" value="{{ evento.pk }}">{% endif %}
- 
+
       <div class="tarjeta pad paso">
         <p><span class="pill cat">{{ categoria }}</span> <a class="volver" href="{% url 'deportivo:nueva_nomina' %}">Cambiar</a></p>
         <div class="fila">
@@ -93,32 +96,54 @@
           <input type="text" name="lugar" maxlength="200" value="{{ evento.lugar|default:'' }}" placeholder="Gimnasio Epicentro">
         </label>
       </div>
- 
+
       <h2>Jugadores ({{ candidatos|length }})</h2>
       <p class="sub" style="margin:-4px 0 12px">Asistencia de los últimos {{ dias_asistencia }} días. Máximo {{ max_jugadores }} jugadores.</p>
- 
+
       <div class="tarjeta">
-        {% for c in candidatos %}
-          <label class="jug">
-            <input type="checkbox" name="jugadores" value="{{ c.jugador.pk }}">
-            <span class="info">
-              <b>{{ c.jugador.apellidos }}, {{ c.jugador.nombres }}</b>
-              <small>{{ c.jugador.categoria_actual }} · {{ c.jugador.rut }}</small>
-              {# HU-08: aviso de lesión validada (no excluye al jugador) #}
-              {% if c.restriccion %}
-                <br><span class="pill esp">{{ c.restriccion.get_tipo_display }}{% if c.restriccion.fecha_fin %} hasta {{ c.restriccion.fecha_fin|date:"d/m" }}{% endif %}</span>
-              {% endif %}
-            </span>
-            {% if c.asistencia is None %}
-              <span class="asis sin">Sin registros</span>
-            {% else %}
-              <span class="asis {% if c.asistencia >= 75 %}alta{% elif c.asistencia >= 50 %}media{% else %}baja{% endif %}">{{ c.asistencia }}%</span>
-            {% endif %}
-          </label>
-        {% empty %}
-          <p class="vacio">No hay jugadores activos en {{ categoria }}.</p>
-        {% endfor %}
- 
+
+{% for c in candidatos %}
+  <label class="jug{% if c.bloqueado_morosidad %} jug-bloqueado{% endif %}">
+    <input
+      type="checkbox"
+      name="jugadores"
+      value="{{ c.jugador.pk }}"
+      {% if c.bloqueado_morosidad %}disabled{% endif %}
+    >
+
+    <span class="info">
+      <b>{{ c.jugador.apellidos }}, {{ c.jugador.nombres }}</b>
+      <small>{{ c.jugador.categoria_actual }} · {{ c.jugador.rut }}</small>
+
+      {% if c.bloqueado_morosidad %}
+        <br>
+        <span class="pill no">No habilitado para nómina</span>
+      {% endif %}
+
+      {% if c.restriccion %}
+        <br>
+        <span class="pill esp">
+          {{ c.restriccion.get_tipo_display }}
+          {% if c.restriccion.fecha_fin %}
+            hasta {{ c.restriccion.fecha_fin|date:"d/m" }}
+          {% endif %}
+        </span>
+      {% endif %}
+    </span>
+
+    {% if c.asistencia is None %}
+      <span class="asis sin">Sin registros</span>
+    {% else %}
+      <span class="asis {% if c.asistencia >= 75 %}alta{% elif c.asistencia >= 50 %}media{% else %}baja{% endif %}">
+        {{ c.asistencia }}%
+      </span>
+    {% endif %}
+  </label>
+{% empty %}
+  <p class="vacio">No hay jugadores activos en {{ categoria }}.</p>
+{% endfor %}
+
+
         {% if candidatos %}
           <div class="guardar">
             <span class="sub" id="contador">0 seleccionados</span>
@@ -126,16 +151,16 @@
           </div>
         {% endif %}
       </div>
- 
+
       <label class="campo" style="margin-top:16px">Observaciones (opcional)
         <textarea name="observaciones" placeholder="Citación 1 hora antes, uniforme oficial."></textarea>
       </label>
     </form>
- 
+
     <script>
     // Cuenta los seleccionados y avisa si se pasa del máximo
     (function () {
-      var max = Number("{{ max_jugadores }}");    
+      var max = Number("{{ max_jugadores }}");
       var casillas = document.querySelectorAll('input[name="jugadores"]');
       var contador = document.getElementById('contador');
       function actualizar() {
@@ -148,7 +173,7 @@
     })();
     </script>
   {% endif %}
- 
+
 </div></main>
 </body>
 </html>
