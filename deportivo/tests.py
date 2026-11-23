@@ -227,6 +227,29 @@ class PlanificacionTest(TestCase):
             responsable=self.entrenador, creado_por=self.entrenador,
         )
 
+    def test_calendario_refleja_alta_y_edicion_sin_duplicar_eventos(self):
+        self.client.force_login(self.entrenador)
+        self.client.post(reverse("deportivo:entrenamientos"), self.datos())
+        sesion = Entrenamiento.objects.get()
+        ficha = reverse("deportivo:editar_planificacion", args=[sesion.pk])
+        calendario = reverse("deportivo:calendario")
+        respuesta = self.client.get(calendario)
+        self.assertContains(respuesta, "<h3>Técnico</h3>", count=1, html=True)
+        self.assertContains(respuesta, ficha)
+        self.assertContains(respuesta, "18:30 hrs")
+        self.assertNotContains(respuesta, reverse("deportivo:eliminar_evento", args=[sesion.pk]))
+
+        nueva_fecha = sesion.fecha + timedelta(days=1)
+        self.client.post(ficha, self.datos(nombre="Transición", fecha=nueva_fecha, hora_inicio="19:45"))
+        respuesta = self.client.get(calendario)
+        self.assertContains(respuesta, "<h3>Transición</h3>", count=1, html=True)
+        self.assertContains(respuesta, nueva_fecha.strftime("%d/%m/%Y"))
+        self.assertContains(respuesta, "19:45 hrs")
+        self.assertNotContains(respuesta, "18:30 hrs")
+        self.assertNotContains(respuesta, "Técnico")
+        self.assertNotContains(respuesta, "Defensa en zona")
+        self.assertFalse(Evento.objects.exists())
+
     def test_planifica_con_fecha_hora_objetivo_y_responsable(self):
         self.client.force_login(self.entrenador)
         self.client.post(reverse("deportivo:entrenamientos"), self.datos(responsable_id=self.ayudante.pk))
@@ -369,6 +392,70 @@ class CalendarioTest(TestCase):
         return base
 
     # ---------- consultar ----------
+
+    def sesion(self, categoria, nombre, dias=0, hora="10:30"):
+        return Entrenamiento.objects.create(
+            categoria=categoria, nombre=nombre, objetivo="Objetivo reservado",
+            fecha=timezone.localdate() + timedelta(days=dias), hora_inicio=hora,
+            duracion=60, creado_por=self.secretaria,
+        )
+
+    def test_administracion_ve_ambas_categorias_y_filtra_la_agenda_ordenada(self):
+        self.sesion(self.u15, "Sesión U15")
+        self.sesion(self.u13, "Sesión U13")
+        self.sesion(self.u13, "Sin hora", hora=None)
+        self.sesion(self.u13, "Pasada", dias=-1)
+        self.evento(self.u13, dias=0, titulo="Partido temprano")
+        self.evento(dias=1, titulo="Actividad general")
+        self.client.force_login(self.secretaria)
+        url = reverse("deportivo:calendario")
+        self.assertContains(self.client.get(url), "Sesión U15")
+        respuesta = self.client.get(url, {"categoria": self.u13.pk})
+        titulos = [entrada["titulo"] for entrada in respuesta.context["entradas"]]
+        self.assertEqual(titulos, ["Partido temprano", "Sesión U13", "Sin hora", "Actividad general"])
+        self.assertContains(respuesta, "Hora por definir")
+        self.assertNotContains(respuesta, "Sesión U15")
+
+    def test_entrenador_con_perfil_familiar_no_ve_planificacion_de_categoria_familiar(self):
+        self.sesion(self.u15, "Sesión autorizada")
+        ajena = self.sesion(self.u13, "Sesión restringida")
+        # La cuenta puede consultar eventos U13 como apoderado y entrenar solo U15.
+        self.mama.groups.add(Group.objects.get(name="Entrenador"))
+        PerfilEntrenador.objects.create(usuario=self.mama).categorias.add(self.u15)
+        Jugador.objects.filter(categoria_actual=self.u15).update(categoria_actual=self.u13)
+        self.evento(self.u13, titulo="Partido familiar")
+        self.client.force_login(self.mama)
+        url = reverse("deportivo:calendario")
+        respuesta = self.client.get(url)
+        self.assertContains(respuesta, "Sesión autorizada")
+        self.assertNotContains(respuesta, "Sesión restringida")
+        respuesta = self.client.get(url, {"categoria": self.u13.pk})
+        self.assertContains(respuesta, "Partido familiar")
+        self.assertNotContains(respuesta, "Ver planificación")
+        self.assertEqual(self.client.get(reverse("deportivo:editar_planificacion", args=[ajena.pk])).status_code, 404)
+
+    def test_jugador_apoderado_y_visitante_sin_acceso_a_ficha_tecnica(self):
+        jugador = Jugador.objects.get(categoria_actual=self.u15)
+        cuenta_jugador = get_user_model().objects.create_user(rut=jugador.rut)
+        jugador.usuario = cuenta_jugador
+        jugador.save(update_fields=["usuario"])
+        sesion = self.sesion(self.u15, "Sesión privada")
+        self.evento(self.u15, titulo="Partido familiar")
+        self.evento(titulo="Evento general")
+        ficha = reverse("deportivo:editar_planificacion", args=[sesion.pk])
+        calendario = reverse("deportivo:calendario")
+        for url in (ficha, calendario):
+            self.assertRedirects(self.client.get(url), f"{reverse('login')}?next={url}")
+        for cuenta in (self.mama, cuenta_jugador):
+            with self.subTest(cuenta=cuenta.pk):
+                self.client.force_login(cuenta)
+                respuesta = self.client.get(calendario, {"categoria": self.u15.pk})
+                self.assertContains(respuesta, "Partido familiar")
+                self.assertContains(respuesta, "Evento general")
+                self.assertNotContains(respuesta, "Sesión privada")
+                self.assertNotContains(respuesta, "Objetivo reservado")
+                self.assertNotContains(respuesta, ficha)
+                self.assertRedirects(self.client.get(ficha), reverse("panel"))
 
     def test_panel_muestra_acceso_al_calendario(self):
         self.client.force_login(self.mama)
