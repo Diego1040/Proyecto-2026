@@ -124,7 +124,10 @@ class ImportacionJugadoresWebTest(TestCase):
                     url = self.url if etapa is None else self.ruta(etapa, uuid4())
                     respuesta = self.client.post(url) if etapa == "confirmar" else self.client.get(url)
                     self.assertEqual(respuesta.status_code, 403)
-                self.assertNotContains(self.client.get(reverse("panel")), self.url, status_code=302 if grupo == "Tesorería" else 200)
+                panel = self.client.get(reverse("panel"), follow=True)
+                self.assertNotContains(panel, self.url)
+                if not usuario.is_staff and grupo in (None, "Administracion"):
+                    self.assertRedirects(panel, reverse("inicio"))
         self.assertFalse(Jugador.objects.exists())
 
     def test_administracion_inactiva_no_accede(self):

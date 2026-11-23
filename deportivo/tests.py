@@ -982,7 +982,8 @@ class LesionTest(TestCase):
     def test_usuario_sin_jugadores_no_entra(self):
         self.client.force_login(self.otro)
         respuesta = self.client.get(reverse("deportivo:mis_lesiones"))
-        self.assertRedirects(respuesta, reverse("panel"))
+        self.assertRedirects(respuesta, reverse("panel"), target_status_code=302)
+        self.assertRedirects(self.client.get(reverse("panel")), reverse("inicio"))
 
     # ---------- validar ----------
 
