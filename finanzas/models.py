@@ -105,6 +105,24 @@ class Cuota(models.Model):
                 )
             })
 
+        if not self.jugador_id or not self.periodo:
+            return
+        # Una beca o un receso posterior no invalida una cuota ya registrada.
+        if not self._state.adding and Cuota.objects.filter(
+            pk=self.pk, jugador_id=self.jugador_id, periodo=self.periodo,
+        ).exists():
+            return
+
+        from .services import jugadores_con_cobertura_mensual
+
+        cobertura = jugadores_con_cobertura_mensual(self.periodo).filter(
+            pk=self.jugador_id,
+        ).values("tiene_beca_en_periodo", "tiene_inactividad_en_periodo").first()
+        if cobertura and cobertura["tiene_beca_en_periodo"]:
+            raise ValidationError({"periodo": "Una beca cubre esta mensualidad. Elige otro período."})
+        if cobertura and cobertura["tiene_inactividad_en_periodo"]:
+            raise ValidationError({"periodo": "La mensualidad está congelada por inactividad en este período."})
+
     def __str__(self):
         return (
             f"{self.jugador.nombres} {self.jugador.apellidos} - "

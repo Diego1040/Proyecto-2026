@@ -12,6 +12,7 @@ class CuotaForm(forms.ModelForm):
     jugador = forms.ModelChoiceField(
         queryset=Jugador.objects.none(),
         label="Jugador",
+        empty_label="Selecciona un jugador",
     )
 
     periodo = forms.DateField(

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ayllu Basket — Panel de tesorería</title>
+<title>{% block titulo %}Ayllu Basket — Panel de tesorería{% endblock %}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
@@ -183,6 +183,7 @@ input,select,textarea{background:var(--blanco);border:1px solid var(--linea);bor
     opacity: .85;
 }
 </style>
+{% block estilos_pagina %}{% endblock %}
 </head>
 <body>
 
@@ -203,13 +204,14 @@ input,select,textarea{background:var(--blanco);border:1px solid var(--linea);bor
 
     <span class="rol">
       Tesorería
-      <span class="avatar">MR</span>
+      {% block avatar %}<span class="avatar">MR</span>{% endblock %}
     </span>
 
   </div>
 </header>
 
 
+{% block contenido_tesoreria %}
 <nav class="tabs" aria-label="Secciones de tesorería">
   <div class="wrap">
     <button class="tab" role="tab" aria-selected="true" data-vista="pagos">Pagos</button>
@@ -599,5 +601,6 @@ document.querySelectorAll(".tab").forEach(tab => {
   });
 });
 </script>
+{% endblock %}
 </body>
 </html>
