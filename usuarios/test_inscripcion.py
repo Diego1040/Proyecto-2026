@@ -870,3 +870,32 @@ class GestionSolicitudesSprint2Test(TestCase):
         self.assertEqual(self.solicitud.estado, SolicitudInscripcion.Estado.EN_REVISION)
         self.assertIsNone(self.solicitud.usuario_autorizado_id)
         self.assertFalse(Auditoria.objects.filter(accion="SOLICITUD_APROBADA").exists())
+
+
+class CorreoSolicitudRecibidaTest(TestCase):
+    """Al enviar la inscripción, el apoderado recibe el aviso de solicitud recibida."""
+
+    datos_adulto = InscripcionPublicaSprint2Test.datos_adulto
+    datos_menor = InscripcionPublicaSprint2Test.datos_menor
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("cargar_categorias", temporada=TEMPORADA, verbosity=0)
+
+    def test_inscripcion_de_menor_envia_aviso_al_apoderado(self):
+        datos = self.datos_menor(rut="24360917-8")
+        with self.captureOnCommitCallbacks(execute=True):
+            respuesta = self.client.post(reverse("inscripcion"), datos)
+        self.assertRedirects(respuesta, reverse("inscripcion_exito"))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, [datos["email_apoderado"]])
+        self.assertIn("Recibimos", mail.outbox[0].subject)
+        self.assertNotIn("/activar-cuenta/", mail.outbox[0].body)
+
+    def test_si_falla_el_envio_la_solicitud_igual_queda_registrada(self):
+        datos = self.datos_menor(rut="24360917-8")
+        with patch("usuarios.services.send_mail", side_effect=OSError("SMTP caído")):
+            with self.captureOnCommitCallbacks(execute=True):
+                respuesta = self.client.post(reverse("inscripcion"), datos)
+        self.assertRedirects(respuesta, reverse("inscripcion_exito"))
+        self.assertEqual(SolicitudInscripcion.objects.count(), 1)
