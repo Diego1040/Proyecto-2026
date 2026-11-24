@@ -148,8 +148,32 @@ LOGOUT_REDIRECT_URL = 'inicio'
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
+# Si están definidas las variables de entorno AYLLU_EMAIL_USUARIO y
+# AYLLU_EMAIL_CLAVE, los correos se envían de verdad por SMTP (por defecto Gmail).
+# Si no están, Django muestra los correos en la consola donde corre runserver.
+# La clave nunca se escribe en este archivo ni se sube al repositorio.
+EMAIL_USUARIO = os.environ.get('AYLLU_EMAIL_USUARIO', '').strip()
+EMAIL_CLAVE = os.environ.get('AYLLU_EMAIL_CLAVE', '').replace(' ', '')
+
+if EMAIL_USUARIO and EMAIL_CLAVE:
+    MAILERS = {
+        'default': {
+            'BACKEND': 'django.core.mail.backends.smtp.EmailBackend',
+            'OPTIONS': {
+                'host': os.environ.get('AYLLU_EMAIL_HOST', 'smtp.gmail.com'),
+                'port': int(os.environ.get('AYLLU_EMAIL_PUERTO', '587')),
+                'username': EMAIL_USUARIO,
+                'password': EMAIL_CLAVE,
+                'use_tls': True,
+                'timeout': 20,
+            },
+        },
+    }
+    DEFAULT_FROM_EMAIL = f'Ayllu Basket <{EMAIL_USUARIO}>'
+else:
+    MAILERS = {
+        'default': {
+            'BACKEND': 'django.core.mail.backends.console.EmailBackend',
+        },
+    }
+    DEFAULT_FROM_EMAIL = 'Ayllu Basket <no-responder@ayllubasket.cl>'

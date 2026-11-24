@@ -80,7 +80,18 @@ La integración usa el **ambiente de integración de Transbank** con sus credenc
 
 ### Correos
 
-En desarrollo los correos (activación de cuenta, recuperación de contraseña, aprobación o rechazo) se muestran en la consola donde corre `runserver`.
+El sistema envía correos al recibir una solicitud de inscripción, al aprobarla (con el enlace de activación de cuenta), al rechazarla (con el motivo) y para recuperar la contraseña.
+
+Sin configuración, los correos se muestran en la consola donde corre `runserver`. Para que lleguen de verdad a la casilla del destinatario, definir en la misma terminal, antes de `runserver`, una cuenta de Gmail con verificación en dos pasos y una contraseña de aplicación:
+
+```powershell
+# Windows (PowerShell)
+$env:AYLLU_EMAIL_USUARIO = "cuenta@gmail.com"
+$env:AYLLU_EMAIL_CLAVE = "contraseña de aplicación de 16 letras"
+python manage.py runserver
+```
+
+La contraseña nunca se escribe en el código ni se sube al repositorio. Para otro proveedor se pueden definir también `AYLLU_EMAIL_HOST` y `AYLLU_EMAIL_PUERTO`.
 
 ## Pruebas
 
@@ -88,7 +99,7 @@ En desarrollo los correos (activación de cuenta, recuperación de contraseña, 
 python manage.py test
 ```
 
-Resultado esperado: **424 pruebas, OK**. Para probar una aplicación:
+Resultado esperado: **426 pruebas, OK**. Para probar una aplicación:
 
 ```bash
 python manage.py test deportivo
@@ -108,4 +119,4 @@ El sistema maneja datos de menores de edad (Ley 19.628 y Ley 21.719). **No se su
 
 ## Antes de producción
 
-El despliegue propuesto es un VPS en AWS Lightsail (Ubuntu 24.04, Nginx, Gunicorn y HTTPS). Antes de publicar se debe mover `SECRET_KEY` a una variable de entorno, desactivar `DEBUG`, definir `ALLOWED_HOSTS`, configurar el servidor SMTP y usar las credenciales comerciales de Transbank.
+El despliegue propuesto es un VPS en AWS Lightsail (Ubuntu 24.04, Nginx, Gunicorn y HTTPS). Antes de publicar se debe mover `SECRET_KEY` a una variable de entorno, desactivar `DEBUG`, definir `ALLOWED_HOSTS`, configurar el correo de envío (variables `AYLLU_EMAIL_*`) y usar las credenciales comerciales de Transbank.
