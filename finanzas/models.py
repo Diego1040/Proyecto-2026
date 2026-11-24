@@ -14,6 +14,24 @@ from datetime import date, timedelta
 from django.utils import timezone
 
 
+class AvisoCobranza(models.Model):
+    jugador = models.ForeignKey(Jugador, on_delete=models.PROTECT, related_name="avisos_cobranza")
+    responsable = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    fecha_aviso = models.DateField("Fecha del aviso", default=timezone.localdate)
+    medio = models.CharField("Medio de contacto", max_length=60)
+    destinatario = models.CharField("Destinatario", max_length=150)
+    detalle = models.CharField("Detalle (opcional)", max_length=300, blank=True)
+    clave_registro = models.UUIDField(default=uuid.uuid4, editable=False)
+
+    class Meta:
+        ordering = ["-fecha_aviso", "-pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["jugador", "responsable", "clave_registro"],
+                name="finanzas_aviso_envio_unico",
+            )
+        ]
+
 
 
 def generar_orden_compra():

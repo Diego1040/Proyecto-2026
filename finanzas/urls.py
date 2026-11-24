@@ -39,6 +39,7 @@ path(
     views.panel_tesoreria,
     name="tesoreria",
 ),
+    path("tesoreria/cobranza/", views.cobranza_jugador, name="cobranza_jugador"),
 path(
     "tesoreria/cuotas/nueva/",
     views.crear_cuota,

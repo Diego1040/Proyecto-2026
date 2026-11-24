@@ -482,6 +482,7 @@ input,select,textarea{background:var(--blanco);border:1px solid var(--linea);bor
             ${{ registro.deuda_vencida|floatformat:0 }}
           </strong>
         </span>
+        <a href="{% url 'finanzas:cobranza_jugador' %}?jugador={{ registro.jugador.pk }}">Avisos de cobranza</a>
 
       </div>
 
@@ -503,6 +504,13 @@ input,select,textarea{background:var(--blanco);border:1px solid var(--linea);bor
     El listado se actualiza automáticamente según los registros de cuotas
     y las becas vigentes.
   </p>
+
+  <form class="tarjeta pad" method="get" action="{% url 'finanzas:cobranza_jugador' %}" style="margin-top:18px">
+    <h2>Seguimiento de cobranza</h2>
+    <p class="sub">Consulta o registra avisos, incluso si el jugador ya está al día.</p>
+    {{ seleccion_cobranza.jugador.as_field_group }}
+    <button class="btn chico" type="submit" style="margin-top:10px">Ver historial</button>
+  </form>
 
 </section>
 
@@ -577,7 +585,7 @@ const rutas = {
   becas: "/finanzas/tesoreria/#becas"
 };
 
-document.querySelectorAll(".tab").forEach(tab => {
+document.querySelectorAll(".tab[data-vista]").forEach(tab => {
   tab.addEventListener("click", () => {
     const vista = tab.dataset.vista;
 
@@ -597,9 +605,18 @@ document.querySelectorAll(".tab").forEach(tab => {
     });
 
     document.getElementById("url").textContent = rutas[vista];
+    const destino = new URL(window.location.href);
+    destino.hash = vista === "morosidad" ? "morosidad" : "";
+    window.history.replaceState(null, "", destino);
     window.scrollTo({ top: 0 });
   });
 });
+function abrirPestanaDesdeUrl() {
+  const vista = window.location.hash === "#morosidad" ? "morosidad" : "pagos";
+  document.querySelector('[data-vista="' + vista + '"]').click();
+}
+window.addEventListener("hashchange", abrirPestanaDesdeUrl);
+if (window.location.hash === "#morosidad") abrirPestanaDesdeUrl();
 </script>
 {% endblock %}
 </body>
