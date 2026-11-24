@@ -1,0 +1,44 @@
+{% extends "finanzas/tesoreria.html" %}
+
+{% block titulo %}Crear cuota · Tesorería · Ayllu Basket{% endblock %}
+{% block avatar %}{% endblock %}
+{% block estilos_pagina %}
+<style>
+.alta-cuota .wrap{max-width:720px}
+.alta-cuota .volver{display:inline-block;color:var(--naranja-texto);margin-bottom:18px}
+.alta-cuota form{display:grid;gap:16px}
+.alta-cuota label{display:block;color:var(--tinta);font-weight:600;margin-bottom:4px}
+.alta-cuota .fechas{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.alta-cuota .fechas > div,.alta-cuota input,.alta-cuota select{min-width:0}
+.alta-cuota .errorlist{margin:4px 0 0;padding-left:20px;color:var(--rojo)}
+.alta-cuota [aria-invalid=true]{border-color:var(--rojo)}
+.alta-cuota .acciones{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.alta-cuota .acciones a{color:var(--tinta)}
+.alta-cuota .btn{background:var(--naranja-texto)}
+@media(max-width:600px){.alta-cuota .fechas{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block contenido_tesoreria %}
+<main class="alta-cuota"><div class="wrap">
+  <a class="volver" href="{% url 'finanzas:tesoreria' %}">← Volver a Tesorería</a>
+  <div class="cabecera"><h1>Crear cuota</h1>
+    <p class="sub">Registra una mensualidad pendiente para un jugador del club.</p>
+  </div>
+  <form method="post" class="tarjeta pad">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div>{{ form.jugador.as_field_group }}</div>
+    <div>{{ form.concepto.as_field_group }}</div>
+    <div class="fechas">
+      <div>{{ form.periodo.as_field_group }}</div>
+      <div>{{ form.fecha_vencimiento.as_field_group }}</div>
+    </div>
+    <div>{{ form.monto.as_field_group }}</div>
+    <div class="acciones">
+      <button type="submit" class="btn">Crear cuota</button>
+      <a href="{% url 'finanzas:tesoreria' %}">Cancelar</a>
+    </div>
+  </form>
+</div></main>
+{% endblock %}

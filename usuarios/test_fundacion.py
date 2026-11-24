@@ -88,7 +88,7 @@ class IdentidadFundacionTest(TestCase):
             "username": "011111111-1",
             "password": "ClaveExistenteSegura123!",
         })
-        self.assertRedirects(respuesta, reverse("panel"))
+        self.assertRedirects(respuesta, reverse("panel"), target_status_code=302)
 
     async def test_busqueda_natural_asincrona_canonicaliza_rut(self):
         cuenta = await Usuario.objects.acreate(rut="011111111-1")

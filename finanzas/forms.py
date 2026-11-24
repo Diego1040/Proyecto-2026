@@ -1,17 +1,42 @@
 from datetime import timedelta
+from uuid import uuid4
 
 from django import forms
+from django.utils import timezone
 
 from usuarios.models import Jugador
-from .models import Beca, Cuota, sumar_meses
+from .models import AvisoCobranza, Beca, Cuota, sumar_meses
 
 from django.db.models import Q
+
+
+class SeleccionJugadorCobranzaForm(forms.Form):
+    jugador = forms.ModelChoiceField(queryset=Jugador.objects.all(), empty_label="Selecciona un jugador")
+
+
+class AvisoCobranzaForm(forms.ModelForm):
+    clave_registro = forms.UUIDField(initial=uuid4, widget=forms.HiddenInput)
+
+    class Meta:
+        model = AvisoCobranza
+        fields = ["fecha_aviso", "medio", "destinatario", "detalle"]
+        widgets = {
+            "fecha_aviso": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
+            "medio": forms.TextInput(attrs={"placeholder": "Por ejemplo, llamada telefónica"}),
+        }
+
+    def clean_fecha_aviso(self):
+        fecha = self.cleaned_data["fecha_aviso"]
+        if fecha > timezone.localdate():
+            raise forms.ValidationError("La fecha del aviso no puede ser futura.")
+        return fecha
 
 
 class CuotaForm(forms.ModelForm):
     jugador = forms.ModelChoiceField(
         queryset=Jugador.objects.none(),
         label="Jugador",
+        empty_label="Selecciona un jugador",
     )
 
     periodo = forms.DateField(

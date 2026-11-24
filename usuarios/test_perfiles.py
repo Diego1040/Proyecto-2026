@@ -88,6 +88,40 @@ class PerfilesBloque13Test(TestCase):
             tipo_cambio=HistorialCategoria.TipoCambio.AUTOMATICO,
         )
 
+    def test_sin_rol_se_autentica_pero_no_recibe_el_panel_ni_ejecuta_sus_acciones(self):
+        cuenta = Usuario.objects.create_user(rut="22222222-2", password="ClaveDePrueba123!")
+        cuenta.groups.add(Group.objects.create(name="Grupo sin accesos"))
+        panel = reverse("panel")
+        respuesta = self.client.post(reverse("login"), {
+            "username": cuenta.rut, "password": "ClaveDePrueba123!",
+        }, follow=True)
+        self.assertEqual(respuesta.redirect_chain, [(panel, 302), (reverse("inicio"), 302)])
+        self.assertContains(respuesta, "Tu cuenta aún no tiene un perfil autorizado")
+        self.assertTemplateNotUsed(respuesta, "paginas/panel.html")
+        self.assertNotContains(respuesta, cuenta.rut)
+        self.assertEqual(self.client.session["_auth_user_id"], str(cuenta.pk))
+        for accion in ("contacto", "inscripcion"):
+            self.assertRedirects(self.client.post(panel, {"accion": accion}), reverse("inicio"))
+        self.assertEqual(self.client.get(reverse("importacion_jugadores")).status_code, 403)
+
+    def test_panel_revalida_el_rol_durante_la_sesion(self):
+        cuenta = Usuario.objects.create_user(rut="22222222-2")
+        self.client.force_login(cuenta)
+        panel = reverse("panel")
+        self.assertRedirects(self.client.get(panel), reverse("inicio"))
+        grupo, _ = Group.objects.get_or_create(name="Entrenador")
+        cuenta.groups.add(grupo)
+        self.assertContains(self.client.get(panel), reverse("deportivo:entrenamientos"))
+        self.assertEqual(self.client.get(reverse("deportivo:entrenamientos")).status_code, 200)
+        cuenta.groups.remove(grupo)
+        self.assertRedirects(self.client.get(panel), reverse("inicio"))
+
+    def test_rutas_protegidas_sin_sesion_conservan_el_destino_para_el_login(self):
+        for nombre in ("panel", "importacion_jugadores", "deportivo:entrenamientos"):
+            url = reverse(nombre)
+            with self.subTest(url=url):
+                self.assertRedirects(self.client.get(url), f"{reverse('login')}?next={url}")
+
     def test_panel_muestra_opciones_segun_perfil(self):
         self.client.force_login(self.usuario_apoderado)
         respuesta = self.client.get(reverse("panel"))
@@ -210,15 +244,27 @@ class PerfilesBloque13Test(TestCase):
         self.assertContains(self.client.get(reverse("categorias_jugadores")), reverse("panel"))
         self.assertEqual(list(ApoderadoJugador.objects.order_by("pk").values()), anterior)
 
-    def test_staff_solo_tiene_acceso_tecnico_y_no_administracion_del_club(self):
+    def test_staff_sin_rol_es_redirigido_y_conserva_acceso_al_admin_tecnico(self):
         usuario = Usuario.objects.create_user(rut="22222222-2", is_staff=True)
         self.client.force_login(usuario)
-        respuesta = self.client.get(reverse("panel"))
-        self.assertContains(respuesta, reverse("admin:index"))
+        respuesta = self.client.get(reverse("panel"), follow=True)
+        self.assertRedirects(respuesta, reverse("inicio"))
+        self.assertTemplateNotUsed(respuesta, "paginas/panel.html")
+        self.assertContains(respuesta, "Tu cuenta aún no tiene un perfil autorizado")
         self.assertNotContains(respuesta, reverse("solicitudes_administracion"))
         self.assertNotContains(respuesta, reverse("categorias_jugadores"))
         self.assertNotContains(respuesta, reverse("deportivo:entrenamientos"))
-        self.assertEqual(respuesta.context["perfiles"], [])
+        self.assertEqual(self.client.get(reverse("admin:index")).status_code, 200)
+
+    def test_staff_con_rol_funcional_conserva_el_destino_de_su_rol(self):
+        usuario = Usuario.objects.create_user(rut="22222222-2", is_staff=True)
+        self.client.force_login(usuario)
+        usuario.groups.add(Group.objects.get_or_create(name="Administración")[0])
+        panel = self.client.get(reverse("panel"))
+        self.assertContains(panel, reverse("solicitudes_administracion"))
+        self.assertContains(panel, reverse("admin:index"))
+        usuario.groups.set([Group.objects.get_or_create(name="Tesorería")[0]])
+        self.assertRedirects(self.client.get(reverse("panel")), reverse("finanzas:tesoreria"))
 
     def test_administracion_sin_staff_conserva_acceso_deportivo(self):
         usuario = Usuario.objects.create_user(rut="22222222-2")

@@ -5,11 +5,11 @@ from decimal import Decimal
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
-from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
 
-from finanzas.models import Beca, Cuota
-from usuarios.models import Jugador, PeriodoInactividad
+from finanzas.models import Cuota
+from finanzas.services import jugadores_con_cobertura_mensual
+from usuarios.models import Jugador
 
 
 # Valor provisional mientras se define la tarifa oficial.
@@ -67,65 +67,11 @@ class Command(BaseCommand):
             min(DIA_VENCIMIENTO, ultimo_dia),
         )
 
-        # Solo jugadores activos que no tengan beca completa.
-
-        # Calcular el Ãºltimo dÃ­a del perÃ­odo.
-        fin_periodo = date(
-            periodo.year,
-            periodo.month,
-            ultimo_dia,
-        )
-
-        # Buscar becas activas que cubran el perÃ­odo.
-        becas_del_periodo = (
-    Beca.objects.filter(
-        jugador_id=OuterRef("pk"),
-        fecha_inicio__lte=fin_periodo,
-        fecha_termino__gte=periodo,
-    )
-    .filter(
-        Q(
-            estado__in=[
-                Beca.Estado.ACTIVA,
-                Beca.Estado.RENOVADA,
-            ]
-        )
-        | Q(
-            estado=Beca.Estado.FINALIZADA,
-            fecha_finalizacion__gt=fin_periodo,
-        )
-    )
-)
-
-                # Buscar inactividades que se superponen con el mes.
-        # Así no se crean cuotas retroactivas de meses congelados.
-        inactividades_del_periodo = (
-            PeriodoInactividad.objects.filter(
-                jugador_id=OuterRef("pk"),
-                fecha_inicio__lte=fin_periodo,
-            ).filter(
-                Q(fecha_reactivacion__isnull=True)
-                | Q(fecha_reactivacion__gte=periodo)
-            )
-        )
-
-        # Seleccionar jugadores activos sin beca en el período.
-        jugadores = (
-            Jugador.objects.filter(
-                estado=Jugador.Estado.ACTIVO,
-            )
-            .annotate(
-                tiene_beca_en_periodo=Exists(becas_del_periodo),
-                tiene_inactividad_en_periodo=Exists(
-                    inactividades_del_periodo
-                ),
-            )
-            .filter(
-                tiene_beca_en_periodo=False,
-                tiene_inactividad_en_periodo=False,
-            )
-            .order_by("pk")
-        )
+        jugadores = jugadores_con_cobertura_mensual(periodo).filter(
+            estado=Jugador.Estado.ACTIVO,
+            tiene_beca_en_periodo=False,
+            tiene_inactividad_en_periodo=False,
+        ).order_by("pk")
 
         # Modo de simulaciÃ³n: consulta, calcula y termina sin guardar.
         if options.get("simular"):

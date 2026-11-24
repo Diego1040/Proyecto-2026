@@ -22,7 +22,7 @@ from .services import (
     nominas_visibles,
     partidos_para_nomina,
     categorias_del_usuario,
-    eventos_visibles,
+    entradas_calendario,
     filtrar_nominas,
     puede_eliminar_evento,
     puede_publicar_eventos,
@@ -328,19 +328,18 @@ def calendario(request):
     mis_categorias = categorias_del_usuario(usuario)
     filtro = mis_categorias.filter(pk=request.GET.get("categoria") or None).first()
 
-    eventos = eventos_visibles(usuario, categoria=filtro, desde=timezone.localdate())
-    for evento in eventos:
-        evento.se_puede_eliminar = publicar and puede_eliminar_evento(usuario, evento)
+    hoy = timezone.localdate()
+    entradas = entradas_calendario(usuario, categoria=filtro, desde=hoy, puede_publicar=publicar)
 
     return render(request, "deportivo/calendario.html", {
-        "eventos": eventos,
+        "entradas": entradas,
         "mis_categorias": mis_categorias,
         "filtro": filtro,
         "puede_publicar": publicar,
         "categorias_publicar": categorias_visibles(usuario) if publicar else [],
         "es_admin": es_administracion(usuario),
         "tipos": Evento.Tipo.choices,
-        "hoy": timezone.localdate(),
+        "hoy": hoy,
     })
 
 
