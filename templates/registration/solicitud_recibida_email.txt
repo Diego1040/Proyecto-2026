@@ -1,0 +1,7 @@
+Hola:
+
+Recibimos la solicitud de inscripción de {% autoescape off %}{{ nombre_jugador }}{% endautoescape %} en el Club Deportivo Ayllu Basket.
+
+La administración del club revisará los antecedentes. Te avisaremos por este mismo correo cuando la solicitud sea aprobada o rechazada. Si es aprobada, recibirás un enlace para crear tu contraseña y activar tu cuenta.
+
+Si no realizaste esta solicitud, ignora este mensaje.

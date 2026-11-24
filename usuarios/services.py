@@ -294,10 +294,10 @@ def aprobar_solicitud_inscripcion(
     )
 
     if cuenta_puede_activarse(cuenta):
-        transaction.on_commit(lambda: enviar_enlace_activacion(cuenta.pk, request=request))
+        transaction.on_commit(lambda: enviar_enlace_activacion(cuenta.pk, request=request), robust=True)
     else:
         correo = _validar_correo(titular.email, "Debe indicar un correo.")
-        transaction.on_commit(lambda: enviar_correo_aprobacion(correo=correo))
+        transaction.on_commit(lambda: enviar_correo_aprobacion(correo=correo), robust=True)
 
     return solicitud
 
@@ -360,7 +360,7 @@ def rechazar_solicitud_inscripcion(
             correo = ""
     if correo:
         motivo_rechazo = solicitud.motivo_rechazo
-        transaction.on_commit(lambda: enviar_correo_rechazo(correo=correo, motivo=motivo_rechazo))
+        transaction.on_commit(lambda: enviar_correo_rechazo(correo=correo, motivo=motivo_rechazo), robust=True)
 
     return solicitud
 
@@ -681,6 +681,15 @@ def inscribir_jugador(*, datos, solicitante=None, apoderado_existente=None):
         entidad="SolicitudInscripcion", entidad_id=solicitud.pk,
         detalle={"jugador_id": jugador.pk, "estado_nuevo": "PENDIENTE"},
     )
+
+    # Aviso de solicitud recibida al apoderado (o al jugador adulto).
+    correo = (apoderado.email if apoderado is not None else jugador.email or "").strip()
+    if correo:
+        nombre_jugador = f"{jugador.nombres} {jugador.apellidos}"
+        transaction.on_commit(
+            lambda: enviar_correo_solicitud_recibida(correo=correo, nombre_jugador=nombre_jugador),
+            robust=True,
+        )
     return solicitud
 
 
@@ -749,6 +758,14 @@ def completar_activacion(*, cuenta, formulario, token):
 def enviar_correo_rechazo(*, correo, motivo):
     asunto = render_to_string("registration/rechazo_subject.txt").strip()
     cuerpo = render_to_string("registration/rechazo_email.txt", {"motivo": motivo})
+    send_mail(asunto, cuerpo, None, [correo])
+
+
+def enviar_correo_solicitud_recibida(*, correo, nombre_jugador):
+    asunto = render_to_string("registration/solicitud_recibida_subject.txt").strip()
+    cuerpo = render_to_string(
+        "registration/solicitud_recibida_email.txt", {"nombre_jugador": nombre_jugador},
+    )
     send_mail(asunto, cuerpo, None, [correo])
 
 
