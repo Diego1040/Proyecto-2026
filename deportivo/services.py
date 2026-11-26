@@ -6,7 +6,7 @@ from django.db import transaction
 from django.utils import timezone
 from django.db.models import Q
 from usuarios.models import AlertaSalud, Categoria
-from .models import Evento
+from .models import Entrenamiento, Evento
 from .permisos import categorias_visibles, es_entrenador
 from usuarios.models import Jugador
 from usuarios.services import registrar_auditoria
@@ -274,6 +274,36 @@ def eventos_visibles(usuario, categoria=None, desde=None):
         eventos = eventos.filter(fecha__gte=desde)
 
     return eventos.order_by("fecha", "hora")
+
+def entradas_calendario(usuario, *, categoria, desde, puede_publicar):
+    eventos = eventos_visibles(usuario, categoria=categoria, desde=desde)
+    entradas = [
+        {
+            "actividad": evento, "titulo": evento.titulo, "hora": evento.hora,
+            "tipo": evento.get_tipo_display(),
+            "puede_eliminar": puede_publicar and puede_eliminar_evento(usuario, evento),
+        }
+        for evento in eventos
+    ]
+
+    # Una categoría visible como apoderado o jugador no otorga acceso a su planificación.
+    sesiones = Entrenamiento.objects.filter(
+        categoria__in=categorias_visibles(usuario), fecha__gte=desde,
+    ).select_related("categoria")
+    if categoria is not None:
+        sesiones = sesiones.filter(categoria=categoria)
+    entradas.extend(
+        {
+            "actividad": sesion, "titulo": sesion.nombre, "hora": sesion.hora_inicio,
+            "tipo": "Entrenamiento", "es_entrenamiento": True,
+        }
+        for sesion in sesiones
+    )
+    # Las sesiones antiguas sin hora quedan al final de su día.
+    return sorted(entradas, key=lambda fila: (
+        fila["actividad"].fecha, fila["hora"] is None, fila["hora"],
+        fila["tipo"], fila["actividad"].pk,
+    ))
 
 def validar_evento(*, usuario, tipo, titulo, categoria, categoria_pedida, fecha, hora, lugar):
     """Devuelve la lista de errores del formulario de evento (vacía = OK)."""

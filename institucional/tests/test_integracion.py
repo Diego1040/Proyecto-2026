@@ -27,7 +27,9 @@ class IntegracionTest(BaseInstitucionalTest):
         for ruta in ("importacion_jugadores", "deportivo:nominas", "deportivo:revisar_lesiones", "solicitudes_administracion"):
             self.assertContains(panel, reverse(ruta))
         self.client.force_login(self.ajeno)
-        self.assertNotContains(self.client.get(reverse("panel")), "Ingresar al área institucional")
+        respuesta = self.client.get(reverse("panel"), follow=True)
+        self.assertRedirects(respuesta, reverse("inicio"))
+        self.assertNotContains(respuesta, "Ingresar al área institucional")
 
     def test_tesoreria_conserva_redireccion_y_cuenta_multirrol_tiene_acceso_desde_portada(self):
         tesoreria, _ = Group.objects.get_or_create(name="Tesorería")

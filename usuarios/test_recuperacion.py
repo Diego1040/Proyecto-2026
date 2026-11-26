@@ -54,7 +54,7 @@ class RecuperacionConDjangoTest(TestCase):
         login = self.client.post(reverse("login"), {
             "username": self.cuenta.rut, "password": nueva_clave,
         })
-        self.assertRedirects(login, reverse("panel"))
+        self.assertRedirects(login, reverse("panel"), target_status_code=302)
 
     def test_respuesta_generica_y_exclusion_de_inactivos_sin_clave(self):
         activa = self.client.post(

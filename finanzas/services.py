@@ -6,12 +6,31 @@ from django.utils import timezone
 
 from .models import Beca, Cuota
 
-from django.db.models import Count, Sum
-from usuarios.models import Jugador
+from django.db.models import Count, Exists, OuterRef, Q, Sum
+from usuarios.models import Jugador, PeriodoInactividad
 
 
 MESES_IMPAGOS_PARA_BLOQUEO = 2
 
+
+
+def jugadores_con_cobertura_mensual(periodo):
+    """Anota los períodos de beca e inactividad que usa el cobro mensual."""
+    inicio = periodo.replace(day=1)
+    fin = periodo.replace(day=monthrange(periodo.year, periodo.month)[1])
+    becas = Beca.objects.filter(
+        jugador_id=OuterRef("pk"), fecha_inicio__lte=fin, fecha_termino__gte=inicio,
+    ).filter(
+        Q(estado__in=[Beca.Estado.ACTIVA, Beca.Estado.RENOVADA])
+        | Q(estado=Beca.Estado.FINALIZADA, fecha_finalizacion__gt=fin)
+    )
+    inactividades = PeriodoInactividad.objects.filter(
+        jugador_id=OuterRef("pk"), fecha_inicio__lte=fin,
+    ).filter(Q(fecha_reactivacion__isnull=True) | Q(fecha_reactivacion__gte=inicio))
+    return Jugador.objects.annotate(
+        tiene_beca_en_periodo=Exists(becas),
+        tiene_inactividad_en_periodo=Exists(inactividades),
+    )
 
 
 def jugador_bloqueado_por_morosidad(jugador, fecha=None):

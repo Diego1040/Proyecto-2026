@@ -10,8 +10,9 @@
 .evento .dia{min-width:64px;text-align:center;border:1px solid var(--linea);border-radius:6px;padding:6px 4px;line-height:1.15}
 .evento .dia b{display:block;font-family:"Barlow Condensed";font-size:1.5rem}
 .evento .dia span{font-size:.75rem;color:var(--gris);text-transform:uppercase}
-.evento .info{flex:1;min-width:0}
+.evento .info{flex:1;min-width:0;overflow-wrap:anywhere}
 .evento .info h3{margin:6px 0 4px;font-size:1.05rem}
+.evento .pill.entrenamiento{background:#edecea;color:#4a4a4e}
 .evento .info p{margin:2px 0;font-size:.92rem;color:var(--gris)}
 .evento .info .desc{color:inherit}
 .evento form{margin:0}
@@ -97,27 +98,33 @@
     {% endif %}
  
     <div class="tarjeta eventos">
-      {% for evento in eventos %}
+      {% for entrada in entradas %}
+        {% with actividad=entrada.actividad %}
         <article class="evento">
           <div class="dia">
-            <b>{{ evento.fecha|date:"d" }}</b>
-            <span>{{ evento.fecha|date:"M" }}</span>
+            <b>{{ actividad.fecha|date:"d" }}</b>
+            <span>{{ actividad.fecha|date:"M" }}</span>
           </div>
           <div class="info">
-            <span class="pill cat">{{ evento.get_tipo_display }}</span>
-            <span class="pill">{{ evento.categoria|default:"Todo el club" }}</span>
-            <h3>{{ evento.titulo }}</h3>
-            <p>{{ evento.fecha|date:"l d/m/Y" }} · {{ evento.hora|time:"H:i" }} hrs</p>
-            <p>{{ evento.lugar }}</p>
-            {% if evento.descripcion %}<p class="desc">{{ evento.descripcion|linebreaksbr }}</p>{% endif %}
+            <span class="pill {% if entrada.es_entrenamiento %}entrenamiento{% else %}cat{% endif %}">{{ entrada.tipo }}</span>
+            <span class="pill">{{ actividad.categoria|default:"Todo el club" }}</span>
+            <h3>{{ entrada.titulo }}</h3>
+            <p>{{ actividad.fecha|date:"l d/m/Y" }} · {% if entrada.hora %}{{ entrada.hora|time:"H:i" }} hrs{% else %}Hora por definir{% endif %}</p>
+            {% if entrada.es_entrenamiento %}
+              <a class="enlace" href="{% url 'deportivo:editar_planificacion' actividad.pk %}">Ver planificación</a>
+            {% else %}
+              <p>{{ actividad.lugar }}</p>
+              {% if actividad.descripcion %}<p class="desc">{{ actividad.descripcion|linebreaksbr }}</p>{% endif %}
+            {% endif %}
           </div>
-          {% if evento.se_puede_eliminar %}
-            <form method="post" action="{% url 'deportivo:eliminar_evento' evento.pk %}">
+          {% if entrada.puede_eliminar %}
+            <form method="post" action="{% url 'deportivo:eliminar_evento' actividad.pk %}">
               {% csrf_token %}
               <button class="boton-linea" type="submit" style="padding:6px 14px">Eliminar</button>
             </form>
           {% endif %}
         </article>
+        {% endwith %}
       {% empty %}
         <p style="padding:20px;margin:0">No hay eventos programados{% if filtro %} para {{ filtro }}{% endif %}.</p>
       {% endfor %}

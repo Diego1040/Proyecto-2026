@@ -187,7 +187,7 @@ class InscripcionPublicaSprint2Test(TestCase):
                         telefono="+56911111111", email="contacto@example.com",
                     )
                 respuesta = self.client.get(reverse("inscripcion"))
-                self.assertRedirects(respuesta, reverse("panel"))
+                self.assertRedirects(respuesta, reverse("panel"), target_status_code=200 if es_apoderado else 302)
                 self.assertTemplateNotUsed(respuesta, "usuarios/inscripcion_form.html")
                 self.assertFalse(SolicitudInscripcion.objects.exists())
                 self.assertFalse(Jugador.objects.exists())
@@ -204,7 +204,7 @@ class InscripcionPublicaSprint2Test(TestCase):
                     )
                 apoderados_antes = Apoderado.objects.count()
                 respuesta = self.client.post(reverse("inscripcion"), self.datos_adulto())
-                self.assertRedirects(respuesta, reverse("panel"))
+                self.assertRedirects(respuesta, reverse("panel"), target_status_code=200 if es_apoderado else 302)
                 self.assertTemplateNotUsed(respuesta, "usuarios/inscripcion_form.html")
                 self.assertFalse(SolicitudInscripcion.objects.exists())
                 self.assertFalse(Jugador.objects.exists())
@@ -439,7 +439,7 @@ class InscripcionPublicaSprint2Test(TestCase):
         apoderado = self.apoderado_existente()
         self.client.force_login(cuenta)
         respuesta = self.client.post(reverse("agregar_jugador_apoderado"), self.datos_menor())
-        self.assertRedirects(respuesta, reverse("panel"))
+        self.assertRedirects(respuesta, reverse("panel"), target_status_code=302)
         formulario = InscripcionJugadorForm(self.datos_menor())
         self.assertTrue(formulario.is_valid(), formulario.errors)
         with self.assertRaises(ValidationError):

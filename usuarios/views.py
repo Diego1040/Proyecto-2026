@@ -10,6 +10,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 from deportivo.permisos import es_administracion, es_entrenador  # NUEVO (HU-07)
 from deportivo.services import resumen_asistencia_mes  # NUEVO (HU-07)
+from institucional.permisos import puede_acceder as puede_acceder_institucional
 from .forms import (
     ContactoApoderadoForm, InscripcionJugadorForm, RechazoSolicitudForm,
     SolicitudActivacionForm, TelefonoJugadorForm,
@@ -53,27 +54,15 @@ def inicio(request):
 
 @login_required
 def panel(request):
-
-    if request.user.groups.filter(
-        name="Tesorería"
-    ).exists():
-        from institucional.permisos import puede_acceder
-
-        if puede_acceder(request.user):
+    """Presenta los accesos autorizados para esta cuenta."""
+    usuario = request.user
+    if usuario.groups.filter(name="Tesorería").exists():
+        if puede_acceder_institucional(usuario):
             messages.info(request, format_html(
                 'También tienes acceso al área institucional. <a href="{}">Ingresar al área institucional</a>.',
                 reverse("institucional:inicio"),
             ))
         return redirect("finanzas:tesoreria")
-
-
-    """Presenta todos los accesos disponibles sin elegir un perfil exclusivo."""
-    usuario = request.user
-    # Compatibilidad con el formulario de contacto del panel anterior.
-    if request.method == "POST" and request.POST.get("accion") == "contacto":
-        return perfil_apoderado(request)
-    if request.method == "POST" and request.POST.get("accion") == "inscripcion":
-        return redirect("agregar_jugador_apoderado")
 
     tiene_jugador = hasattr(usuario, "jugador")
     tiene_apoderado = hasattr(usuario, "apoderado")
@@ -88,6 +77,15 @@ def panel(request):
         perfiles.append("Administración")
     if entrenador:
         perfiles.append("Entrenador")
+    if not perfiles and not puede_acceder_institucional(usuario):
+        messages.info(request, "Tu cuenta aún no tiene un perfil autorizado. Contacta a la administración del club.")
+        return redirect("inicio")
+
+    # Compatibilidad con los formularios del panel anterior.
+    if request.method == "POST" and request.POST.get("accion") == "contacto":
+        return perfil_apoderado(request)
+    if request.method == "POST" and request.POST.get("accion") == "inscripcion":
+        return redirect("agregar_jugador_apoderado")
     return render(request, "paginas/panel.html", {
         "perfiles": perfiles,
         "tiene_perfil_jugador": tiene_jugador,

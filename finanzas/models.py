@@ -14,6 +14,24 @@ from datetime import date, timedelta
 from django.utils import timezone
 
 
+class AvisoCobranza(models.Model):
+    jugador = models.ForeignKey(Jugador, on_delete=models.PROTECT, related_name="avisos_cobranza")
+    responsable = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    fecha_aviso = models.DateField("Fecha del aviso", default=timezone.localdate)
+    medio = models.CharField("Medio de contacto", max_length=60)
+    destinatario = models.CharField("Destinatario", max_length=150)
+    detalle = models.CharField("Detalle (opcional)", max_length=300, blank=True)
+    clave_registro = models.UUIDField(default=uuid.uuid4, editable=False)
+
+    class Meta:
+        ordering = ["-fecha_aviso", "-pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["jugador", "responsable", "clave_registro"],
+                name="finanzas_aviso_envio_unico",
+            )
+        ]
+
 
 
 def generar_orden_compra():
@@ -104,6 +122,24 @@ class Cuota(models.Model):
                     "El vencimiento no puede ser anterior al período."
                 )
             })
+
+        if not self.jugador_id or not self.periodo:
+            return
+        # Una beca o un receso posterior no invalida una cuota ya registrada.
+        if not self._state.adding and Cuota.objects.filter(
+            pk=self.pk, jugador_id=self.jugador_id, periodo=self.periodo,
+        ).exists():
+            return
+
+        from .services import jugadores_con_cobertura_mensual
+
+        cobertura = jugadores_con_cobertura_mensual(self.periodo).filter(
+            pk=self.jugador_id,
+        ).values("tiene_beca_en_periodo", "tiene_inactividad_en_periodo").first()
+        if cobertura and cobertura["tiene_beca_en_periodo"]:
+            raise ValidationError({"periodo": "Una beca cubre esta mensualidad. Elige otro período."})
+        if cobertura and cobertura["tiene_inactividad_en_periodo"]:
+            raise ValidationError({"periodo": "La mensualidad está congelada por inactividad en este período."})
 
     def __str__(self):
         return (

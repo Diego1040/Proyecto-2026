@@ -16,7 +16,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 
 from usuarios.models import ApoderadoJugador
 
-from .models import Beca, Cuota, Pago, sumar_meses
+from .models import AvisoCobranza, Beca, Cuota, Pago, sumar_meses
 
 from .webpay_service import (
     obtener_transaccion_webpay,
@@ -31,7 +31,7 @@ from django.core.paginator import Paginator
 from django.db import IntegrityError
 from django.db.models import Sum
 
-from .forms import BecaForm, CuotaForm, PagoManualForm
+from .forms import AvisoCobranzaForm, BecaForm, CuotaForm, PagoManualForm, SeleccionJugadorCobranzaForm
 
 from .permissions import becas_required, tesoreria_required
 
@@ -39,7 +39,7 @@ from .permissions import becas_required, tesoreria_required
 from io import BytesIO
 from xml.sax.saxutils import escape as xml_escape
 
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
@@ -962,8 +962,31 @@ def contexto_tesoreria(request):
         "pagina": pagina,
         "ultimos_pagos": ultimos_pagos,
         "morosos": morosos,
+        "seleccion_cobranza": SeleccionJugadorCobranzaForm(),
         "umbral_morosidad": MESES_IMPAGOS_PARA_BLOQUEO,
     }
+
+
+@tesoreria_required
+@require_http_methods(["GET", "POST"])
+def cobranza_jugador(request):
+    seleccion = SeleccionJugadorCobranzaForm(request.GET)
+    if not seleccion.is_valid():
+        raise Http404("Jugador no encontrado.")
+    jugador = seleccion.cleaned_data["jugador"]
+    form = AvisoCobranzaForm(request.POST if request.method == "POST" else None)
+    if request.method == "POST" and form.is_valid():
+        datos_aviso = form.cleaned_data.copy()
+        clave = datos_aviso.pop("clave_registro")
+        _, creado = AvisoCobranza.objects.get_or_create(
+            jugador=jugador, responsable=request.user, clave_registro=clave, defaults=datos_aviso,
+        )
+        messages.success(request, "Aviso registrado." if creado else "Este aviso ya estaba registrado.")
+        return redirect(reverse("finanzas:cobranza_jugador", query={"jugador": jugador.pk}))
+    historial = jugador.avisos_cobranza.select_related("responsable")
+    return render(request, "finanzas/cobranza_jugador.html", {
+        "jugador": jugador, "form": form, "historial": historial,
+    })
 
 
 @login_required

@@ -1,0 +1,47 @@
+{% extends "finanzas/tesoreria.html" %}
+{% block titulo %}Avisos de cobranza · Tesorería · Ayllu Basket{% endblock %}
+{% block avatar %}{% endblock %}
+{% block estilos_pagina %}
+<style>
+.cobranza .wrap{max-width:760px}
+.cobranza .cabecera,.cobranza section{margin-top:20px}
+.cobranza form{display:grid;gap:12px}
+.cobranza button{justify-self:start}
+.cobranza .errorlist{color:var(--rojo)}
+.cobranza .mov{display:block;overflow-wrap:anywhere}
+</style>
+{% endblock %}
+{% block contenido_tesoreria %}
+<main class="cobranza"><div class="wrap">
+  <a href="{% url 'finanzas:tesoreria' %}#morosidad">← Volver a Morosidad</a>
+  <header class="cabecera">
+    <h1>Avisos de cobranza</h1>
+    <p>{{ jugador }}</p>
+  </header>
+  {% for mensaje in messages %}<p class="aviso" role="status">{{ mensaje }}</p>{% endfor %}
+  <form method="post" class="tarjeta pad">
+    {% csrf_token %}
+    <h2>Registrar un aviso ya realizado</h2>
+    {{ form.non_field_errors }}
+    {{ form.clave_registro }}{{ form.clave_registro.errors }}
+    <div>{{ form.fecha_aviso.as_field_group }}</div>
+    <div>{{ form.medio.as_field_group }}</div>
+    <div>{{ form.destinatario.as_field_group }}</div>
+    <div>{{ form.detalle.as_field_group }}</div>
+    <button type="submit" class="btn">Registrar aviso</button>
+  </form>
+  <section class="tarjeta" aria-labelledby="historial">
+    <h2 id="historial" class="pad">Historial de avisos</h2>
+    {% for aviso in historial %}
+      <article class="mov">
+        <h3>{{ aviso.fecha_aviso|date:"d/m/Y" }} · {{ aviso.medio }}</h3>
+        <p>Destinatario: {{ aviso.destinatario }}</p>
+        <p>Registrado por: {{ aviso.responsable.get_full_name|default:aviso.responsable.rut }}</p>
+        {% if aviso.detalle %}<p>{{ aviso.detalle }}</p>{% endif %}
+      </article>
+    {% empty %}
+      <p class="mov">Aún no hay avisos registrados para este jugador.</p>
+    {% endfor %}
+  </section>
+</div></main>
+{% endblock %}
