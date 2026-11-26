@@ -91,6 +91,9 @@
           <a class="boton-linea" href="{% url 'deportivo:entrenamientos' %}">Entrenamientos y asistencia</a>
           <a class="boton-linea" href="{% url 'deportivo:nominas' %}">Nóminas</a>{# NUEVO (HU-09) #}
           <a class="boton-linea" href="{% url 'deportivo:revisar_lesiones' %}">Lesiones</a>{# NUEVO (HU-08) #}
+          {% if perms.usuarios.view_usuario %}
+            <a class="boton-linea" href="{% url 'gestion_usuarios' %}">Gestionar usuarios y cuentas</a>
+          {% endif %}
         </article>
       {% endif %}
       {% if es_entrenador %}

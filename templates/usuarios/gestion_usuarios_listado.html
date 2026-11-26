@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block titulo %}Gestión de usuarios — Ayllu Basket{% endblock %}
+
+{% block extra_css %}
+<style>
+.gestion-usuarios{padding:48px 0 72px}
+.gestion-usuarios .encabezado{margin-bottom:28px}
+.gestion-usuarios .etiqueta{color:var(--naranja);font-weight:700;text-transform:uppercase;letter-spacing:.08em;font-size:.82rem}
+.gestion-usuarios .bajada{color:var(--gris);margin-top:12px;max-width:65ch}
+.gestion-usuarios .acciones{display:flex;gap:12px;flex-wrap:wrap;margin-top:22px}
+.filtros-usuarios{display:grid;grid-template-columns:minmax(220px,2fr) repeat(2,minmax(150px,1fr)) auto;gap:12px;align-items:end;background:var(--blanco);border:1px solid var(--linea);border-radius:6px;padding:18px;margin:24px 0}
+.filtros-usuarios label{display:block;font-weight:600;font-size:.88rem;margin-bottom:5px}
+.filtros-usuarios input,.filtros-usuarios select{width:100%;min-height:44px;padding:9px 11px;border:1px solid var(--linea);border-radius:4px;background:#fff;font:inherit;color:var(--tinta)}
+.resumen-usuarios{color:var(--gris);font-size:.92rem;margin:0 0 12px}
+.tabla-usuarios-contenedor{overflow-x:auto;background:var(--blanco);border:1px solid var(--linea);border-radius:6px}
+.tabla-usuarios{width:100%;border-collapse:collapse;min-width:850px}
+.tabla-usuarios th,.tabla-usuarios td{text-align:left;padding:14px 16px;border-bottom:1px solid var(--linea);vertical-align:top}
+.tabla-usuarios th{font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:var(--gris);background:#F4F2EF}
+.tabla-usuarios tr:last-child td{border-bottom:0}
+.nombre-cuenta{font-weight:700}
+.texto-secundario{display:block;color:var(--gris);font-size:.86rem}
+.etiquetas-usuario{display:flex;flex-wrap:wrap;gap:5px}
+.etiqueta-usuario{display:inline-block;background:var(--naranja-suave);color:var(--naranja-texto);padding:3px 8px;border-radius:3px;font-size:.78rem}
+.estado-cuenta{display:inline-block;padding:4px 9px;border-radius:3px;font-size:.78rem;font-weight:700;white-space:nowrap}
+.estado-activa{background:var(--verde-fondo);color:var(--verde)}
+.estado-inactiva{background:#EEEDEA;color:#55545A}
+.enlace-detalle{color:var(--naranja);font-weight:700;white-space:nowrap}
+.vacio-usuarios{padding:28px;text-align:center;color:var(--gris)}
+.paginacion-usuarios{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px}
+.paginacion-usuarios a{color:var(--naranja);font-weight:700}
+@media(max-width:760px){.filtros-usuarios{grid-template-columns:1fr}.gestion-usuarios{padding-top:34px}.gestion-usuarios h1{font-size:2.8rem}}
+</style>
+{% endblock %}
+
+{% block contenido %}
+<main class="gestion-usuarios">
+  <div class="wrap">
+    <header class="encabezado">
+      <p class="etiqueta">Administración</p>
+      <h1>Gestión de usuarios</h1>
+      <p class="bajada">Consulta las cuentas registradas en la plataforma, sus perfiles asociados y los roles institucionales asignados. Esta pantalla no permite modificar cuentas.</p>
+      <div class="acciones">
+        <a class="boton-linea" href="{% url 'panel' %}">Volver al panel</a>
+      </div>
+    </header>
+
+    <form class="filtros-usuarios" method="get" action="{% url 'gestion_usuarios' %}">
+      <div>
+        <label for="busqueda-usuarios">Buscar cuenta</label>
+        <input id="busqueda-usuarios" type="search" name="q" value="{{ busqueda }}" placeholder="RUT, nombre o correo">
+      </div>
+      <div>
+        <label for="estado-usuarios">Estado de la cuenta</label>
+        <select id="estado-usuarios" name="estado">
+          <option value="">Todos los estados</option>
+          <option value="activa" {% if estado == "activa" %}selected{% endif %}>Activa</option>
+          <option value="inactiva" {% if estado == "inactiva" %}selected{% endif %}>Inactiva</option>
+        </select>
+      </div>
+      <div>
+        <label for="grupo-usuarios">Rol institucional</label>
+        <select id="grupo-usuarios" name="grupo">
+          <option value="">Todos los roles</option>
+          {% for grupo in grupos %}
+            <option value="{{ grupo.pk }}" {% if grupo_seleccionado == grupo.pk|stringformat:"s" %}selected{% endif %}>{{ grupo.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <button class="boton" type="submit">Aplicar filtros</button>
+      </div>
+    </form>
+
+    <p class="resumen-usuarios">{{ total_usuarios }} cuenta{{ total_usuarios|pluralize:"s" }} encontrada{{ total_usuarios|pluralize:"s" }}.</p>
+
+    <div class="tabla-usuarios-contenedor">
+      {% if page_obj.object_list %}
+        <table class="tabla-usuarios">
+          <thead>
+            <tr>
+              <th>Cuenta</th>
+              <th>RUT</th>
+              <th>Perfiles</th>
+              <th>Roles</th>
+              <th>Estado</th>
+              <th>Último ingreso</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for cuenta in page_obj %}
+              <tr>
+                <td>
+                  <span class="nombre-cuenta">
+                    {% if cuenta.jugador %}
+                      {{ cuenta.jugador.nombres }} {{ cuenta.jugador.apellidos }}
+                    {% elif cuenta.apoderado %}
+                      {{ cuenta.apoderado.nombres }} {{ cuenta.apoderado.apellidos }}
+                    {% else %}
+                      {{ cuenta.get_full_name|default:"Sin nombre registrado" }}
+                    {% endif %}
+                  </span>
+                  <span class="texto-secundario">{{ cuenta.email|default:"Sin correo registrado" }}</span>
+                </td>
+                <td>{{ cuenta.rut }}</td>
+                <td>
+                  <div class="etiquetas-usuario">
+                    {% if cuenta.jugador %}<span class="etiqueta-usuario">Jugador</span>{% endif %}
+                    {% if cuenta.apoderado %}<span class="etiqueta-usuario">Apoderado</span>{% endif %}
+                    {% if not cuenta.jugador and not cuenta.apoderado %}<span class="texto-secundario">Sin perfil asociado</span>{% endif %}
+                  </div>
+                </td>
+                <td>
+                  {% if cuenta.grupos_funcionales %}
+                    <div class="etiquetas-usuario">
+                      {% for rol in cuenta.grupos_funcionales %}<span class="etiqueta-usuario">{{ rol.name }}</span>{% endfor %}
+                    </div>
+                  {% else %}
+                    <span class="texto-secundario">Sin rol institucional</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if cuenta.is_active %}
+                    <span class="estado-cuenta estado-activa">Activa</span>
+                  {% else %}
+                    <span class="estado-cuenta estado-inactiva">Inactiva</span>
+                  {% endif %}
+                </td>
+                <td>{{ cuenta.last_login|date:"d/m/Y H:i"|default:"Sin ingresos" }}</td>
+                <td><a class="enlace-detalle" href="{% url 'detalle_usuario' cuenta.pk %}">Ver detalle</a></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="vacio-usuarios">No se encontraron cuentas con los criterios seleccionados.</div>
+      {% endif %}
+    </div>
+
+    {% if page_obj.has_other_pages %}
+      <nav class="paginacion-usuarios" aria-label="Paginación de cuentas">
+        <span class="texto-secundario">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+        <div>
+          {% if page_obj.has_previous %}
+            <a href="?q={{ busqueda|urlencode }}&amp;estado={{ estado|urlencode }}&amp;grupo={{ grupo_seleccionado|urlencode }}&amp;page={{ page_obj.previous_page_number }}">Anterior</a>
+          {% endif %}
+          {% if page_obj.has_next %}
+            <a style="margin-left:16px" href="?q={{ busqueda|urlencode }}&amp;estado={{ estado|urlencode }}&amp;grupo={{ grupo_seleccionado|urlencode }}&amp;page={{ page_obj.next_page_number }}">Siguiente</a>
+          {% endif %}
+        </div>
+      </nav>
+    {% endif %}
+  </div>
+</main>
+{% endblock %}
