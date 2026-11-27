@@ -28,7 +28,9 @@ Inscripción — Ayllu Basket
     {% if form.errors %}
       <div class="aviso error resumen-errores" role="alert">
         <strong>Revisa los campos indicados.</strong>
-        <p>Hay información incompleta o que necesita corrección.</p>
+        <ul>{% for campo in form %}{% if campo.errors %}
+          <li><a href="#{{ campo.id_for_label|default:campo.auto_id }}">{{ campo.label }}</a> · {{ campo.errors|join:" " }}</li>
+        {% endif %}{% endfor %}</ul>
       </div>
     {% endif %}
 

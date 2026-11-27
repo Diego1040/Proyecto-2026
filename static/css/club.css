@@ -1,0 +1,181 @@
+/* Componentes comunes del club. La portada pública conserva su escala editorial. */
+:root {
+  --accion: #ab3c1c;
+  --accion-hover: #863016;
+  --naranja: #e8552a;
+  --rojo: #a12b24;
+  --rojo-fondo: #fbe9e7;
+  --ambar: #785707;
+  --ambar-fondo: #fff4d8;
+  --radio: 10px;
+  --sombra: 0 2px 6px rgb(28 24 20 / 5%);
+  --titular: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+}
+.saltar { position: absolute; left: 12px; top: -6rem; z-index: 50; padding: 10px 16px; background: white; color: var(--tinta); }
+.saltar:focus { top: 8px; }
+:focus-visible { outline: 3px solid #aa480d; outline-offset: 3px; }
+[hidden] { display: none !important; }
+.sesion-club { background: #f5f4f1; min-height: 100vh; display: flex; flex-direction: column; }
+.sesion-club #contenido { flex: 1; }
+.cabecera-club { background: var(--tinta); color: white; border-top: 4px solid var(--naranja); }
+.identidad-club, .marca-club, .cuenta-club, .menu-club .wrap, .secciones-club, .pie-club .wrap { display: flex; align-items: center; gap: 18px; }
+.identidad-club { justify-content: space-between; min-height: 72px; }
+.marca-club { gap: 11px; color: white; line-height: 1.15; text-decoration: none; }
+.marca-club img, .barra-publica .escudo { border-radius: 9px; background: white; object-fit: contain; }
+.marca-club b, .marca-club small { display: block; }
+.marca-club b { font: 700 1.45rem/1 var(--titular); text-transform: uppercase; letter-spacing: .015em; }
+.marca-club small { color: #d1c9c2; font-size: .78rem; margin-top: 4px; }
+.cuenta-club { color: #e3ded9; font-size: .9rem; }
+.cuenta-club form { margin: 0; }
+.cuenta-club button, .abrir-menu { color: inherit; background: transparent; padding: 8px 14px; border: 1px solid #706f73; border-radius: 6px; font: inherit; cursor: pointer; }
+.cuenta-club button:hover { background: #39373a; }
+.menu-club { background: white; border-bottom: 1px solid var(--linea); }
+.menu-club .wrap, .secciones-club { flex-wrap: wrap; align-items: stretch; gap: 0 4px; }
+.secciones-club { flex: 1; }
+.menu-club a { display: inline-flex; align-items: center; color: #47433f; padding: 12px 13px; border-bottom: 3px solid transparent; font-size: .94rem; font-weight: 600; text-decoration: none; }
+.menu-club a:hover, .menu-club a[aria-current], .enlaces-relacionados [aria-current] { color: var(--accion); border-color: var(--naranja); }
+.menu-club .wrap > a { padding-left: 0; margin-right: 8px; }
+.pie-club { background: var(--tinta); color: #d9d5d1; padding: 20px 0; font-size: .86rem; }
+.pie-club .wrap { flex-wrap: wrap; justify-content: space-between; }
+.pie-club a { color: white; text-decoration: underline; }
+.pie-club strong { color: white; }
+.avisos .aviso { margin-block: 0 8px; border-left-width: 4px; }
+.aviso a, .resumen-errores a { text-decoration: underline; }
+.sesion-club h1, .formulario-inscripcion h1 { font: 700 clamp(2rem,4vw,3.1rem)/1.07 var(--titular); letter-spacing: -.025em; text-transform: none; overflow-wrap: anywhere; }
+.sesion-club h2, .formulario-inscripcion legend { font-family: var(--titular); }
+.sesion-club h2 { font-size: 1.55rem; line-height: 1.18; }
+.sesion-club .seccion, .formulario-inscripcion, .pagina-operativa, .tablero { padding-block: clamp(28px,4vw,50px) 56px; }
+.cabecera, .cab-formulario { margin-bottom: 24px; }
+.etiqueta-seccion, .rotulo { color: var(--accion); font-size: .77rem; text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
+.etiqueta-seccion { margin: 0 0 7px; }
+.sub, .texto-secundario, .bajada { color: #5d5955; }
+.pagina-operativa .sub { margin: 6px 0 0; }
+.sesion-club .tarjeta, .formulario-inscripcion .tarjeta, .grupo-tareas, .datos-sesion { background: white; border: 1px solid var(--linea); border-radius: var(--radio); box-shadow: var(--sombra); min-width: 0; }
+.pad, .becas-club .tarjeta { padding: clamp(16px,2.4vw,26px); }
+.vacio { padding: 24px; color: var(--gris); text-align: center; }
+.pagina-operativa .wrap > h2 { margin: 28px 0 12px; }
+.pagina-operativa .fila { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+.btn, .btn-mini, .sesion-club .boton, .formulario-inscripcion .boton { background: var(--accion); color: white; border: 1px solid transparent; border-radius: 6px; padding: 10px 17px; cursor: pointer; text-decoration: none; display: inline-block; font: 600 1rem/1.4 "Barlow",system-ui,sans-serif; text-align: center; }
+.btn:hover, .btn-mini:hover, .sesion-club .boton:hover, .formulario-inscripcion .boton:hover { background: var(--accion-hover); color: white; }
+.btn.gris, .btn-sec, .sesion-club .boton-linea, .sesion-club .boton-secundario { border: 1px solid #bcb6b0; background: white; color: var(--tinta); }
+.btn.gris:hover, .btn-sec:hover, .sesion-club .boton-linea:hover { background: #f2efea; color: var(--tinta); }
+.btn:disabled, .boton:disabled { opacity: .58; cursor: not-allowed; }
+.btn.chico, .btn-mini { padding: 8px 12px; font-size: .92rem; }
+.sesion-club .enlace, .enlace-area, .volver { color: var(--accion); font-weight: 600; }
+.sesion-club .pill { display: inline-block; padding: 3px 9px; border: 0; border-radius: 5px; background: #eeece9; color: #49453f; font-size: .8rem; line-height: 1.55; font-weight: 600; }
+.sesion-club .pill:is(.ok,.validado) { background: var(--verde-fondo); color: var(--verde); }
+.sesion-club .pill.cat { background: var(--naranja-suave); color: var(--naranja-texto); }
+.sesion-club .pill:is(.esp,.pendiente) { background: var(--ambar-fondo); color: var(--ambar); }
+.sesion-club .pill:is(.no,.rechazado) { background: var(--rojo-fondo); color: var(--rojo); }
+.pagina-operativa :is(input:not([type=radio],[type=checkbox],[type=hidden]),select,textarea) { width: 100%; min-width: 0; max-width: 100%; padding: 10px 12px; background: white; color: var(--tinta); border: 1px solid #bdb7af; border-radius: 5px; font: inherit; }
+.pagina-operativa textarea { min-height: 76px; resize: vertical; }
+label.campo { display: grid; gap: 5px; margin: 0; color: #514c47; font-weight: 600; }
+.formulario-inscripcion .campo { min-width: 0; margin-bottom: 4px; }
+.formulario-inscripcion legend { font-size: 1.35rem; color: var(--tinta); }
+.formulario-inscripcion fieldset { min-width: 0; margin-top: 8px; }
+.formulario-inscripcion .yerro, .errores, .errorlist { color: var(--rojo); }
+.formulario-inscripcion [aria-invalid=true] { border-color: var(--rojo) !important; }
+.formulario-inscripcion .resumen-errores ul { margin-bottom: 0; }
+.tabla-contenedor { min-width: 0; max-width: 100%; overflow-x: auto; }
+.tabla-ayllu th { background: #f6f4f0; color: #514b45; font-weight: 600; }
+.tabla-ayllu th, .tabla-ayllu td { vertical-align: top; }
+.enlaces-relacionados, .institucional .institucional-subnav { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 12px 0 20px; }
+.enlaces-relacionados a, .institucional .institucional-subnav a { font-size: .95rem; font-weight: 600; color: var(--accion); border-bottom: 2px solid #ded9d1; padding-block: 6px; }
+.desplegable { background: white; border: 1px solid var(--linea); border-radius: var(--radio); }
+.desplegable > summary, .datos-sesion summary { padding: 14px 20px; cursor: pointer; font-weight: 600; }
+.desplegable > summary { color: var(--accion); }
+.desplegable > .tarjeta { border: 0; box-shadow: none; margin: 0 !important; border-top: 1px solid var(--linea); }
+
+/* Panel por rol */
+.portada-panel { position: relative; isolation: isolate; overflow: hidden; display: flex; align-items: center; min-height: 166px; margin-bottom: 24px; padding: clamp(23px,4vw,42px); background: #252324; border-radius: var(--radio); color: white; }
+.portada-panel > div:first-child { max-width: 72%; }
+.portada-panel .rotulo { color: #ffab87; margin: 0 0 8px; }
+.portada-panel h1 { font-size: clamp(2.15rem,4.3vw,3.75rem); }
+.portada-panel h1 + p { color: #e9e2dc; margin: 9px 0 0; }
+.cancha { z-index: -1; position: absolute; right: -45px; top: -30%; height: 170%; width: 32%; border: 2px solid #9e563c; border-radius: 48% 0 0 48%; background: #3e2d28; transform: rotate(-12deg); }
+.cancha::before, .cancha::after, .cancha i { content: ""; position: absolute; top: 50%; transform: translateY(-50%); border: 2px solid #9e563c; }
+.cancha::before { right: 0; width: 65%; height: 38%; }
+.cancha::after { right: 48%; width: 33%; aspect-ratio: 1; border-radius: 50%; }
+.cancha i { width: 18%; aspect-ratio: 1; border-radius: 50%; right: 10%; }
+.grupos-tareas { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit,minmax(min(100%,300px),1fr)); align-items: start; }
+.grupo-tareas { padding: 22px; }
+.grupo-tareas h2 { margin-bottom: 10px; padding-bottom: 12px; border-bottom: 2px solid var(--naranja); }
+.acceso-tarea { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--linea); color: var(--tinta); }
+.acceso-tarea:last-child { border-bottom: 0; padding-bottom: 2px; }
+.acceso-tarea strong, .acceso-tarea small { display: block; }
+.acceso-tarea small { color: #605b56; font-size: .9rem; line-height: 1.4; margin-top: 3px; }
+.flecha { font-size: 1.2rem; color: var(--accion); }
+.acceso-tarea:hover strong, .enlace-area:hover { color: var(--accion); text-decoration: underline; }
+.enlace-area { display: inline-block; margin-top: 14px; }
+.datos-sesion { margin-top: 20px; }
+.datos-sesion dl { padding: 0 20px 18px; margin: 0; }
+
+/* Finanzas */
+.lista-cuotas { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,320px),1fr)); align-items: start; gap: 18px; }
+.cab-cuota, .becas-club .acciones, .recibo .acciones, .tesoreria .cabecera-pagos { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.cab-cuota small { color: var(--gris); text-transform: capitalize; }
+.cuota p { margin: 6px 0; }
+.monto { font: 700 1.9rem/1.25 var(--titular); }
+.historial-pagos { border-top: 1px solid var(--linea); margin: 16px 0; padding-top: 14px; }
+.historial-pagos h3 { font-size: 1.15rem; }
+.becas-club .acciones, .recibo .acciones { justify-content: flex-start; margin: 18px 0; }
+.becas-club .form-accion { display: inline; }
+.becas-club .tarjeta form:not(.form-accion) { max-width: 680px; }
+.recibo, .resultado-pago { max-width: 780px; margin-inline: auto; }
+.comprobante { background: white; border: 1px solid var(--linea); border-radius: var(--radio); padding: clamp(18px,4vw,38px); }
+.comprobante .encabezado { border-bottom: 3px solid var(--naranja); padding-bottom: 16px; }
+.comprobante section h2 { margin-top: 22px; }
+.comprobante .fila { display: flex; justify-content: space-between; gap: 14px; padding: 11px 0; border-bottom: 1px solid var(--linea); overflow-wrap: anywhere; }
+.comprobante .valor { text-align: right; }
+.comprobante .confirmado { color: var(--verde); font-weight: 600; }
+.comprobante .nota { margin-top: 20px; color: var(--gris); }
+.resultado-pago a { display: inline-block; margin-top: 16px; color: var(--accion); text-decoration: underline; }
+
+@media (max-width: 900px) {
+  .barra-publica { position: static; }
+  .barra-publica .wrap { height: auto; flex-wrap: wrap; gap: 8px 16px; padding-block: 12px; }
+  .barra-publica .nav { flex-wrap: wrap; gap: 6px 16px; }
+  .barra-publica .nav a:not(.boton) { display: inline-flex; }
+}
+@media (max-width: 760px) {
+  .cuenta-club > span { display: none; }
+  .wrap { padding-inline: 16px; }
+  .identidad-club { min-height: 65px; }
+  .identidad-club img { width: 40px; height: 40px; }
+  .menu-club .wrap { justify-content: space-between; align-items: center; }
+  .abrir-menu { color: var(--tinta); border-color: var(--linea); }
+  .secciones-club { flex-basis: 100%; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); padding-bottom: 8px; }
+  .menu-club a { min-height: 44px; }
+  .portada-panel > div:first-child { max-width: 82%; }
+  .cancha { right: -17%; opacity: .75; }
+  .grupo-tareas { padding: 17px; }
+  .pagina-operativa .fila, .rejilla-perfil { grid-template-columns: minmax(0,1fr); }
+  .formulario-inscripcion .tarjeta, .panel-perfil .tarjeta { padding: 16px; }
+  .formulario-inscripcion .acciones-form > *, .cuota form .btn { width: 100%; text-align: center; }
+  .recibo .acciones > * { flex: 1 1 100%; }
+  .sesion-club .datos-perfil { grid-template-columns: minmax(0,1fr); gap: 1px; }
+  .sesion-club .datos-perfil dd { margin-bottom: 8px; }
+  .tabla-ayllu th, .tabla-ayllu td { padding: 10px; }
+}
+@media print {
+  .cabecera-club, .menu-club, .pie-club, .saltar, .recibo .acciones { display: none; }
+  .sesion-club, .comprobante { background: white; }
+  .recibo, .comprobante { max-width: none; padding: 0; border: none; }
+}
+
+/* Identidad de la portada y tablas de gestión */
+.identidad-portada { display: grid; place-items: center; min-height: 260px; background: white; border: 1px solid var(--linea); border-block-end: 5px solid var(--naranja); border-radius: var(--radio); }
+.identidad-portada img { width: min(70%,320px); height: auto; }
+.noticias .nota { padding: 18px; background: white; border-top: 2px solid var(--naranja); }
+.categorias-club .ini { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: 50%; background: var(--naranja-suave); color: var(--naranja-texto); font-weight: 600; }
+@media (max-width: 880px) {
+  .identidad-portada { min-height: 140px; }
+  .identidad-portada img { width: 125px; }
+}
+
+.enlace-pie { display: inline-block; margin-top: 10px; color: white; text-decoration: underline; }
+
+.categorias-asignadas { display: flex; flex-wrap: wrap; gap: 6px; }
+.categorias-asignadas a { padding: 5px 10px; color: var(--naranja-texto); background: var(--naranja-suave); border-radius: 5px; font-weight: 600; font-size: .88rem; }
+.categorias-asignadas a:hover { text-decoration: underline; }
+.marca b, .entr .fecha b, .evento .dia b { font-family: var(--titular); }

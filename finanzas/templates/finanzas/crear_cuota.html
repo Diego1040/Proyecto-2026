@@ -1,7 +1,6 @@
 {% extends "finanzas/tesoreria.html" %}
 
 {% block titulo %}Crear cuota · Tesorería · Ayllu Basket{% endblock %}
-{% block avatar %}{% endblock %}
 {% block estilos_pagina %}
 <style>
 .alta-cuota .wrap{max-width:720px}
@@ -20,7 +19,7 @@
 {% endblock %}
 
 {% block contenido_tesoreria %}
-<main class="alta-cuota"><div class="wrap">
+<main class="pagina-operativa alta-cuota"><div class="wrap">
   <a class="volver" href="{% url 'finanzas:tesoreria' %}">← Volver a Tesorería</a>
   <div class="cabecera"><h1>Crear cuota</h1>
     <p class="sub">Registra una mensualidad pendiente para un jugador del club.</p>

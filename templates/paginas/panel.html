@@ -1,133 +1,90 @@
 {% extends "base.html" %}
-
 {% block titulo %}Mi panel — Ayllu Basket{% endblock %}
-
 {% block contenido %}
-<section class="panel">
-  <div class="wrap wrap-panel">
-    <header class="cabecera-panel">
-      <p class="etiqueta-seccion">Cuenta</p>
-      <h1>Mi panel</h1>
-      <p class="bajada">Selecciona el espacio al que quieres ingresar.</p>
-    </header>
-
-    <div class="tarjeta panel-cuenta">
-      <div class="cab-panel-cuenta">
-        <div>
-          <p class="etiqueta-seccion">Sesión activa</p>
-          <h2>Datos de la cuenta</h2>
-        </div>
-        <span class="pill ok">Conectado</span>
-      </div>
-      <dl class="datos-cuenta">
-        <dt>RUT</dt><dd>{{ user.rut }}</dd>
-        <dt>Correo</dt><dd>{{ user.email|default:"sin registrar" }}</dd>
-        <dt>Último ingreso</dt><dd>{{ user.last_login|date:"d/m/Y H:i"|default:"primer ingreso" }}</dd>
-        <dt>Perfiles</dt>
-        <dd>
-          {% if perfiles %}
-            {{ perfiles|join:", " }}
-            {% if institucional_perfiles %} · {{ institucional_perfiles|join:", " }}{% endif %}
-          {% elif institucional_perfiles %}
-            {{ institucional_perfiles|join:", " }}
-          {% elif institucional_disponible %}
-            Consulta institucional
-          {% else %}
-            Sin perfil asignado
-          {% endif %}
-        </dd>
-      </dl>
+<main class="tablero wrap">
+  <header class="portada-panel">
+    <div>
+      <p class="rotulo">Mi panel</p>
+      <h1>{% if perfiles|length == 1 and not institucional_perfiles %}{{ perfiles.0 }}{% elif not perfiles and institucional_perfiles|length == 1 %}{{ institucional_perfiles.0 }}{% else %}Mi club{% endif %}</h1>
+      <p>{% if user.first_name %}{{ user.first_name }}, estos son tus accesos al club.{% else %}Selecciona una tarea para comenzar.{% endif %}</p>
     </div>
+    <div class="cancha" aria-hidden="true"><i></i></div>
+  </header>
 
-    <div class="panel-opciones">
-      {% if institucional_disponible %}
-        <article class="tarjeta opcion-panel">
-          <div class="opcion-panel-contenido">
-            <p class="etiqueta-seccion">Institucional</p>
-            <h2>Documentos y espacios del club</h2>
-            <p>Consulta las secciones disponibles según tu autorización.</p>
+  <div class="grupos-tareas">
+    {% if es_administracion %}
+      <section class="grupo-tareas">
+        <h2>Gestión de jugadores</h2>
+        {% include "componentes/acceso.html" with destino="solicitudes_administracion" titulo="Solicitudes de inscripción" descripcion="Revisar fichas y resolver solicitudes." %}
+        {% include "componentes/acceso.html" with destino="categorias_jugadores" titulo="Categorías y excepciones" descripcion="Consultar asignaciones y registrar cambios." %}
+        {% include "componentes/acceso.html" with destino="importacion_jugadores" titulo="Importar jugadores históricos" descripcion="Validar una planilla y revisar su resultado." %}
+        {% include "componentes/acceso.html" with destino="finanzas:listar_becas" titulo="Gestión de becas" descripcion="Revisar períodos y renovaciones." %}
+      </section>
+    {% endif %}
+    {% if es_entrenador or es_administracion %}
+      <section class="grupo-tareas">
+        <h2>Trabajo en cancha</h2>
+        {% if es_entrenador %}
+          <div class="categorias-asignadas">
+            {% for categoria in user.perfil_entrenador.categorias.all %}{% if categoria.activa %}
+              <a href="{% url 'deportivo:calendario' %}?categoria={{ categoria.pk }}" aria-label="Ver calendario de {{ categoria }}">{{ categoria }}</a>
+            {% endif %}{% endfor %}
           </div>
-          <a class="boton" href="{% url 'institucional:inicio' %}">Ingresar al área institucional</a>
-        </article>
-      {% endif %}
-      {% if tiene_perfil_jugador %}
-        <article class="tarjeta opcion-panel">
-          <div class="opcion-panel-contenido">
-            <p class="etiqueta-seccion">Jugador</p>
-
-
-            <h2>Mi perfil deportivo</h2>
-            <p>Consulta tus datos, categoría, asistencia e historial.</p>
-          </div>
-          <a class="boton" href="{% url 'perfil_jugador' %}">Ver perfil</a>
-          <a class="boton-linea" href="{% url 'finanzas:mis_cuotas' %}">Estado de cuenta y pagos</a>
-
-          <a class="boton-linea" href="{% url 'deportivo:mis_lesiones' %}">Reportar lesión</a>{# NUEVO (HU-08) #}
-        </article>
-      {% endif %}
-
-      {% if tiene_perfil_apoderado %}
-        <article class="tarjeta opcion-panel">
-          <div class="opcion-panel-contenido">
-            <p class="etiqueta-seccion">Apoderado</p>
-            <h2>Jugadores asociados</h2>
-            <p>Consulta tus vínculos activos o agrega otro jugador.</p>
-          </div>
-          <a class="boton" href="{% url 'perfil_apoderado' %}">Ver jugadores</a>
-          <a class="boton-linea" href="{% url 'deportivo:mis_lesiones' %}">Reportar lesión</a>{# NUEVO (HU-08) #}
-        </article>
-      {% endif %}
-
-      {% if es_administracion %}
-        <article class="tarjeta opcion-panel">
-          <div class="opcion-panel-contenido">
-            <p class="etiqueta-seccion">Administración</p>
-            <h2>Solicitudes de inscripción</h2>
-            <p>Revisa y gestiona las solicitudes recibidas.</p>
-          </div>
-          <a class="boton" href="{% url 'solicitudes_administracion' %}">Gestionar solicitudes</a>
-          <a class="boton-linea" href="{% url 'importacion_jugadores' %}">Importar jugadores históricos</a>
-          <a class="boton-linea" href="{% url 'categorias_jugadores' %}">Categorías y excepciones</a>
-          <a class="boton-linea" href="{% url 'deportivo:entrenamientos' %}">Entrenamientos y asistencia</a>
-          <a class="boton-linea" href="{% url 'deportivo:nominas' %}">Nóminas</a>{# NUEVO (HU-09) #}
-          <a class="boton-linea" href="{% url 'deportivo:revisar_lesiones' %}">Lesiones</a>{# NUEVO (HU-08) #}
-        </article>
-      {% endif %}
-      {% if es_entrenador %}
-        <article class="tarjeta opcion-panel">
-          <p class="etiqueta-seccion">Entrenador</p>
-          <h2>Entrenamientos y asistencia</h2>
-          <a class="boton" href="{% url 'deportivo:entrenamientos' %}">Ver entrenamientos</a>
-          {# NUEVO (HU-09) #}
-          <a class="boton-linea" href="{% url 'deportivo:nominas' %}">Nóminas</a>
-          <a class="boton-linea" href="{% url 'deportivo:revisar_lesiones' %}">Lesiones</a>{# NUEVO (HU-08) #}
-        </article>
-      {% endif %}
-      {# NUEVO (HU-10): calendario para todos los perfiles #}
-      {% if perfiles %}
-        <article class="tarjeta opcion-panel">
-          <div class="opcion-panel-contenido">
-            <p class="etiqueta-seccion">Calendario</p>
-            <h2>Calendario deportivo</h2>
-            <p>Partidos, viajes, campeonatos y actividades por categoría.</p>
-          </div>
-          <a class="boton" href="{% url 'deportivo:calendario' %}">Ver calendario</a>
-        </article>
-      {% endif %}
-      {# FIN NUEVO (HU-10) #}
-      {% if user.is_staff %}
-        <article class="tarjeta opcion-panel">
-          <h2>Django Admin</h2>
-          <a class="boton-linea" href="{% url 'admin:index' %}">Administración técnica</a>
-        </article>
-      {% endif %}
-    </div>
-
-    {% if not perfiles and not institucional_disponible %}
-      <div class="aviso estado-vacio-panel">
-        Tu cuenta todavía no tiene un perfil asociado.
-      </div>
+        {% endif %}
+        {% include "componentes/acceso.html" with destino="deportivo:entrenamientos" titulo="Entrenamientos y asistencia" descripcion="Planificar sesiones, pasar lista y consultar el historial." %}
+        {% include "componentes/acceso.html" with destino="deportivo:calendario" titulo="Calendario deportivo" descripcion="Consultar la agenda y publicar actividades." %}
+        {% include "componentes/acceso.html" with destino="deportivo:nominas" titulo="Nóminas" descripcion="Seleccionar jugadores y descargar convocatorias." %}
+        {% include "componentes/acceso.html" with destino="deportivo:revisar_lesiones" titulo="Lesiones y restricciones" descripcion="Revisar los reportes de tus categorías." %}
+      </section>
+    {% endif %}
+    {% if tiene_perfil_jugador or tiene_perfil_apoderado %}
+      <section class="grupo-tareas">
+        <h2>Mi espacio deportivo</h2>
+        {% if tiene_perfil_jugador %}
+          {% include "componentes/acceso.html" with destino="perfil_jugador" titulo="Mi perfil de jugador" descripcion="Ver ficha, categoría, asistencia y contacto." %}
+        {% endif %}
+        {% if tiene_perfil_apoderado %}
+          {% include "componentes/acceso.html" with destino="perfil_apoderado" titulo="Mis jugadores" descripcion="Revisar fichas, asistencia y solicitudes." %}
+          {% include "componentes/acceso.html" with destino="agregar_jugador_apoderado" titulo="Inscribir otro jugador" descripcion="Enviar una nueva solicitud al club." %}
+        {% endif %}
+        {% include "componentes/enlace_lesion.html" with plantilla="componentes/acceso.html" %}
+        {% include "componentes/acceso.html" with destino="finanzas:mis_cuotas" titulo="Estado de cuenta y pagos" descripcion="Consultar vencimientos, pagar y ver comprobantes." %}
+        {% include "componentes/acceso.html" with destino="deportivo:calendario" titulo="Calendario deportivo" descripcion="Ver las próximas actividades de mis categorías." %}
+      </section>
+    {% endif %}
+    {% if institucional_accesos.comite %}
+      <section class="grupo-tareas">
+        <h2>Comité de Disciplina</h2>
+        {% include "componentes/acceso.html" with destino="institucional:sanciones" titulo="Expedientes disciplinarios" descripcion="Consultar sanciones, resoluciones y bitácoras." %}
+        {% if institucional_accesos.registrar_sanciones %}{% include "componentes/acceso.html" with destino="institucional:sancion_nueva" titulo="Registrar expediente" descripcion="Abrir un expediente para un jugador." %}{% endif %}
+      </section>
+    {% endif %}
+    {% if institucional_accesos.gestionar_actas %}
+      <section class="grupo-tareas">
+        <h2>Gestión de actas</h2>
+        {% include "componentes/acceso.html" with destino="institucional:acta_nueva" titulo="Nueva acta" descripcion="Registrar una reunión y sus acuerdos." %}
+        {% include "componentes/acceso.html" with destino="institucional:actas" titulo="Revisar actas" descripcion="Abrir borradores o consultar el historial de versiones." %}
+      </section>
+    {% endif %}
+    {% if institucional_disponible %}
+      <section class="grupo-tareas">
+        <h2>Documentos del club</h2>
+        {% if institucional_accesos.actas and not institucional_accesos.gestionar_actas %}{% include "componentes/acceso.html" with destino="institucional:actas" titulo="Actas y acuerdos" descripcion="Consultar reuniones y versiones disponibles." %}{% endif %}
+        {% if institucional_accesos.normativa %}{% include "componentes/acceso.html" with destino="institucional:documentos" titulo="Reglamentos y normativas" descripcion="Consultar documentos, vigencia y versiones." %}{% endif %}
+        {% if institucional_accesos.miembros %}{% include "componentes/acceso.html" with destino="institucional:miembros" titulo="Autorizaciones de consulta" descripcion="Gestionar el acceso a documentos." %}{% endif %}
+        <a class="enlace-area" href="{% url 'institucional:inicio' %}">Ingresar al área institucional</a>
+      </section>
     {% endif %}
   </div>
-</section>
+  {% if not perfiles and not institucional_disponible %}<p class="aviso">Tu cuenta todavía no tiene un perfil asociado.</p>{% endif %}
+  <details class="datos-sesion">
+    <summary>Datos de mi cuenta</summary>
+    <dl class="datos-perfil">
+      <dt>RUT</dt><dd>{{ user.rut }}</dd>
+      <dt>Correo</dt><dd>{{ user.email|default:"Sin registrar" }}</dd>
+      <dt>Último ingreso</dt><dd>{{ user.last_login|date:"d/m/Y H:i"|default:"Primer ingreso" }}</dd>
+      <dt>Perfiles</dt><dd>{% if perfiles %}{{ perfiles|join:", " }}{% if institucional_perfiles %} · {% endif %}{% endif %}{{ institucional_perfiles|join:", " }}{% if not perfiles and not institucional_perfiles %}{% if institucional_disponible %}Consulta institucional{% else %}Sin perfil asignado{% endif %}{% endif %}</dd>
+    </dl>
+  </details>
+</main>
 {% endblock %}

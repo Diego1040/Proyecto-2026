@@ -8,79 +8,64 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=Caveat:wght@600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+<link rel="stylesheet" href="{% static 'css/club.css' %}">
 {% block extra_css %}{% endblock %}
 </head>
-<body>
+<body{% if user.is_authenticated %} class="sesion-club"{% endif %}>
+<a class="saltar" href="#contenido">Saltar al contenido</a>
 
 {% block barra %}
-<header class="barra">
+{% if user.is_authenticated %}
+{% include "componentes/cabecera.html" %}
+{% else %}
+<header class="barra barra-publica">
   <div class="wrap">
     <a class="marca" href="{% url 'inicio' %}">
-      <span class="escudo"></span>
+      <img class="escudo" src="{% static 'img/334327597_217409104155007_5806748613043831828_n.jpg' %}" alt="" width="44" height="44">
       <span><b>Ayllu Basket</b><span>Club deportivo</span></span>
     </a>
-    <nav class="nav">
+    <nav class="nav" aria-label="Navegación del club">
       {% block nav %}
         <a href="{% url 'inicio' %}#encuentros">Encuentros</a>
         <a href="{% url 'inicio' %}#academia">Academia</a>
         <a href="{% url 'inicio' %}#club">El club</a>
         <a href="{% url 'inicio' %}#noticias">Noticias</a>
       {% endblock %}
+      <a href="{% url 'login' %}">Ingresar</a>
+      <a href="{% url 'activar_cuenta' %}">Activar cuenta</a>
+      <a class="boton chico" href="{% url 'inscripcion' %}">Únete al club</a>
 
-
-      
-{% if user.is_authenticated %}
-
-  {% if institucional_disponible %}
-    <a href="{% url 'institucional:inicio' %}">Institucional</a>
-  {% endif %}
-
-  <a href="{% url 'panel' %}" class="boton chico">
-    Mi cuenta
-  </a>
-
-  <form action="{% url 'logout' %}"
-        method="post"
-        style="display:inline">
-    {% csrf_token %}
-    <button type="submit" class="salir">
-      Cerrar sesión
-    </button>
-  </form>
-
-{% else %}
-
-  <a href="{% url 'login' %}">Ingresar</a>
-  <a href="{% url 'activar_cuenta' %}">Activar cuenta</a>
-
-  <a class="boton chico"
-     href="{% url 'inscripcion' %}">
-    Únete al club
-  </a>
-
-{% endif %}
     </nav>
   </div>
 </header>
+{% endif %}
 {% endblock %}
 
+<div id="contenido" tabindex="-1">
 {% if messages %}
 <div class="wrap avisos">
   {% for mensaje in messages %}
-    <p class="aviso {{ mensaje.tags }}">{{ mensaje }}</p>
+    <p class="aviso {{ mensaje.tags }}" role="{% if mensaje.level >= 40 %}alert{% else %}status{% endif %}">{{ mensaje }}</p>
   {% endfor %}
 </div>
 {% endif %}
 
 {% block contenido %}{% endblock %}
+</div>
 
 {% block pie %}
+{% if user.is_authenticated %}
+<footer class="pie-club"><div class="wrap">
+  <span><strong>Ayllu Basket</strong> · Club deportivo de Arica</span>
+  <a href="{% url 'inicio' %}">Sitio del club</a>
+</div></footer>
+{% else %}
 <footer id="contacto">
   <div class="wrap">
     <div class="pie">
       <div>
         <div class="marca" style="color:#fff;margin-bottom:14px">
-          <span class="escudo"></span>
+          <img class="escudo" src="{% static 'img/334327597_217409104155007_5806748613043831828_n.jpg' %}" alt="" width="44" height="44">
           <span><b>Ayllu Basket</b><span style="color:#8B8A88">Club deportivo</span></span>
         </div>
         <p style="font-size:.92rem;max-width:30ch">Comunidad que vive el básquet.</p>
@@ -101,22 +86,18 @@
           <li><svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Arica, Chile</li>
           <li><svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg><a href="mailto:ayllubasket@gmail.com">ayllubasket@gmail.com</a></li>
           <li><svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1z"/></svg><a href="tel:+56985284500">+56 9 8528 4500</a></li>
-          <li style="gap:14px;margin-top:4px"><a href="#">Instagram</a><a href="#">Facebook</a><a href="#">YouTube</a></li>
         </ul>
       </div>
       <div>
-        <h4>Únete a nuestra comunidad</h4>
-        <p style="font-size:.92rem">Recibe novedades, partidos y actividades.</p>
-        <form class="suscribir" onsubmit="return false">
-          <label for="correo" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Tu correo electrónico</label>
-          <input id="correo" type="email" placeholder="nombre@correo.cl">
-          <button type="submit">Suscribirme</button>
-        </form>
+        <h4>Inscripciones</h4>
+        <p>Solicita el ingreso de un jugador al club.</p>
+        <a class="enlace-pie" href="{% url 'inscripcion' %}">Ir a inscripción</a>
       </div>
     </div>
     <p class="legal">© {% now "Y" %} Ayllu Basket · Club deportivo de Arica</p>
   </div>
 </footer>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}{% endblock %}

@@ -13,9 +13,6 @@
 .reporte p{margin:2px 0;font-size:.92rem;color:var(--gris)}
 .reporte .desc{color:inherit}
 .reporte .pill{display:inline-block;margin:0 6px 4px 0}
-.pill.pendiente{background:#FFF6E3;color:#8A6A12}
-.pill.validado{background:#E2F1E9;color:#1D7A4F}
-.pill.rechazado{background:#FBE9E7;color:#B3261E}
 </style>
 {% endblock %}
  
@@ -80,8 +77,8 @@
     </div>
  
     <p style="margin-top:20px">
-    <a class="boton" href="{% url 'perfil_apoderado' %}">
-        ← Volver a Mi pupilo
+    <a class="boton" href="{% url 'panel' %}">
+        ← Volver a mi panel
     </a>
 </p>
   </div>
