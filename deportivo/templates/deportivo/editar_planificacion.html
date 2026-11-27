@@ -1,8 +1,6 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<title>Ayllu Basket — Planificación</title>
-{% include "deportivo/_estilos.html" %}
+{% extends "base.html" %}
+{% block titulo %}Ayllu Basket — Planificación{% endblock %}
+{% block extra_css %}
 <style>
 .volver{color:var(--gris);font-size:.9rem;text-decoration:none}
 .volver:hover{color:var(--tinta)}
@@ -12,25 +10,15 @@
 .cambio ul{margin:0;padding-left:18px}
 fieldset{border:0;margin:0;padding:0;min-width:0;display:grid;gap:14px}
 </style>
-</head>
-<body>
-{% include "deportivo/_barra.html" %}
- 
-<main><div class="wrap">
+{% endblock %}
+{% block contenido %}
+<main class="pagina-operativa"><div class="wrap">
  
   <div class="cabecera">
     <a href="{% url 'deportivo:entrenamientos' %}" class="volver">← Entrenamientos</a>
     <h1 style="margin-top:8px">{{ entrenamiento.nombre }}</h1>
     <p class="sub">{{ entrenamiento.categoria }} · {{ entrenamiento.fecha|date:"l d/m/Y" }}</p>
   </div>
- 
-  {% if messages %}
-    <div class="mensajes">
-      {% for mensaje in messages %}
-        <div class="mensaje {{ mensaje.tags }}">{{ mensaje }}</div>
-      {% endfor %}
-    </div>
-  {% endif %}
  
   {% if not puede_editar %}
     <div class="aviso">Este entrenamiento ya pasó. Solo Administración puede modificar su planificación.</div>
@@ -82,7 +70,7 @@ fieldset{border:0;margin:0;padding:0;min-width:0;display:grid;gap:14px}
         {% else %}
           <ul>
             {% for campo, valores in registro.detalle.items %}
-              <li><b>{{ campo|capfirst }}:</b> {{ valores.antes|default:"(vacío)" }} → {{ valores.despues|default:"(vacío)" }}</li>
+              <li><b>{% if campo == "hora_inicio" %}Hora de inicio{% elif campo == "duracion" %}Duración{% else %}{{ campo|capfirst }}{% endif %}:</b> {{ valores.antes|default:"(vacío)" }} → {{ valores.despues|default:"(vacío)" }}</li>
             {% endfor %}
           </ul>
         {% endif %}
@@ -93,5 +81,4 @@ fieldset{border:0;margin:0;padding:0;min-width:0;display:grid;gap:14px}
   </div>
  
 </div></main>
-</body>
-</html>
+{% endblock %}

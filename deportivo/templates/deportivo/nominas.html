@@ -1,8 +1,6 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<title>Ayllu Basket — Nóminas</title>
-{% include "deportivo/_estilos.html" %}
+{% extends "base.html" %}
+{% block titulo %}Ayllu Basket — Nóminas{% endblock %}
+{% block extra_css %}
 <style>
 .nom{display:flex;align-items:center;gap:12px;padding:14px 16px;border-top:1px solid var(--linea);flex-wrap:wrap}
 .nom:first-child{border-top:0}
@@ -18,11 +16,9 @@
 @media(max-width:420px){.filtros{grid-template-columns:1fr}}
 /* FIN NUEVO */
 </style>
-</head>
-<body>
-{% include "deportivo/_barra.html" %}
- 
-<main><div class="wrap">
+{% endblock %}
+{% block contenido %}
+<main class="pagina-operativa"><div class="wrap">
  
   <div class="cabecera" style="display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap">
     <div>
@@ -32,15 +28,7 @@
     <a class="btn" href="{% url 'deportivo:nueva_nomina' %}">Nueva nómina</a>
   </div>
  
-  {% if messages %}
-    <div class="mensajes">
-      {% for mensaje in messages %}
-        <div class="mensaje {{ mensaje.tags }}">{{ mensaje }}</div>
-      {% endfor %}
-    </div>
-  {% endif %}
- 
-  {# NUEVO (HU-20): filtros del historial #}
+{# NUEVO (HU-20): filtros del historial #}
   <form method="get" class="tarjeta pad filtros">
     <label class="campo">Categoría
       <select name="categoria">
@@ -91,5 +79,4 @@
   </div>
  
 </div></main>
-</body>
-</html>
+{% endblock %}

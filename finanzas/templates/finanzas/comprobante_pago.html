@@ -1,123 +1,7 @@
-
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Comprobante de pago | Ayllu Basket</title>
-
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f2f2f2;
-            color: #222;
-            margin: 0;
-            padding: 30px 16px;
-        }
-
-        .comprobante {
-            max-width: 680px;
-            margin: auto;
-            padding: 32px;
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-        }
-
-        .encabezado {
-            border-bottom: 3px solid #e8552a;
-            padding-bottom: 18px;
-            margin-bottom: 24px;
-        }
-
-        h1 {
-            margin-bottom: 6px;
-            font-size: 26px;
-        }
-
-        h2 {
-            font-size: 18px;
-            margin-top: 28px;
-        }
-
-        .confirmado {
-            display: inline-block;
-            padding: 7px 12px;
-            background: #e2f5e8;
-            color: #176b36;
-            border-radius: 5px;
-            font-weight: bold;
-        }
-
-        .fila {
-            display: flex;
-            justify-content: space-between;
-            gap: 20px;
-            padding: 11px 0;
-            border-bottom: 1px solid #eee;
-        }
-
-        .etiqueta {
-            color: #666;
-        }
-
-        .valor {
-            text-align: right;
-            overflow-wrap: anywhere;
-        }
-
-        .monto {
-            font-size: 25px;
-            font-weight: bold;
-            color: #e8552a;
-        }
-
-        .acciones {
-            max-width: 680px;
-            margin: 20px auto;
-            display: flex;
-            gap: 12px;
-        }
-
-        .boton {
-            padding: 11px 16px;
-            background: #e8552a;
-            color: white;
-            border: 0;
-            border-radius: 5px;
-            text-decoration: none;
-            cursor: pointer;
-        }
-
-        .nota {
-            margin-top: 28px;
-            color: #666;
-            font-size: 12px;
-            line-height: 1.5;
-        }
-
-        @media print {
-            body {
-                background: white;
-                padding: 0;
-            }
-
-            .comprobante {
-                max-width: none;
-                border: none;
-                border-radius: 0;
-                padding: 10px;
-            }
-
-            .acciones {
-                display: none;
-            }
-        }
-    </style>
-</head>
-
-<body>
-    <main class="comprobante">
+{% extends "base.html" %}
+{% block titulo %}Comprobante de pago — Ayllu Basket{% endblock %}
+{% block contenido %}
+<div class="wrap pagina-operativa recibo"><main class="comprobante">
         <header class="encabezado">
             <h1>AYLLU BASKET</h1>
             <p>Comprobante interno de pago</p>
@@ -221,7 +105,5 @@
     >
         Volver a mis cuotas
     </a>
-    </div>
-
-</body>
-</html>
+    </div></div>
+{% endblock %}

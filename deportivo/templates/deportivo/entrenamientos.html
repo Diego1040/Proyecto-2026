@@ -1,9 +1,6 @@
-{# NUEVO (HU-07) - Miguel. CAMBIO (HU-06): planificación con hora, objetivo y responsable #}
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<title>Ayllu Basket — Entrenamientos</title>
-{% include "deportivo/_estilos.html" %}
+{% extends "base.html" %}
+{% block titulo %}Ayllu Basket — Entrenamientos{% endblock %}
+{% block extra_css %}
 <style>
 .entr{display:flex;align-items:center;gap:12px;padding:14px 16px;border-top:1px solid var(--linea);flex-wrap:wrap}
 .entr:first-child{border-top:0}
@@ -11,33 +8,23 @@
 .entr .info b{display:block;font-weight:600}
 .entr .info small{color:var(--gris);font-size:.84rem;display:block}
 .entr .acciones{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.fecha{min-width:64px;text-align:center;border:1px solid var(--linea);border-radius:6px;padding:6px 4px;line-height:1.15}
-.fecha b{display:block;font-family:"Barlow Condensed";font-size:1.35rem}
-.fecha span{font-size:.75rem;color:var(--gris);text-transform:uppercase}
+.entr .fecha{display:block;min-width:64px;text-align:center;border:1px solid var(--linea);border-radius:6px;padding:6px 4px;line-height:1.15}
+.entr .fecha b{display:block;font-family:"Barlow Condensed";font-size:1.35rem}
+.entr .fecha span{font-size:.75rem;color:var(--gris);text-transform:uppercase}
 </style>
-</head>
-<body>
-{% include "deportivo/_barra.html" %}
-
-<main><div class="wrap">
+{% endblock %}
+{% block contenido %}
+<main class="pagina-operativa"><div class="wrap">
 
   <div class="cabecera">
     <h1>Entrenamientos</h1>
     <p class="sub">Planifica la semana y pasa lista desde el celular el día del entrenamiento.</p>
   </div>
 
-  {% if messages %}
-    <div class="mensajes">
-      {% for mensaje in messages %}
-        <div class="mensaje {{ mensaje.tags }}">{{ mensaje }}</div>
-      {% endfor %}
-    </div>
-  {% endif %}
-
   {% if categorias %}
+    <details class="desplegable"><summary>Planificar entrenamiento</summary>
     <form method="post" class="tarjeta pad" style="display:grid;gap:14px">
       {% csrf_token %}
-      <h2 style="margin:0">Planificar entrenamiento</h2>
       <div class="fila">
         <label class="campo">Categoría
           <select name="categoria_id" required>
@@ -76,6 +63,7 @@
       </label>
       <div><button type="submit" class="btn">Planificar</button></div>
     </form>
+    </details>
   {% else %}
     <div class="aviso">
       Todavía no tienes categorías asignadas. Pídele a Administración que te las asigne.
@@ -133,5 +121,4 @@
   </div>
 
 </div></main>
-</body>
-</html>
+{% endblock %}

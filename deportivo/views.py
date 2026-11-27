@@ -468,7 +468,9 @@ def nueva_nomina(request):
                 url += f"&evento={evento.pk}"
             return redirect(url)
 
-        messages.success(request, f"Nómina \"{nomina.titulo}\" generada con {nomina.integrantes.count()} jugadores.")
+        cantidad = nomina.integrantes.count()
+        integrantes = "jugador" if cantidad == 1 else "jugadores"
+        messages.success(request, f'Nómina "{nomina.titulo}" generada con {cantidad} {integrantes}.')
         return redirect("deportivo:ver_nomina", pk=nomina.pk)
 
     return render(request, "deportivo/nueva_nomina.html", {
@@ -524,28 +526,34 @@ def mis_lesiones(request):
         messages.error(request, "Tu cuenta no tiene jugadores para los que puedas reportar lesiones.")
         return redirect("panel")
  
+    datos = {"fecha_inicio": timezone.localdate().isoformat()}
+    errores = []
     if request.method == "POST":
+        datos = {campo: request.POST.get(campo, "") for campo in (
+            "jugador_id", "tipo", "descripcion", "fecha_inicio", "fecha_fin",
+        )}
+        jugador = next((j for j in jugadores if str(j.pk) == datos["jugador_id"]), None)
         try:
             crear_reporte_lesion(
                 usuario=usuario,
-                jugador=jugadores.filter(pk=request.POST.get("jugador_id") or None).first(),
-                tipo=request.POST.get("tipo", ""),
-                descripcion=request.POST.get("descripcion", "").strip(),
-                fecha_inicio=_leer_fecha(request.POST.get("fecha_inicio")),
-                fecha_fin=_leer_fecha(request.POST.get("fecha_fin")),
+                jugador=jugador,
+                tipo=datos["tipo"],
+                descripcion=datos["descripcion"].strip(),
+                fecha_inicio=_leer_fecha(datos["fecha_inicio"]),
+                fecha_fin=_leer_fecha(datos["fecha_fin"]),
             )
         except ValidationError as error:
-            for mensaje in error.messages:
-                messages.error(request, mensaje)
+            errores = error.messages
         else:
             messages.success(request, "Reporte enviado. El cuerpo técnico lo revisará.")
-        return redirect("deportivo:mis_lesiones")
+            return redirect("deportivo:mis_lesiones")
  
     return render(request, "deportivo/mis_lesiones.html", {
         "jugadores": jugadores,
         "reportes": ReporteLesion.objects.filter(jugador__in=jugadores).select_related("jugador", "revisado_por"),
         "tipos": ReporteLesion.Tipo.choices,
-        "hoy": timezone.localdate(),
+        "datos": datos,
+        "errores": errores,
     })
  
  

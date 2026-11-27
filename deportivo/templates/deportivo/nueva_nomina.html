@@ -1,8 +1,6 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<title>Ayllu Basket — Nueva nómina</title>
-{% include "deportivo/_estilos.html" %}
+{% extends "base.html" %}
+{% block titulo %}Ayllu Basket — Nueva nómina{% endblock %}
+{% block extra_css %}
 <style>
 .volver{color:var(--gris);font-size:.9rem;text-decoration:none}
 .volver:hover{color:var(--tinta)}
@@ -25,11 +23,9 @@
 .asis.sin{color:var(--gris);font-weight:400}
 .guardar{position:sticky;bottom:0;background:var(--blanco);border-top:1px solid var(--linea);padding:12px 16px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 </style>
-</head>
-<body>
-{% include "deportivo/_barra.html" %}
-
-<main><div class="wrap">
+{% endblock %}
+{% block contenido %}
+<main class="pagina-operativa"><div class="wrap">
 
   <div class="cabecera">
     <a href="{% url 'deportivo:nominas' %}" class="volver">← Nóminas</a>
@@ -40,15 +36,7 @@
 </p>
   </div>
 
-  {% if messages %}
-    <div class="mensajes">
-      {% for mensaje in messages %}
-        <div class="mensaje {{ mensaje.tags }}">{{ mensaje }}</div>
-      {% endfor %}
-    </div>
-  {% endif %}
-
-  {% if not categoria %}
+{% if not categoria %}
     {# PASO 1: elegir partido del calendario o categoría #}
     {% if partidos %}
       <h2>Próximos partidos del calendario</h2>
@@ -175,5 +163,4 @@
   {% endif %}
 
 </div></main>
-</body>
-</html>
+{% endblock %}
