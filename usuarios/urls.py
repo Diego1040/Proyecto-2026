@@ -3,10 +3,12 @@ from django.views.generic import TemplateView
 
 from . import views, views_importacion_jugadores
 from . import views_gestion_usuarios
+from . import views_mi_cuenta
 
 urlpatterns = [
     path("", views.inicio, name="inicio"),
     path("panel/", views.panel, name="panel"),
+    path("cuenta/datos/", views_mi_cuenta.editar_mi_cuenta, name="editar_mi_cuenta"),
     path("administracion/usuarios/", views_gestion_usuarios.listado_usuarios, name="gestion_usuarios"),
     path("administracion/usuarios/<int:pk>/", views_gestion_usuarios.detalle_usuario, name="detalle_usuario"),
     path("administracion/importar-jugadores/", views_importacion_jugadores.importacion_jugadores,
