@@ -2,6 +2,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
+from django.contrib.auth.models import Group
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -88,6 +89,24 @@ class HU11WebpayTests(TestCase):
             "transaction_date": "2026-10-11T22:11:52.245Z",
             "authorization_code": "123456",
         }
+
+    def test_detalle_por_cuota_en_tesoreria_respeta_los_accesos(self):
+        pago = self.crear_pago(Pago.Estado.CONFIRMADO)
+        pago.codigo_autorizacion = "AUT-PRUEBA"
+        pago.save(update_fields=["codigo_autorizacion"])
+        panel = reverse("finanzas:tesoreria")
+        recibo = reverse("finanzas:comprobante_pago", args=[pago.pk])
+        self.assertContains(self.client.get(recibo), pago.codigo_autorizacion)
+        self.assertEqual(self.client.get(panel).status_code, 403)
+
+        tesorero = Usuario.objects.create_user(rut="22222222-2")
+        tesorero.groups.add(Group.objects.create(name="Tesorería"))
+        self.client.force_login(tesorero)
+        respuesta = self.client.get(panel)
+        self.assertContains(respuesta, pago.orden_compra)
+        self.assertContains(respuesta, pago.codigo_autorizacion)
+        self.assertNotContains(respuesta, pago.token_ws)
+        self.assertEqual(self.client.get(recibo).status_code, 404)
 
     # PRUEBA 1: el importe enviado por el navegador no modifica la cuota.
 

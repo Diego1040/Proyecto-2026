@@ -49,7 +49,12 @@
         {% include "componentes/enlace_menu.html" with destino="deportivo:calendario" texto="Calendario" %}
       {% endif %}
       {% if institucional_disponible %}{% include "componentes/enlace_menu.html" with destino="institucional:inicio" texto="Institucional" %}{% endif %}
-      {% if user.is_staff %}{% include "componentes/enlace_menu.html" with destino="admin:index" texto="Administración técnica" %}{% endif %}
+      {% if user.is_staff %}
+        {% if perms.usuarios.view_periodoinactividad or perms.usuarios.change_periodoinactividad %}
+          {% include "componentes/enlace_menu.html" with destino="admin:usuarios_periodoinactividad_changelist" texto="Períodos de inactividad" %}
+        {% endif %}
+        {% include "componentes/enlace_menu.html" with destino="admin:index" texto="Administración técnica" %}
+      {% endif %}
     </div>
   </div>
 </nav>

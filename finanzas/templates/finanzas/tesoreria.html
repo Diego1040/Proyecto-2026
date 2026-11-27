@@ -92,6 +92,24 @@
             <span class="pill gris">Anulada</span>
           {% endif %}
         </span>
+        {% with movimientos=cuota.pagos.all %}
+          {% if movimientos %}
+            <details class="detalle-movimientos">
+              <summary>Detalle de pagos</summary>
+              {% for pago in movimientos %}
+                <dl class="datos-perfil">
+                  <dt>Folio interno</dt><dd>{{ pago.orden_compra }}</dd>
+                  <dt>Medio de pago</dt><dd>{{ pago.get_medio_pago_display }}</dd>
+                  <dt>Estado</dt><dd>{{ pago.get_estado_display }}</dd>
+                  <dt>Monto</dt><dd>${{ pago.monto|floatformat:0 }}</dd>
+                  {% if pago.fecha_transaccion %}<dt>Fecha de transacción</dt><dd>{{ pago.fecha_transaccion|date:"d/m/Y H:i" }}</dd>{% endif %}
+                  {% if pago.referencia %}<dt>Referencia</dt><dd>{{ pago.referencia }}</dd>{% endif %}
+                  {% if pago.codigo_autorizacion %}<dt>Código de autorización</dt><dd>{{ pago.codigo_autorizacion }}</dd>{% endif %}
+                </dl>
+              {% endfor %}
+            </details>
+          {% endif %}
+        {% endwith %}
       </div>
 
       {% if cuota.estado == "PENDIENTE" and not cuota.tiene_pago_iniciado %}

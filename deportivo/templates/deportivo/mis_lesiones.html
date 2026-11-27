@@ -30,31 +30,36 @@
     <form method="post" class="tarjeta formulario-ayllu form-lesion" style="padding:20px;margin-top:20px">
       {% csrf_token %}
       <h2 style="margin-top:0">Nuevo reporte</h2>
+      {% if errores %}
+        <div class="aviso" role="alert">
+          <ul>{% for error in errores %}<li>{{ error }}</li>{% endfor %}</ul>
+        </div>
+      {% endif %}
       <div class="rejilla-form">
         <div class="campo">
           <label for="jugador_id">Jugador</label>
           <select id="jugador_id" name="jugador_id" required>
-            {% for j in jugadores %}<option value="{{ j.pk }}">{{ j.nombres }} {{ j.apellidos }}</option>{% endfor %}
+            {% for j in jugadores %}<option value="{{ j.pk }}"{% if j.pk|stringformat:"s" == datos.jugador_id %} selected{% endif %}>{{ j.nombres }} {{ j.apellidos }}</option>{% endfor %}
           </select>
         </div>
         <div class="campo">
           <label for="tipo">Tipo</label>
           <select id="tipo" name="tipo" required>
-            {% for valor, etiqueta in tipos %}<option value="{{ valor }}">{{ etiqueta }}</option>{% endfor %}
+            {% for valor, etiqueta in tipos %}<option value="{{ valor }}"{% if valor == datos.tipo %} selected{% endif %}>{{ etiqueta }}</option>{% endfor %}
           </select>
         </div>
         <div class="campo">
           <label for="fecha_inicio">Desde</label>
-          <input id="fecha_inicio" type="date" name="fecha_inicio" value="{{ hoy|date:'Y-m-d' }}" required>
+          <input id="fecha_inicio" type="date" name="fecha_inicio" value="{{ datos.fecha_inicio }}" required>
         </div>
         <div class="campo">
           <label for="fecha_fin">Hasta (estimado, opcional)</label>
-          <input id="fecha_fin" type="date" name="fecha_fin">
+          <input id="fecha_fin" type="date" name="fecha_fin" value="{{ datos.fecha_fin }}">
         </div>
       </div>
       <div class="campo">
         <label for="descripcion">Descripción breve</label>
-        <textarea id="descripcion" name="descripcion" maxlength="500" required placeholder="Ej: esguince de tobillo derecho, reposo deportivo por 2 semanas."></textarea>
+        <textarea id="descripcion" name="descripcion" maxlength="500" required placeholder="Ej: esguince de tobillo derecho, reposo deportivo por 2 semanas.">{{ datos.descripcion }}</textarea>
         <span class="ayuda">Escribe solo lo necesario para el cuerpo técnico. No adjuntes diagnósticos completos.</span>
       </div>
       <button class="boton" type="submit">Enviar reporte</button>
