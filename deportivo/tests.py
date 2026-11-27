@@ -647,9 +647,20 @@ class NominaTest(TestCase):
         respuesta = self.client.post(reverse("deportivo:nueva_nomina"), self.datos())
 
         nomina = Nomina.objects.get()
-        self.assertRedirects(respuesta, reverse("deportivo:ver_nomina", args=[nomina.pk]))
+        self.assertRedirects(respuesta, reverse("deportivo:ver_nomina", args=[nomina.pk]), fetch_redirect_response=False)
         self.assertEqual(list(nomina.integrantes.values_list("jugador", flat=True)), [self.tomas.pk])
         self.assertTrue(Auditoria.objects.filter(accion="NOMINA_GENERADA", entidad_id=nomina.pk).exists())
+        self.assertContains(self.client.get(respuesta.url), "generada con 1 jugador.")
+
+    def test_nomina_con_dos_jugadores_muestra_plural(self):
+        self.pendiente.estado = Jugador.Estado.ACTIVO
+        self.pendiente.save(update_fields=["estado"])
+        self.client.force_login(self.entrenador)
+        respuesta = self.client.post(
+            reverse("deportivo:nueva_nomina"),
+            self.datos(jugadores=[self.tomas.pk, self.pendiente.pk]), follow=True,
+        )
+        self.assertContains(respuesta, "generada con 2 jugadores.")
 
     def test_no_genera_nomina_sin_jugadores(self):
         self.client.force_login(self.entrenador)
@@ -978,6 +989,21 @@ class LesionTest(TestCase):
         ayer = (timezone.localdate() - timedelta(days=1)).isoformat()
         self.client.post(reverse("deportivo:mis_lesiones"), self.datos(fecha_fin=ayer))
         self.assertFalse(ReporteLesion.objects.exists())
+
+    def test_reporte_invalido_conserva_campos_y_permite_corregir(self):
+        self.client.force_login(self.mama)
+        ruta = reverse("deportivo:mis_lesiones")
+        datos = self.datos(fecha_fin="2000-01-01", descripcion="Reposo <breve>")
+        respuesta = self.client.post(ruta, datos)
+        self.assertContains(respuesta, "La fecha de término no puede ser anterior")
+        self.assertContains(respuesta, "Reposo &lt;breve&gt;</textarea>")
+        self.assertContains(respuesta, 'value="2000-01-01"')
+        self.assertContains(respuesta, 'value="LESION" selected')
+        self.assertNotContains(respuesta, self.sofia.apellidos)
+        self.assertFalse(ReporteLesion.objects.exists())
+        datos["fecha_fin"] = datos["fecha_inicio"]
+        self.assertRedirects(self.client.post(ruta, datos), ruta)
+        self.assertEqual(ReporteLesion.objects.count(), 1)
 
     def test_usuario_sin_jugadores_no_entra(self):
         self.client.force_login(self.otro)

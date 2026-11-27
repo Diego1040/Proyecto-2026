@@ -11,7 +11,11 @@ Solicitudes — Administración — Ayllu Basket
       <div>
         <p class="etiqueta-seccion">Administración</p>
         <h1>Solicitudes de inscripción</h1>
-        <a class="enlace" href="{% url 'categorias_jugadores' %}">Categorías y excepciones manuales</a>
+        <div class="enlaces-relacionados">
+          <a href="{% url 'categorias_jugadores' %}">Categorías y excepciones</a>
+          <a href="{% url 'importacion_jugadores' %}">Importar jugadores históricos</a>
+          <a href="{% url 'finanzas:listar_becas' %}">Gestión de becas</a>
+        </div>
       </div>
     </div>
 
@@ -38,7 +42,7 @@ Solicitudes — Administración — Ayllu Basket
       </button>
     </form>
 
-    <div class="tarjeta tabla-contenedor">
+    <div class="tarjeta tabla-contenedor" tabindex="0" role="region" aria-label="Listado de solicitudes">
       <table class="tabla-ayllu">
         <thead>
           <tr>

@@ -146,7 +146,7 @@
             <p class="hu19-etapa">Paso 3 · Último paso</p>
             <h2 id="hu19-confirmacion-titulo">Confirmar importación</h2>
             {% if proceso.resumen.importables %}
-              <p class="hu19-cantidad-confirmacion"><strong>{{ proceso.resumen.importables }}</strong> jugadores listos para importar</p>
+              <p class="hu19-cantidad-confirmacion"><strong>{{ proceso.resumen.importables }}</strong> jugador{{ proceso.resumen.importables|pluralize:"es" }} listo{{ proceso.resumen.importables|pluralize }} para importar</p>
               <ul class="hu19-condiciones">
                 <li>Solo se importarán las filas válidas. Las filas con errores quedan para revisión.</li>
                 <li>No se crearán usuarios ni apoderados automáticamente.</li>
@@ -154,7 +154,7 @@
               <form method="post" action="{% url 'importacion_jugadores_confirmar' proceso.id %}">
                 {% csrf_token %}
                 <label class="hu19-consentimiento"><input type="checkbox" name="confirmar" value="si" required> <span>Revisé el resumen y los pendientes y confirmo la importación.</span></label>
-                <button class="boton hu19-boton-confirmar" type="submit">Importar {{ proceso.resumen.importables }} jugadores válidos</button>
+                <button class="boton hu19-boton-confirmar" type="submit">Importar {{ proceso.resumen.importables }} jugador{{ proceso.resumen.importables|pluralize:"es" }} válido{{ proceso.resumen.importables|pluralize }}</button>
               </form>
             {% else %}
               <p class="hu19-sin-importables" role="status">No hay jugadores nuevos válidos para importar. Revisa el reporte y corrige el Excel si corresponde.</p>

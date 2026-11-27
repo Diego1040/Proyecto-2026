@@ -1,4 +1,3 @@
-
 {% extends "base.html" %}
 {% load static %}
 
@@ -14,7 +13,7 @@
 
     <header class="pa-heading">
       <div>
-        <span class="pa-eyebrow">PORTAL DEL APODERADO · HU-04</span>
+        <span class="pa-eyebrow">Portal del apoderado</span>
         <h1>Mi pupilo</h1>
         <p>Consulta la información de los jugadores vinculados a tu cuenta.</p>
       </div>
@@ -26,23 +25,6 @@
       </div>
     </header>
 
-    <nav class="pa-tabs" aria-label="Secciones del apoderado">
-      <a class="pa-tab pa-tab--active"
-         href="{% url 'perfil_apoderado' %}"
-         aria-current="page">Mi pupilo</a>
-
-      <a class="pa-tab" href="{% url 'finanzas:mis_cuotas' %}">
-        Estado de cuenta
-      </a>
-
-      <a class="pa-tab" href="{% url 'deportivo:mis_lesiones' %}">
-        Reportar lesión
-      </a>
-
-      <a class="pa-tab" href="{% url 'agregar_jugador_apoderado' %}">
-        Inscripción
-      </a>
-    </nav>
 
     <section class="pa-section-heading">
       <div>

@@ -2,10 +2,12 @@ from datetime import date
 from decimal import Decimal
 from io import StringIO
 
+from django.contrib.auth.models import Permission
 from django.core.management import call_command
 from django.test import TestCase
+from django.urls import reverse
 
-from usuarios.models import Jugador, PeriodoInactividad
+from usuarios.models import Jugador, PeriodoInactividad, Usuario
 from .models import Cuota
 
 
@@ -19,6 +21,25 @@ class CongelacionCuotasTests(TestCase):
             rama=Jugador.Rama.VARONES,
             estado=Jugador.Estado.ACTIVO,
         )
+
+    def test_acceso_a_recesos_y_desactivacion_de_cuenta(self):
+        operador = Usuario.objects.create_user(rut="11111111-1", is_staff=True)
+        self.client.force_login(operador)
+        recesos = reverse("admin:usuarios_periodoinactividad_changelist")
+        cuentas = reverse("admin:usuarios_usuario_changelist")
+        self.assertNotContains(self.client.get(reverse("inicio")), recesos)
+        self.assertEqual(self.client.get(recesos).status_code, 403)
+        operador.user_permissions.add(Permission.objects.get(
+            content_type__app_label="usuarios", codename="view_periodoinactividad",
+        ))
+        self.assertContains(self.client.get(reverse("inicio")), recesos)
+        self.assertEqual(self.client.get(recesos).status_code, 200)
+        self.assertEqual(self.client.get(cuentas).status_code, 403)
+
+        operador.is_active = False
+        operador.save(update_fields=["is_active"])
+        self.assertRedirects(self.client.get(recesos), reverse("admin:login", query={"next": recesos}))
+        self.assertNotContains(self.client.get(reverse("inicio")), recesos)
 
     def generar_cuotas(self, periodo):
         call_command(

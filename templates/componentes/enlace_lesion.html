@@ -1,0 +1,11 @@
+{% with destino="deportivo:mis_lesiones" texto="Reportar lesión" titulo="Reportar lesión" descripcion="Informar una restricción y consultar su revisión." %}
+{% if user.jugador %}
+  {% include plantilla %}
+{% elif user.apoderado %}
+  {% for vinculo in user.apoderado.vinculos_jugadores.all %}
+    {% if vinculo.activo and vinculo.puede_gestionar %}
+      {% ifchanged %}{% include plantilla %}{% endifchanged %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+{% endwith %}

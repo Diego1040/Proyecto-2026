@@ -36,9 +36,9 @@
     </div>
  
     {% if puede_publicar %}
+      <details class="desplegable"><summary>Publicar evento</summary>
       <form method="post" class="tarjeta formulario-ayllu form-evento" style="padding:20px;margin-top:20px">
         {% csrf_token %}
-        <h2 style="margin-top:0">Publicar evento</h2>
         <div class="rejilla-form">
           <div class="campo">
             <label for="tipo">Tipo</label>
@@ -80,6 +80,7 @@
         </div>
         <button class="boton" type="submit">Publicar evento</button>
       </form>
+      </details>
     {% endif %}
  
     {% if mis_categorias %}
