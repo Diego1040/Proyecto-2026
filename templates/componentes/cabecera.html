@@ -1,0 +1,57 @@
+{% load static %}
+<header class="cabecera-club">
+  <div class="wrap identidad-club">
+    <a class="marca-club" href="{% url 'inicio' %}">
+      <img src="{% static 'img/334327597_217409104155007_5806748613043831828_n.jpg' %}" width="46" height="46" alt="">
+      <span><b>Ayllu Basket</b><small>Club deportivo · Arica</small></span>
+    </a>
+    <div class="cuenta-club">
+      {% if user.get_full_name %}<span>{{ user.get_full_name }}</span>{% endif %}
+      <form action="{% url 'logout' %}" method="post">
+        {% csrf_token %}<button type="submit">Cerrar sesión</button>
+      </form>
+    </div>
+  </div>
+</header>
+<nav class="menu-club" aria-label="Navegación de la cuenta">
+  <div class="wrap">
+    {% include "componentes/enlace_menu.html" with destino="panel" texto="Mi panel" %}
+    {% include "componentes/enlace_menu.html" with destino="editar_mi_cuenta" texto="Datos personales" %}
+    <button class="abrir-menu" type="button" aria-expanded="false" aria-controls="secciones-club" hidden>Secciones <span aria-hidden="true">▾</span></button>
+    <div class="secciones-club" id="secciones-club">
+      {% with grupos=user.groups.all %}
+        {% for grupo in grupos %}
+          {% if grupo.name == "Administración" %}
+            {% include "componentes/enlace_menu.html" with destino="solicitudes_administracion" texto="Solicitudes" %}
+            {% include "componentes/enlace_menu.html" with destino="categorias_jugadores" texto="Categorías" %}
+          {% endif %}
+        {% endfor %}
+        {# Un único menú deportivo para una cuenta con ambos grupos. #}
+        {% for grupo in grupos %}
+          {% if grupo.name == "Entrenador" or grupo.name == "Administración" %}
+            {% ifchanged %}
+              {% include "componentes/enlace_menu.html" with destino="deportivo:entrenamientos" texto="Entrenamientos" %}
+              {% include "componentes/enlace_menu.html" with destino="deportivo:nominas" texto="Nóminas" %}
+              {% include "componentes/enlace_menu.html" with destino="deportivo:revisar_lesiones" texto="Revisar lesiones" %}
+            {% endifchanged %}
+          {% endif %}
+        {% endfor %}
+      {% endwith %}
+      {% if user.jugador %}{% include "componentes/enlace_menu.html" with destino="perfil_jugador" texto="Mi perfil" %}{% endif %}
+      {% if user.apoderado %}{% include "componentes/enlace_menu.html" with destino="perfil_apoderado" texto="Mis jugadores" %}{% endif %}
+      {% if user.jugador or user.apoderado %}
+        {% include "componentes/enlace_menu.html" with destino="finanzas:mis_cuotas" texto="Mis cuotas" %}
+        {% include "componentes/enlace_lesion.html" with plantilla="componentes/enlace_menu.html" %}
+      {% endif %}
+      {% if institucional_acceso_tesoreria %}<a href="{% url 'finanzas:tesoreria' %}">Tesorería</a>{% endif %}
+      {% if institucional_accesos.gestionar_actas %}{% include "componentes/enlace_menu.html" with destino="institucional:actas" texto="Actas" %}{% endif %}
+      {% if institucional_accesos.comite %}{% include "componentes/enlace_menu.html" with destino="institucional:sanciones" texto="Disciplina" %}{% endif %}
+      {% if institucional_disponible or user.jugador or user.apoderado %}
+        {% include "componentes/enlace_menu.html" with destino="deportivo:calendario" texto="Calendario" %}
+      {% endif %}
+      {% if institucional_disponible %}{% include "componentes/enlace_menu.html" with destino="institucional:inicio" texto="Institucional" %}{% endif %}
+      {% if user.is_staff %}{% include "componentes/enlace_menu.html" with destino="admin:index" texto="Administración técnica" %}{% endif %}
+    </div>
+  </div>
+</nav>
+<script src="{% static 'js/menu.js' %}" defer></script>

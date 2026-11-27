@@ -2,12 +2,12 @@
 /* Portal del apoderado - Ayllu Basket */
 
 .portal-apoderado {
-    --pa-orange: #E8552A;
-    --pa-orange-dark: #CC4620;
-    --pa-orange-light: #FCEBE4;
-    --pa-text: #17171A;
-    --pa-muted: #6E6E74;
-    --pa-border: #E1DFDB;
+    --pa-orange: var(--accion);
+    --pa-orange-dark: var(--accion-hover);
+    --pa-orange-light: var(--naranja-suave);
+    --pa-text: var(--tinta);
+    --pa-muted: var(--gris);
+    --pa-border: var(--linea);
     --pa-paper: #F4F3F1;
     padding: 34px 0 70px;
     background: var(--pa-paper);
@@ -15,7 +15,7 @@
 }
 
 .pa-wrap {
-    max-width: 900px;
+    max-width: var(--ancho);
     margin: auto;
     padding: 0 20px;
 }
@@ -66,39 +66,9 @@
     font-weight: 700;
 }
 
-.pa-tabs {
-    display: flex;
-    gap: 4px;
-    overflow-x: auto;
-    background: white;
-    border: 1px solid var(--pa-border);
-    border-radius: 7px 7px 0 0;
-    padding: 0 8px;
-    scrollbar-width: thin;
-}
 
-.pa-tab {
-    flex: 1;
-    min-width: max-content;
-    padding: 15px 14px;
-    text-align: center;
-    text-decoration: none;
-    color: var(--pa-muted);
-    font-size: .91rem;
-    font-weight: 500;
-    border-bottom: 3px solid transparent;
-}
 
-.pa-tab:hover {
-    color: var(--pa-text);
-    text-decoration: none;
-}
 
-.pa-tab--active {
-    color: var(--pa-text);
-    border-bottom-color: var(--pa-orange);
-    font-weight: 700;
-}
 
 .pa-section-heading {
     display: flex;
@@ -401,15 +371,7 @@
         font-size: .82rem;
     }
 
-    .pa-tabs {
-        margin-left: -2px;
-        margin-right: -2px;
-    }
 
-    .pa-tab {
-        padding: 13px 11px;
-        font-size: .83rem;
-    }
 }
 
 @media (max-width: 430px) {

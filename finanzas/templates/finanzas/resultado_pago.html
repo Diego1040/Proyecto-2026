@@ -1,16 +1,7 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Resultado del pago | Ayllu Basket</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 700px; margin: 40px auto; padding: 0 18px; }
-        .resultado { border: 1px solid #ddd; border-radius: 8px; padding: 22px; }
-    </style>
-</head>
-<body>
-    <section class="resultado">
+{% extends "base.html" %}
+{% block titulo %}Resultado del pago — Ayllu Basket{% endblock %}
+{% block contenido %}
+<main class="wrap pagina-operativa"><div class="tarjeta pad resultado-pago"><section class="resultado">
         {% if resultado == "confirmado" %}
             <h1>Pago confirmado</h1>
         {% elif resultado == "rechazado" %}
@@ -32,6 +23,5 @@
         {% endif %}
 
         <p><a href="{% url 'finanzas:mis_cuotas' %}">Volver a mis cuotas</a></p>
-    </section>
-</body>
-</html>
+    </section></div></main>
+{% endblock %}

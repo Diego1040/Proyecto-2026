@@ -1,9 +1,6 @@
-{# NUEVO (HU-07) - Miguel: archivo nuevo completo #}
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<title>Ayllu Basket — Asistencia</title>
-{% include "deportivo/_estilos.html" %}
+{% extends "base.html" %}
+{% block titulo %}Ayllu Basket — Asistencia{% endblock %}
+{% block extra_css %}
 <style>
 .volver{color:var(--gris);font-size:.9rem;text-decoration:none}
 .volver:hover{color:var(--tinta)}
@@ -19,29 +16,20 @@
 .opciones input:checked + label.AUSENTE{background:var(--rojo-fondo);border-color:var(--rojo);color:var(--rojo)}
 .opciones input:checked + label.JUSTIFICADO{background:var(--ambar-fondo);border-color:var(--ambar);color:var(--ambar)}
 .opciones input:focus-visible + label{outline:2px solid var(--naranja);outline-offset:2px}
-.guardar{position:fixed;left:0;right:0;bottom:0;background:var(--blanco);border-top:1px solid var(--linea);padding:12px 0}
+.guardar{position:sticky;bottom:0;background:var(--blanco);border-top:1px solid var(--linea);padding:12px 0 max(12px, env(safe-area-inset-bottom))}
 .guardar .btn{width:100%}
 fieldset{border:0;margin:0;padding:0;min-width:0}
 </style>
-</head>
-<body>
-{% include "deportivo/_barra.html" %}
-
-<main><div class="wrap">
+{% endblock %}
+{% block contenido %}
+<main class="pagina-operativa"><div class="wrap">
 
   <div class="cabecera">
     <a href="{% url 'deportivo:entrenamientos' %}" class="volver">← Entrenamientos</a>
-    <h1 style="margin-top:8px">{{ entrenamiento.nombre }}</h1>
+    <p class="etiqueta-seccion">Registro de asistencia</p>
+    <h1>{{ entrenamiento.nombre }}</h1>
     <p class="sub">{{ entrenamiento.categoria }} · {{ entrenamiento.fecha|date:"d/m/Y" }} · {{ entrenamiento.duracion }} min</p>
   </div>
-
-  {% if messages %}
-    <div class="mensajes">
-      {% for mensaje in messages %}
-        <div class="mensaje {{ mensaje.tags }}">{{ mensaje }}</div>
-      {% endfor %}
-    </div>
-  {% endif %}
 
   {% if antiguo %}
     <div class="aviso">
@@ -63,7 +51,7 @@ fieldset{border:0;margin:0;padding:0;min-width:0}
           <div class="jug">
             <b>{{ j.nombres }} {{ j.apellidos }}</b>
             {% if fila.registro %}
-              <small>Registrado por {{ fila.registro.registrado_por }} · {{ fila.registro.modificado_en|date:"d/m/Y H:i" }}</small>
+              <small>Registrado por {{ fila.registro.registrado_por.get_full_name|default:fila.registro.registrado_por.rut }} · {{ fila.registro.modificado_en|date:"d/m/Y H:i" }}</small>
             {% endif %}
             <div class="opciones" role="radiogroup" aria-label="Asistencia de {{ j.nombres }}">
               {% for valor, texto in estados %}
@@ -92,5 +80,4 @@ fieldset{border:0;margin:0;padding:0;min-width:0}
   </form>
 
 </div></main>
-</body>
-</html>
+{% endblock %}

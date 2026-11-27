@@ -1,6 +1,5 @@
 {% extends "finanzas/tesoreria.html" %}
 {% block titulo %}Avisos de cobranza · Tesorería · Ayllu Basket{% endblock %}
-{% block avatar %}{% endblock %}
 {% block estilos_pagina %}
 <style>
 .cobranza .wrap{max-width:760px}
@@ -12,13 +11,12 @@
 </style>
 {% endblock %}
 {% block contenido_tesoreria %}
-<main class="cobranza"><div class="wrap">
+<main class="pagina-operativa cobranza"><div class="wrap">
   <a href="{% url 'finanzas:tesoreria' %}#morosidad">← Volver a Morosidad</a>
   <header class="cabecera">
     <h1>Avisos de cobranza</h1>
     <p>{{ jugador }}</p>
   </header>
-  {% for mensaje in messages %}<p class="aviso" role="status">{{ mensaje }}</p>{% endfor %}
   <form method="post" class="tarjeta pad">
     {% csrf_token %}
     <h2>Registrar un aviso ya realizado</h2>

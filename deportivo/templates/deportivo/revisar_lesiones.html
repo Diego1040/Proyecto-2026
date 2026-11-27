@@ -1,8 +1,6 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<title>Ayllu Basket — Lesiones</title>
-{% include "deportivo/_estilos.html" %}
+{% extends "base.html" %}
+{% block titulo %}Ayllu Basket — Lesiones{% endblock %}
+{% block extra_css %}
 <style>
 .rep{padding:16px;border-top:1px solid var(--linea)}
 .rep:first-child{border-top:0}
@@ -14,26 +12,16 @@
 .btn.rojo:hover{background:var(--rojo-fondo)}
 .pill.validado{background:var(--verde-fondo);color:var(--verde)}
 .pill.rechazado{background:var(--rojo-fondo);color:var(--rojo)}
-@media(max-width:600px){.decidir{grid-template-columns:1fr 1fr}.decidir textarea{grid-column:1/-1}}
+@media(max-width:600px){.decidir{grid-template-columns:1fr 1fr}.decidir label{grid-column:1/-1}}
 </style>
-</head>
-<body>
-{% include "deportivo/_barra.html" %}
- 
-<main><div class="wrap">
+{% endblock %}
+{% block contenido %}
+<main class="pagina-operativa"><div class="wrap">
  
   <div class="cabecera">
     <h1>Lesiones y restricciones</h1>
     <p class="sub">Revisa los reportes de apoderados y jugadores. Validar un reporte no justifica ausencias ni cambia la asistencia automáticamente.</p>
   </div>
- 
-  {% if messages %}
-    <div class="mensajes">
-      {% for mensaje in messages %}
-        <div class="mensaje {{ mensaje.tags }}">{{ mensaje }}</div>
-      {% endfor %}
-    </div>
-  {% endif %}
  
   <h2>Pendientes ({{ pendientes|length }})</h2>
   <div class="tarjeta">
@@ -46,7 +34,7 @@
         <form method="post" class="decidir">
           {% csrf_token %}
           <input type="hidden" name="reporte_id" value="{{ r.pk }}">
-          <textarea name="comentario" rows="1" style="min-height:44px" placeholder="Comentario (obligatorio si rechazas)"></textarea>
+          <label class="campo">Comentario de revisión<textarea name="comentario" rows="1" style="min-height:44px" placeholder="Comentario (obligatorio si rechazas)"></textarea></label>
           <button class="btn chico" name="decision" value="VALIDADO" type="submit">Validar</button>
           <button class="btn rojo chico" name="decision" value="RECHAZADO" type="submit">Rechazar</button>
         </form>
@@ -72,5 +60,4 @@
   </div>
  
 </div></main>
-</body>
-</html>
+{% endblock %}
