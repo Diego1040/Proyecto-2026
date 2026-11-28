@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block titulo %}Mis datos personales — Ayllu Basket{% endblock %}
+
+{% block extra_css %}
+<style>
+.mi-cuenta{padding:48px 0 72px}
+.mi-cuenta .etiqueta{color:var(--naranja);font-weight:700;text-transform:uppercase;letter-spacing:.08em;font-size:.82rem}
+.mi-cuenta .bajada{color:var(--gris);margin:12px 0 24px;max-width:68ch}
+.mi-cuenta-card{max-width:780px;background:var(--blanco);border:1px solid var(--linea);border-radius:6px;padding:24px}
+.mi-cuenta-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.mi-cuenta-campo label{display:block;font-weight:600;margin-bottom:6px}
+.mi-cuenta-campo input{width:100%;min-height:46px;padding:10px 12px;border:1px solid var(--linea);border-radius:4px;background:#fff;color:var(--tinta);font:inherit}
+.mi-cuenta-campo input:focus{outline:2px solid var(--naranja);outline-offset:2px}
+.mi-cuenta .ayuda{color:var(--gris);font-size:.9rem;margin-top:18px}
+.mi-cuenta .error-campo{display:block;color:#A52A2A;font-size:.88rem;margin-top:5px}
+.mi-cuenta .error-general{color:#A52A2A;margin:0 0 14px}
+.mi-cuenta-acciones{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+.mi-cuenta-seguridad{max-width:780px;margin-top:18px;color:var(--gris);font-size:.92rem}
+.mi-cuenta-seguridad a{color:var(--naranja);font-weight:700}
+@media(max-width:600px){.mi-cuenta{padding-top:34px}.mi-cuenta-grid{grid-template-columns:1fr}.mi-cuenta-card{padding:18px}}
+</style>
+{% endblock %}
+
+{% block contenido %}
+<main class="mi-cuenta">
+  <div class="wrap">
+    <p class="etiqueta">Cuenta personal</p>
+    <h1>Mis datos personales</h1>
+    <p class="bajada">Mantén actualizados tus datos generales de la cuenta. Esta información pertenece a tu usuario de acceso y no modifica las fichas deportivas de jugadores ni los datos propios de los apoderados.</p>
+
+    <section class="mi-cuenta-card" aria-labelledby="titulo-formulario-cuenta">
+      <h2 id="titulo-formulario-cuenta" style="font-size:1.65rem;margin-bottom:20px">Información general</h2>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+          <div class="error-general">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="mi-cuenta-grid">
+          {% for field in form %}
+            <div class="mi-cuenta-campo">
+              {{ field.label_tag }}
+              {{ field }}
+              {% for error in field.errors %}<span class="error-campo">{{ error }}</span>{% endfor %}
+            </div>
+          {% endfor %}
+        </div>
+
+        <p class="ayuda">Tu RUT de acceso no se puede modificar desde esta pantalla. Para cambiar tu contraseña utiliza la opción de seguridad.</p>
+        <div class="mi-cuenta-acciones">
+          <button class="boton" type="submit">Guardar cambios</button>
+          <a class="boton-linea" href="{% url 'panel' %}">Volver a mi cuenta</a>
+        </div>
+      </form>
+    </section>
+
+    <p class="mi-cuenta-seguridad">¿Necesitas actualizar tu contraseña? <a href="{% url 'password_change' %}">Cambiar contraseña</a>.</p>
+  </div>
+</main>
+{% endblock %}
