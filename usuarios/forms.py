@@ -59,6 +59,16 @@ class ImportacionJugadoresForm(forms.Form):
         return archivo
 
 
+# Atributos del campo RUT para el navegador: static/js/rut.js lo formatea
+# como 12.345.678-5 mientras se escribe y revisa el dígito verificador.
+ATRIBUTOS_RUT = {
+    "data-rut": "",
+    "placeholder": "12.345.678-5",
+    "autocomplete": "off",
+    "maxlength": "12",
+}
+
+
 class InscripcionForm(forms.Form):
     nombres = forms.CharField(
         label="Nombres",
@@ -83,11 +93,7 @@ class InscripcionForm(forms.Form):
     rut = forms.CharField(
         label="RUT",
         max_length=12,
-        widget=forms.TextInput(
-            attrs={
-                "placeholder": "21.345.678-9",
-            }
-        ),
+        widget=forms.TextInput(attrs=ATRIBUTOS_RUT),
     )
 
     fecha_nacimiento = forms.DateField(
@@ -242,6 +248,7 @@ class InscripcionJugadorForm(InscripcionForm):
         label="RUT del apoderado",
         max_length=12,
         required=False,
+        widget=forms.TextInput(attrs=ATRIBUTOS_RUT),
     )
 
     nombres_apoderado = forms.CharField(
@@ -620,7 +627,7 @@ class ContactoApoderadoForm(forms.ModelForm):
         return validar_telefono(self.cleaned_data.get("telefono"))
 
 class SolicitudActivacionForm(forms.Form):
-    rut = forms.CharField(label="RUT", max_length=12)
+    rut = forms.CharField(label="RUT", max_length=12, widget=forms.TextInput(attrs=ATRIBUTOS_RUT))
     email = forms.EmailField(label="Correo electrónico")
 
     def clean_rut(self):
