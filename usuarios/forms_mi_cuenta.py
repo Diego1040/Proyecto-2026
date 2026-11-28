@@ -1,6 +1,7 @@
 from django import forms
 
 from .models import Usuario
+from .validators import ATRIBUTOS_TELEFONO, validar_telefono
 
 
 class MiCuentaForm(forms.ModelForm):
@@ -28,11 +29,7 @@ class MiCuentaForm(forms.ModelForm):
                 "autocomplete": "email",
                 "placeholder": "nombre@correo.cl",
             }),
-            "telefono": forms.TextInput(attrs={
-                "autocomplete": "tel",
-                "placeholder": "+56 9 1234 5678",
-                "maxlength": "20",
-            }),
+            "telefono": forms.TextInput(attrs=ATRIBUTOS_TELEFONO),
         }
 
     def clean_first_name(self):
@@ -45,4 +42,4 @@ class MiCuentaForm(forms.ModelForm):
         return self.cleaned_data["email"].strip()
 
     def clean_telefono(self):
-        return self.cleaned_data["telefono"].strip()
+        return validar_telefono(self.cleaned_data["telefono"])

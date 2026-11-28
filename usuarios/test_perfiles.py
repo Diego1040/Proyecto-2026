@@ -188,7 +188,7 @@ class PerfilesBloque13Test(TestCase):
         self.assertRedirects(respuesta, reverse("perfil_jugador"))
 
         jugador = Jugador.objects.get(pk=self.jugador_con_cuenta.pk)
-        self.assertEqual(jugador.telefono, "+56987654321")
+        self.assertEqual(jugador.telefono, "+56 9 8765 4321")
         self.assertEqual(jugador.rut, "12345678-5")
         self.assertEqual(jugador.nombres, "Perfil")
         self.assertEqual(jugador.apellidos, "Jugador")
@@ -337,7 +337,7 @@ class PerfilesBloque13Test(TestCase):
         self.apoderado.refresh_from_db()
         self.usuario_apoderado.refresh_from_db()
         self.usuario_jugador.refresh_from_db()
-        self.assertEqual(self.apoderado.telefono, "+56912345678")
+        self.assertEqual(self.apoderado.telefono, "+56 9 1234 5678")
         self.assertEqual(self.apoderado.email, "nuevo@example.com")
         self.assertEqual(self.usuario_apoderado.email, self.apoderado.email)
         self.assertEqual(self.apoderado.rut, "20347119-K")
