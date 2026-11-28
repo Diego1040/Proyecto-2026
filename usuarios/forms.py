@@ -11,6 +11,11 @@ from .services import calcular_edad, obtener_parentesco_inicial
 from .validators import (
     ERROR_IDENTIDAD_INSCRIPCION, normalizar_rut, validar_identidad_perfil,
     validar_relacion_apoderado_jugador, validar_reutilizacion_apoderado, validar_rut,
+    ATRIBUTOS_TELEFONO,
+    OPCIONES_PARENTESCO,
+    normalizar_parentesco,
+    validar_parentesco,
+    validar_telefono,
 )
 
 
@@ -54,6 +59,16 @@ class ImportacionJugadoresForm(forms.Form):
         return archivo
 
 
+# Atributos del campo RUT para el navegador: static/js/rut.js lo formatea
+# como 12.345.678-5 mientras se escribe y revisa el dígito verificador.
+ATRIBUTOS_RUT = {
+    "data-rut": "",
+    "placeholder": "12.345.678-5",
+    "autocomplete": "off",
+    "maxlength": "12",
+}
+
+
 class InscripcionForm(forms.Form):
     nombres = forms.CharField(
         label="Nombres",
@@ -78,11 +93,7 @@ class InscripcionForm(forms.Form):
     rut = forms.CharField(
         label="RUT",
         max_length=12,
-        widget=forms.TextInput(
-            attrs={
-                "placeholder": "21.345.678-9",
-            }
-        ),
+        widget=forms.TextInput(attrs=ATRIBUTOS_RUT),
     )
 
     fecha_nacimiento = forms.DateField(
@@ -137,11 +148,7 @@ class InscripcionForm(forms.Form):
     parentesco = forms.CharField(
         label="Parentesco con el jugador",
         max_length=50,
-        widget=forms.TextInput(
-            attrs={
-                "placeholder": "Madre, padre, tutor...",
-            }
-        ),
+        widget=forms.Select(choices=OPCIONES_PARENTESCO),
     )
 
     procedencia = forms.ChoiceField(
@@ -215,6 +222,7 @@ class InscripcionJugadorForm(InscripcionForm):
         label="Telefono del jugador",
         max_length=20,
         required=False,
+        widget=forms.TextInput(attrs=ATRIBUTOS_TELEFONO),
     )
 
     email = forms.EmailField(
@@ -233,12 +241,14 @@ class InscripcionJugadorForm(InscripcionForm):
         label="Telefono del contacto de emergencia",
         max_length=20,
         required=False,
+        widget=forms.TextInput(attrs=ATRIBUTOS_TELEFONO),
     )
 
     rut_apoderado = forms.CharField(
         label="RUT del apoderado",
         max_length=12,
         required=False,
+        widget=forms.TextInput(attrs=ATRIBUTOS_RUT),
     )
 
     nombres_apoderado = forms.CharField(
@@ -257,6 +267,7 @@ class InscripcionJugadorForm(InscripcionForm):
         label="Telefono del apoderado",
         max_length=20,
         required=False,
+        widget=forms.TextInput(attrs=ATRIBUTOS_TELEFONO),
     )
 
     email_apoderado = forms.EmailField(
@@ -332,7 +343,10 @@ class InscripcionJugadorForm(InscripcionForm):
 
         if apoderado_existente is not None:
             if not self.is_bound:
-                self.initial.setdefault("parentesco", obtener_parentesco_inicial(apoderado_existente))
+                self.initial.setdefault(
+                    "parentesco",
+                    normalizar_parentesco(obtener_parentesco_inicial(apoderado_existente)),
+                )
             for nombre_campo in (
                 "rut_apoderado",
                 "nombres_apoderado",
@@ -341,6 +355,18 @@ class InscripcionJugadorForm(InscripcionForm):
                 "email_apoderado",
             ):
                 self.fields.pop(nombre_campo, None)
+
+    def clean_telefono(self):
+        return validar_telefono(self.cleaned_data.get("telefono"))
+
+    def clean_parentesco(self):
+        return validar_parentesco(self.cleaned_data.get("parentesco"))
+
+    def clean_telefono_contacto_emergencia(self):
+        return validar_telefono(self.cleaned_data.get("telefono_contacto_emergencia"))
+
+    def clean_telefono_apoderado(self):
+        return validar_telefono(self.cleaned_data.get("telefono_apoderado"))
 
     def clean_rut(self):
         rut = normalizar_rut(
@@ -456,6 +482,9 @@ class InscripcionJugadorForm(InscripcionForm):
 
                 for campo, etiqueta in campos_requeridos:
                     valor = cleaned.get(campo)
+                    if campo in self.errors:
+                        # Ya tiene su propio error (por ejemplo, formato inválido).
+                        continue
 
                     if not valor or (
                         isinstance(valor, str)
@@ -490,7 +519,7 @@ class InscripcionJugadorForm(InscripcionForm):
                     )
                 parentesco = (cleaned.get("parentesco") or "").strip()
 
-                if not parentesco:
+                if not parentesco and "parentesco" not in self.errors:
                     self.add_error(
                         "parentesco",
                         "Debe indicar el parentesco.",
@@ -505,7 +534,7 @@ class InscripcionJugadorForm(InscripcionForm):
 
             telefono_emergencia = (cleaned.get("telefono_contacto_emergencia") or "").strip()
 
-            if not telefono:
+            if not telefono and "telefono" not in self.errors:
                 self.add_error(
                     "telefono",
                     (
@@ -523,7 +552,7 @@ class InscripcionJugadorForm(InscripcionForm):
                     ),
                 )
 
-            if not telefono_emergencia:
+            if not telefono_emergencia and "telefono_contacto_emergencia" not in self.errors:
                 self.add_error(
                     "telefono_contacto_emergencia",
                     (
@@ -535,7 +564,7 @@ class InscripcionJugadorForm(InscripcionForm):
             if self.apoderado_existente is not None:
                 parentesco = (cleaned.get("parentesco") or "").strip()
 
-                if not parentesco:
+                if not parentesco and "parentesco" not in self.errors:
                     self.add_error(
                         "parentesco",
                         (
@@ -576,14 +605,12 @@ class TelefonoJugadorForm(forms.ModelForm):
             "telefono": "Teléfono",
         }
         widgets = {
-            "telefono": forms.TextInput(
-                attrs={
-                    "autocomplete": "tel",
-                    "placeholder": "+56 9 XXXX XXXX",
-                },
-            ),
+            "telefono": forms.TextInput(attrs=ATRIBUTOS_TELEFONO),
         }
 
+
+    def clean_telefono(self):
+        return validar_telefono(self.cleaned_data.get("telefono"))
 
 class ContactoApoderadoForm(forms.ModelForm):
     class Meta:
@@ -591,13 +618,16 @@ class ContactoApoderadoForm(forms.ModelForm):
         fields = ("telefono", "email")
         labels = {"telefono": "Teléfono", "email": "Correo de contacto"}
         widgets = {
-            "telefono": forms.TextInput(attrs={"autocomplete": "tel"}),
+            "telefono": forms.TextInput(attrs=ATRIBUTOS_TELEFONO),
             "email": forms.EmailInput(attrs={"autocomplete": "email"}),
         }
 
 
+    def clean_telefono(self):
+        return validar_telefono(self.cleaned_data.get("telefono"))
+
 class SolicitudActivacionForm(forms.Form):
-    rut = forms.CharField(label="RUT", max_length=12)
+    rut = forms.CharField(label="RUT", max_length=12, widget=forms.TextInput(attrs=ATRIBUTOS_RUT))
     email = forms.EmailField(label="Correo electrónico")
 
     def clean_rut(self):

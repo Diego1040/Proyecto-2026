@@ -15,6 +15,10 @@
     {% if es_administracion %}
       <section class="grupo-tareas">
         <h2>Gestión de jugadores</h2>
+
+        {% if perms.usuarios.view_usuario %}
+        {% include "componentes/acceso.html" with destino="gestion_usuarios" titulo="Gestionar usuarios y cuentas" descripcion="Consultar, buscar y revisar los perfiles de los usuarios." %}
+        {% endif %}
         {% include "componentes/acceso.html" with destino="solicitudes_administracion" titulo="Solicitudes de inscripción" descripcion="Revisar fichas y resolver solicitudes." %}
         {% include "componentes/acceso.html" with destino="categorias_jugadores" titulo="Categorías y excepciones" descripcion="Consultar asignaciones y registrar cambios." %}
         {% include "componentes/acceso.html" with destino="importacion_jugadores" titulo="Importar jugadores históricos" descripcion="Validar una planilla y revisar su resultado." %}

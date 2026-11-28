@@ -29,8 +29,9 @@ fieldset{border:0;margin:0;padding:0;min-width:0;display:grid;gap:14px}
     <fieldset {% if not puede_editar %}disabled{% endif %}>
       <div class="fila">
         <label class="campo">Nombre
-          <input type="text" name="nombre" value="{{ entrenamiento.nombre }}" required>
+          <input type="text" name="nombre" value="{{ entrenamiento.nombre }}" maxlength="{{ largo_nombre }}" required>
         </label>
+        {% if elige_responsable %}
         <label class="campo">Responsable
           <select name="responsable_id" required>
             <option value="">Elige un entrenador</option>
@@ -39,6 +40,11 @@ fieldset{border:0;margin:0;padding:0;min-width:0;display:grid;gap:14px}
             {% endfor %}
           </select>
         </label>
+        {% else %}
+        <div class="campo">Responsable
+          <b>{{ entrenamiento.responsable.get_full_name|default:entrenamiento.responsable.rut }}</b>
+        </div>
+        {% endif %}
       </div>
       <div class="fila">
         <label class="campo">Fecha
@@ -49,10 +55,11 @@ fieldset{border:0;margin:0;padding:0;min-width:0;display:grid;gap:14px}
         </label>
       </div>
       <label class="campo">Duración (minutos)
-        <input type="number" name="duracion" value="{{ entrenamiento.duracion }}" min="1" required>
+        <input type="number" name="duracion" value="{{ entrenamiento.duracion }}" min="{{ duracion_min }}" max="{{ duracion_max }}" step="1" required>
+        <small>Entre {{ duracion_min }} y {{ duracion_max }} minutos.</small>
       </label>
       <label class="campo">Objetivo
-        <textarea name="objetivo" required>{{ entrenamiento.objetivo }}</textarea>
+        <textarea name="objetivo" required maxlength="{{ largo_objetivo }}">{{ entrenamiento.objetivo }}</textarea>
       </label>
       {% if puede_editar %}
         <div><button type="submit" class="btn">Guardar cambios</button></div>

@@ -34,12 +34,12 @@
           </select>
         </label>
         <label class="campo">Nombre
-          <input type="text" name="nombre" placeholder="Entrenamiento técnico" required>
+          <input type="text" name="nombre" placeholder="Entrenamiento técnico" maxlength="{{ largo_nombre }}" required>
         </label>
       </div>
       <div class="fila">
         <label class="campo">Fecha
-          <input type="date" name="fecha" value="{{ hoy|date:'Y-m-d' }}" required>
+          <input type="date" name="fecha" value="{{ hoy|date:'Y-m-d' }}" min="{{ hoy|date:'Y-m-d' }}" required>
         </label>
         <label class="campo">Hora de inicio
           <input type="time" name="hora_inicio" required>
@@ -47,8 +47,10 @@
       </div>
       <div class="fila">
         <label class="campo">Duración (minutos)
-          <input type="number" name="duracion" value="90" min="1" required>
+          <input type="number" name="duracion" value="90" min="{{ duracion_min }}" max="{{ duracion_max }}" step="1" required>
+          <small>Entre {{ duracion_min }} y {{ duracion_max }} minutos.</small>
         </label>
+        {% if elige_responsable %}
         <label class="campo">Responsable
           <select name="responsable_id" required>
             <option value="">Elige un entrenador</option>
@@ -57,9 +59,14 @@
             {% endfor %}
           </select>
         </label>
+        {% else %}
+        <div class="campo">Responsable
+          <b>{{ user.get_full_name|default:user.rut }}</b>
+        </div>
+        {% endif %}
       </div>
       <label class="campo">Objetivo
-        <textarea name="objetivo" required placeholder="Ej: defensa en zona y transición rápida."></textarea>
+        <textarea name="objetivo" required maxlength="{{ largo_objetivo }}" placeholder="Ej: defensa en zona y transición rápida."></textarea>
       </label>
       <div><button type="submit" class="btn">Planificar</button></div>
     </form>

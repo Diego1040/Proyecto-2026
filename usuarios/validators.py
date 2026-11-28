@@ -36,6 +36,45 @@ def normalizar_rut(rut: str) -> str:
     return f"{cuerpo}-{digito_verificador}"
 
 
+ERROR_TELEFONO = (
+    "Ingresa un celular chileno válido: +56 9 seguido de 8 dígitos, por ejemplo +56 9 1234 5678."
+)
+
+# Para el navegador (frontend): mismo criterio que validar_telefono
+PATRON_TELEFONO_HTML = r"\s*(\+?56)?[\s\-.]*9([\s\-.]*\d){8}\s*"
+ATRIBUTOS_TELEFONO = {
+    "autocomplete": "tel",
+    "inputmode": "tel",
+    "placeholder": "+56 9 1234 5678",
+    "pattern": PATRON_TELEFONO_HTML,
+    "title": "Celular chileno: +56 9 1234 5678",
+    "maxlength": "20",
+}
+
+
+def validar_telefono(valor: str) -> str:
+    """
+    Valida un celular chileno y lo devuelve en formato estándar +56 9 XXXX XXXX.
+
+    - Se puede escribir con o sin +56 (912345678, +56912345678, +56 9 1234-5678).
+    - Debe ser un celular: 9 dígitos que comienzan con 9.
+    - Un valor vacío se acepta; la obligatoriedad la decide cada formulario.
+    """
+    valor = (valor or "").strip()
+    if not valor:
+        return valor
+    digitos = re.sub(r"[\s\-().]", "", valor)
+    coincidencia = re.fullmatch(r"(?:\+?56)?(9\d{8})", digitos)
+    if not coincidencia:
+        raise ValidationError(ERROR_TELEFONO)
+    numero = coincidencia.group(1)
+    return f"+56 {numero[0]} {numero[1:5]} {numero[5:]}"
+    digitos = re.sub(r"[\s\-().]", "", valor)
+    if not re.fullmatch(r"(\+?56)?\d{9}", digitos):
+        raise ValidationError(ERROR_TELEFONO)
+    return valor
+
+
 def validar_rut(rut: str) -> None:
     """
     Valida formato y dígito verificador de un RUT chileno.
@@ -114,9 +153,88 @@ def validar_relacion_apoderado_jugador(*, jugador, apoderado):
 
 def validar_reutilizacion_apoderado(apoderado, datos):
     """Un perfil público sin cuenta se reutiliza sin modificar su identidad."""
+    def comparable(campo, valor):
+        valor = (valor or "").strip().casefold()
+        if campo == "telefono":
+            # +56912345678 y +56 9 1234 5678 son el mismo número
+            return re.sub(r"\D", "", valor)[-9:]
+        return valor
+
     if apoderado.usuario_id or any(
-        getattr(apoderado, campo).strip().casefold()
-        != (datos.get(f"{campo}_apoderado") or "").strip().casefold()
+        comparable(campo, getattr(apoderado, campo))
+        != comparable(campo, datos.get(f"{campo}_apoderado"))
         for campo in ("nombres", "apellidos", "telefono", "email")
     ):
         raise ValidationError(ERROR_IDENTIDAD_INSCRIPCION)
+
+
+# Parentesco (observación del docente RF-001): lista cerrada, no texto libre.
+# Se guarda la etiqueta legible, así no hace falta migrar la base de datos.
+PARENTESCOS = (
+    "Madre",
+    "Padre",
+    "Abuelo/a",
+    "Tío/a",
+    "Hermano/a mayor de edad",
+    "Tutor/a legal",
+    "Otro familiar responsable",
+)
+_ALIAS_PARENTESCO = {
+    "tutor": "Tutor/a legal",
+    "tutora": "Tutor/a legal",
+    "abuelo": "Abuelo/a",
+    "abuela": "Abuelo/a",
+    "tio": "Tío/a",
+    "tía": "Tío/a",
+    "tia": "Tío/a",
+    "tío": "Tío/a",
+}
+OPCIONES_PARENTESCO = [("", "Selecciona el parentesco")] + [(p, p) for p in PARENTESCOS]
+ERROR_PARENTESCO = "Selecciona un parentesco de la lista."
+
+
+def normalizar_parentesco(valor):
+    """Devuelve la opción oficial de la lista, o "" si el valor no corresponde."""
+    texto = (valor or "").strip().casefold()
+    if not texto:
+        return ""
+    for opcion in PARENTESCOS:
+        if opcion.casefold() == texto:
+            return opcion
+    return _ALIAS_PARENTESCO.get(texto, "")
+
+
+def validar_parentesco(valor):
+    """Vacío se acepta (la obligatoriedad la decide el formulario); otro valor debe ser de la lista."""
+    if not (valor or "").strip():
+        return ""
+    parentesco = normalizar_parentesco(valor)
+    if not parentesco:
+        raise ValidationError(ERROR_PARENTESCO)
+    return parentesco
+
+
+class ContrasenaRobustaValidator:
+    """
+    Contraseña robusta (observación del docente): además de los validadores
+    de Django (largo mínimo, contraseñas comunes, solo números, parecida al RUT
+    o nombre), exige mayúscula, minúscula, número y símbolo.
+    """
+
+    REGLAS = (
+        (r"[A-ZÁÉÍÓÚÑ]", "una letra mayúscula"),
+        (r"[a-záéíóúñ]", "una letra minúscula"),
+        (r"\d", "un número"),
+        (r"[^A-Za-zÁÉÍÓÚÑáéíóúñ0-9]", "un símbolo (por ejemplo . - _ ! @ #)"),
+    )
+
+    def validate(self, password, user=None):
+        faltan = [texto for patron, texto in self.REGLAS if not re.search(patron, password or "")]
+        if faltan:
+            raise ValidationError(
+                "La contraseña debe tener al menos " + ", ".join(faltan) + ".",
+                code="contrasena_debil",
+            )
+
+    def get_help_text(self):
+        return "Debe incluir mayúscula, minúscula, número y símbolo."
