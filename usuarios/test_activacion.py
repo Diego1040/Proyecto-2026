@@ -129,6 +129,18 @@ class ActivacionCuentasTest(TestCase):
                 })
             self.assertEqual(len(mail.outbox), 0)
 
+    def test_contrasena_debil_no_activa_la_cuenta(self):
+        cuenta, ruta = self.enlace_aprobacion(self.solicitud())
+        primer_paso = self.client.get(ruta)
+        for clave in ("ClaveSegura123", "clave.segura-2026", "Ab1.", "12345678"):
+            with self.subTest(clave=clave):
+                respuesta = self.client.post(primer_paso.url, {"new_password1": clave, "new_password2": clave})
+                self.assertEqual(respuesta.status_code, 200)
+                cuenta.refresh_from_db()
+                self.assertFalse(cuenta.has_usable_password() and cuenta.check_password(clave))
+        formulario = self.client.get(primer_paso.url)
+        self.assertContains(formulario, "mayúscula, minúscula, número y símbolo")
+
     def test_token_valido_activa_y_permita_ingresar_sin_guardar_texto_plano(self):
         cuenta, ruta = self.enlace_aprobacion(self.solicitud())
         primer_paso = self.client.get(ruta)

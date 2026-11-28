@@ -6,6 +6,7 @@
 <section class="acceso"><div class="wrap">
   {% if validlink %}
     <h1>Crear contraseña</h1>
+    <p class="ayuda">Tu contraseña debe tener <b>al menos 8 caracteres</b> e incluir <b>mayúscula, minúscula, número y símbolo</b> (por ejemplo <code>Ayllu.2026</code>). No puede parecerse a tu RUT o nombre, ni ser una clave común.</p>
     <form method="post" novalidate>
       {% csrf_token %}
       {% for field in form %}

@@ -212,3 +212,29 @@ def validar_parentesco(valor):
     if not parentesco:
         raise ValidationError(ERROR_PARENTESCO)
     return parentesco
+
+
+class ContrasenaRobustaValidator:
+    """
+    Contraseña robusta (observación del docente): además de los validadores
+    de Django (largo mínimo, contraseñas comunes, solo números, parecida al RUT
+    o nombre), exige mayúscula, minúscula, número y símbolo.
+    """
+
+    REGLAS = (
+        (r"[A-ZÁÉÍÓÚÑ]", "una letra mayúscula"),
+        (r"[a-záéíóúñ]", "una letra minúscula"),
+        (r"\d", "un número"),
+        (r"[^A-Za-zÁÉÍÓÚÑáéíóúñ0-9]", "un símbolo (por ejemplo . - _ ! @ #)"),
+    )
+
+    def validate(self, password, user=None):
+        faltan = [texto for patron, texto in self.REGLAS if not re.search(patron, password or "")]
+        if faltan:
+            raise ValidationError(
+                "La contraseña debe tener al menos " + ", ".join(faltan) + ".",
+                code="contrasena_debil",
+            )
+
+    def get_help_text(self):
+        return "Debe incluir mayúscula, minúscula, número y símbolo."
