@@ -251,7 +251,8 @@ class PlanificacionTest(TestCase):
         self.assertFalse(Evento.objects.exists())
 
     def test_planifica_con_fecha_hora_objetivo_y_responsable(self):
-        self.client.force_login(self.entrenador)
+        # Administración planifica para otros y elige el responsable
+        self.client.force_login(self.secretaria)
         self.client.post(reverse("deportivo:entrenamientos"), self.datos(responsable_id=self.ayudante.pk))
         e = Entrenamiento.objects.get()
         self.assertEqual(e.hora_inicio.strftime("%H:%M"), "18:30")
@@ -259,15 +260,133 @@ class PlanificacionTest(TestCase):
         self.assertEqual(e.responsable, self.ayudante)
 
     def test_objetivo_hora_y_responsable_son_obligatorios(self):
-        self.client.force_login(self.entrenador)
+        self.client.force_login(self.secretaria)
         for campo in ["objetivo", "hora_inicio", "responsable_id"]:
             self.client.post(reverse("deportivo:entrenamientos"), self.datos(**{campo: ""}))
         self.assertFalse(Entrenamiento.objects.exists())
 
     def test_responsable_debe_ser_de_la_categoria(self):
-        self.client.force_login(self.entrenador)
+        self.client.force_login(self.secretaria)
         self.client.post(reverse("deportivo:entrenamientos"), self.datos(responsable_id=self.otro_entrenador.pk))
         self.assertFalse(Entrenamiento.objects.exists())
+
+    # --- Responsable automático (observación del docente) ---
+
+    def test_entrenador_queda_como_responsable_automaticamente(self):
+        self.client.force_login(self.entrenador)
+        self.client.post(reverse("deportivo:entrenamientos"), self.datos(responsable_id=""))
+        self.assertEqual(Entrenamiento.objects.get().responsable, self.entrenador)
+
+    def test_entrenador_no_puede_poner_a_otro_como_responsable(self):
+        self.client.force_login(self.entrenador)
+        self.client.post(reverse("deportivo:entrenamientos"), self.datos(responsable_id=self.ayudante.pk))
+        self.assertEqual(Entrenamiento.objects.get().responsable, self.entrenador)
+
+    def test_entrenador_no_ve_la_lista_de_responsables(self):
+        self.client.force_login(self.entrenador)
+        respuesta = self.client.get(reverse("deportivo:entrenamientos"))
+        self.assertNotContains(respuesta, 'name="responsable_id"')
+        self.client.force_login(self.secretaria)
+        respuesta = self.client.get(reverse("deportivo:entrenamientos"))
+        self.assertContains(respuesta, 'name="responsable_id"')
+
+    def test_entrenador_al_editar_no_cambia_el_responsable(self):
+        e = self.crear()
+        e.responsable = self.ayudante
+        e.save()
+        self.client.force_login(self.entrenador)
+        self.client.post(
+            reverse("deportivo:editar_planificacion", args=[e.pk]),
+            self.datos(objetivo="Rebote", responsable_id=self.entrenador.pk),
+        )
+        e.refresh_from_db()
+        self.assertEqual(e.objetivo, "Rebote")
+        self.assertEqual(e.responsable, self.ayudante)
+
+    # --- Validaciones de la planificación (backend) ---
+
+    def _no_crea(self, **cambios):
+        self.client.force_login(self.entrenador)
+        respuesta = self.client.post(reverse("deportivo:entrenamientos"), self.datos(**cambios), follow=True)
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertFalse(Entrenamiento.objects.exists(), cambios)
+        return respuesta
+
+    def test_duracion_de_un_millon_no_se_guarda(self):
+        respuesta = self._no_crea(duracion=1000000)
+        self.assertContains(respuesta, "La duración debe estar entre 30 y 180 minutos.")
+
+    def test_duracion_fuera_de_rango_o_no_numerica(self):
+        for valor in [0, -5, 29, 181, "abc", "1e9", "9" * 5000]:
+            self._no_crea(duracion=valor)
+
+    def test_duracion_en_los_limites_si_se_guarda(self):
+        self.client.force_login(self.entrenador)
+        self.client.post(reverse("deportivo:entrenamientos"), self.datos(duracion=30, hora_inicio="10:00"))
+        self.client.post(reverse("deportivo:entrenamientos"), self.datos(duracion=180, hora_inicio="15:00"))
+        self.assertEqual(Entrenamiento.objects.count(), 2)
+
+    def test_no_puede_terminar_despues_de_medianoche(self):
+        respuesta = self._no_crea(hora_inicio="23:00", duracion=90)
+        self.assertContains(respuesta, "debe terminar el mismo día")
+
+    def test_fecha_y_hora_invalidas_no_rompen_el_sistema(self):
+        self._no_crea(fecha="2026-02-31")
+        self._no_crea(fecha="hola")
+        self._no_crea(hora_inicio="25:99")
+
+    def test_no_se_planifica_en_el_pasado_ni_muy_lejos(self):
+        self._no_crea(fecha=(timezone.localdate() - timedelta(days=1)).isoformat())
+        self._no_crea(fecha=(timezone.localdate() + timedelta(days=400)).isoformat())
+
+    def test_textos_demasiado_largos(self):
+        self._no_crea(nombre="x" * 101)
+        self._no_crea(objetivo="x" * 501)
+
+    def test_categoria_invalida_no_rompe_el_sistema(self):
+        self._no_crea(categoria_id="")
+        self._no_crea(categoria_id="abc")
+        self._no_crea(categoria_id=self.u13.pk)  # no es de este entrenador
+
+    def test_no_se_cruzan_dos_entrenamientos_de_la_misma_categoria(self):
+        self.crear()  # 18:30 a 20:00
+        self.client.force_login(self.entrenador)
+        respuesta = self.client.post(
+            reverse("deportivo:entrenamientos"), self.datos(hora_inicio="19:00"), follow=True,
+        )
+        self.assertContains(respuesta, "se cruza con ese horario")
+        self.assertEqual(Entrenamiento.objects.count(), 1)
+        # Justo después del anterior sí se puede
+        self.client.post(reverse("deportivo:entrenamientos"), self.datos(hora_inicio="20:00"))
+        self.assertEqual(Entrenamiento.objects.count(), 2)
+
+    def test_editar_no_choca_consigo_mismo_y_valida_duracion(self):
+        e = self.crear()
+        self.client.force_login(self.entrenador)
+        url = reverse("deportivo:editar_planificacion", args=[e.pk])
+        self.client.post(url, self.datos(hora_inicio="18:45"))
+        e.refresh_from_db()
+        self.assertEqual(e.hora_inicio.strftime("%H:%M"), "18:45")
+        self.client.post(url, self.datos(duracion=1000000))
+        e.refresh_from_db()
+        self.assertEqual(e.duracion, 90)
+
+    def test_entrenador_no_mueve_un_entrenamiento_al_pasado(self):
+        e = self.crear()
+        self.client.force_login(self.entrenador)
+        self.client.post(
+            reverse("deportivo:editar_planificacion", args=[e.pk]),
+            self.datos(fecha=(timezone.localdate() - timedelta(days=3)).isoformat()),
+        )
+        e.refresh_from_db()
+        self.assertGreaterEqual(e.fecha, timezone.localdate())
+
+    def test_formulario_tiene_limites_en_el_navegador(self):
+        self.client.force_login(self.entrenador)
+        respuesta = self.client.get(reverse("deportivo:entrenamientos"))
+        self.assertContains(respuesta, 'min="30" max="180"')
+        self.assertContains(respuesta, 'maxlength="100"')
+        self.assertContains(respuesta, 'maxlength="500"')
 
     def test_crear_queda_en_el_historial(self):
         self.client.force_login(self.entrenador)

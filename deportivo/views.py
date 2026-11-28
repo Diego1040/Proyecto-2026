@@ -29,6 +29,10 @@ from .services import (
     validar_evento,
     PLAZO_EDICION_HORAS,
     actualizar_planificacion,          #HU-06
+    DURACION_MAXIMA_ENTRENAMIENTO,     #HU-06
+    DURACION_MINIMA_ENTRENAMIENTO,     #HU-06
+    LARGO_MAXIMO_NOMBRE_ENTRENAMIENTO, #HU-06
+    LARGO_MAXIMO_OBJETIVO,             #HU-06
     es_entrenamiento_antiguo,
     historial_planificacion,           #HU-06
     jugadores_del_entrenamiento,
@@ -63,10 +67,11 @@ def entrenamientos(request):
     # CREAR ENTRENAMIENTO
 
     if request.method == "POST":
-        categoria = categorias.filter(pk=request.POST.get("categoria_id")).first()
+        categoria_id = request.POST.get("categoria_id", "")
+        categoria = categorias.filter(pk=categoria_id).first() if categoria_id.isdigit() else None
 
         #HU-06
-        datos = _leer_planificacion(request.POST)
+        datos = _leer_planificacion(request.POST, usuario)
         errores = validar_planificacion(categoria=categoria, **datos)
 
         if errores:
@@ -130,7 +135,7 @@ def entrenamientos(request):
         .order_by("first_name", "last_name", "rut")
     )
 
-    return render(request, "deportivo/entrenamientos.html", {"filas": filas, "proximos": proximos, "responsables": responsables, "categorias": categorias, "hoy": hoy, "rol": "Administración" if es_administracion(usuario) else "Entrenador"})
+    return render(request, "deportivo/entrenamientos.html", {"filas": filas, "proximos": proximos, "responsables": responsables, "categorias": categorias, "hoy": hoy, "rol": "Administración" if es_administracion(usuario) else "Entrenador", "elige_responsable": es_administracion(usuario), **_reglas_planificacion()})
 
 @login_required
 def tomar_asistencia(request, pk):
@@ -189,25 +194,47 @@ def tomar_asistencia(request, pk):
 
 
 #HU-06
-def _leer_planificacion(post):
-    """Lee los campos de la planificacion desde el formulario."""
-    try:
-        duracion = int(post.get("duracion", ""))
-    except ValueError:
-        duracion = 0
+def _leer_planificacion(post, usuario, entrenamiento=None):
+    """
+    Lee los campos de la planificacion desde el formulario.
 
-    responsable = (
-        get_user_model().objects.filter(pk=post.get("responsable_id")).first()
-        if post.get("responsable_id") else None
-    )
+    Responsable:
+    - Administración lo elige de la lista (planifica para otros).
+    - Un entrenador NO lo elige: al crear queda él mismo y al editar
+      se mantiene el que ya tenía el entrenamiento.
+    """
+    try:
+        duracion = int(post.get("duracion", "").strip())
+    except (TypeError, ValueError):
+        duracion = None
+
+    if es_administracion(usuario):
+        responsable = (
+            get_user_model().objects.filter(pk=post.get("responsable_id")).first()
+            if str(post.get("responsable_id", "")).isdigit() else None
+        )
+    elif entrenamiento is not None:
+        responsable = entrenamiento.responsable
+    else:
+        responsable = usuario
 
     return {
         "nombre": post.get("nombre", "").strip(),
-        "fecha": post.get("fecha", "").strip(),
-        "hora_inicio": post.get("hora_inicio", "").strip(),
+        "fecha": _leer_fecha(post.get("fecha", "").strip()),
+        "hora_inicio": _leer_hora(post.get("hora_inicio", "").strip()),
         "duracion": duracion,
         "objetivo": post.get("objetivo", "").strip(),
         "responsable": responsable,
+    }
+
+
+def _reglas_planificacion():
+    """Límites que usa el formulario (frontend) y el servidor (backend)."""
+    return {
+        "duracion_min": DURACION_MINIMA_ENTRENAMIENTO,
+        "duracion_max": DURACION_MAXIMA_ENTRENAMIENTO,
+        "largo_nombre": LARGO_MAXIMO_NOMBRE_ENTRENAMIENTO,
+        "largo_objetivo": LARGO_MAXIMO_OBJETIVO,
     }
 
 
@@ -227,8 +254,13 @@ def editar_planificacion(request, pk):
     puede_editar = puede_editar_planificacion(usuario, entrenamiento)
 
     if request.method == "POST":
-        datos = _leer_planificacion(request.POST)
-        errores = validar_planificacion(categoria=entrenamiento.categoria, **datos)
+        datos = _leer_planificacion(request.POST, usuario, entrenamiento)
+        errores = validar_planificacion(
+            categoria=entrenamiento.categoria,
+            permitir_pasado=es_administracion(usuario),
+            excluir_pk=entrenamiento.pk,
+            **datos,
+        )
 
         if errores:
             for error in errores:
@@ -257,6 +289,8 @@ def editar_planificacion(request, pk):
         "historial": historial_planificacion(entrenamiento),
         "puede_editar": puede_editar,
         "rol": "Administración" if es_administracion(usuario) else "Entrenador",
+        "elige_responsable": es_administracion(usuario),
+        **_reglas_planificacion(),
     })
 
 def _leer_fecha(texto):

@@ -1,6 +1,7 @@
 """Regla de negocio de la asistencia"""
 
 from datetime import datetime, time, timedelta
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
@@ -136,26 +137,86 @@ def responsables_posibles(categoria):
         .order_by("first_name", "last_name", "rut")
     )
 
-def validar_planificacion(*, categoria, nombre, fecha, hora_inicio, duracion, objetivo, responsable):
-    """Revisa los datos que son obligatorios de HU-06 y devuelve la lista de errores"""
+# Reglas de la planificación (HU-06). Se pueden ajustar en settings.py
+# sin tocar el código, por ejemplo: AYLLU_DURACION_MAXIMA_ENTRENAMIENTO = 150
+DURACION_MINIMA_ENTRENAMIENTO = getattr(settings, "AYLLU_DURACION_MINIMA_ENTRENAMIENTO", 30)
+DURACION_MAXIMA_ENTRENAMIENTO = getattr(settings, "AYLLU_DURACION_MAXIMA_ENTRENAMIENTO", 180)
+DIAS_MAXIMOS_PLANIFICACION = getattr(settings, "AYLLU_DIAS_MAXIMOS_PLANIFICACION", 365)
+LARGO_MAXIMO_NOMBRE_ENTRENAMIENTO = 100
+LARGO_MAXIMO_OBJETIVO = 500
+
+
+def validar_planificacion(*, categoria, nombre, fecha, hora_inicio, duracion, objetivo, responsable,
+                          permitir_pasado=False, excluir_pk=None):
+    """
+    Revisa los datos de HU-06 y devuelve la lista de errores.
+
+    - fecha y hora_inicio llegan ya convertidas (date / time) o None si eran inválidas.
+    - permitir_pasado: solo Administración puede dejar un entrenamiento en una fecha pasada.
+    - excluir_pk: al editar, el propio entrenamiento no cuenta como choque de horario.
+    """
     errores = []
+    hoy = timezone.localdate()
+
+    if categoria is None:
+        errores.append("Elige una categoría válida.")
 
     if not nombre:
         errores.append("Escribe un nombre para el entrenamiento.")
+    elif len(nombre) > LARGO_MAXIMO_NOMBRE_ENTRENAMIENTO:
+        errores.append(f"El nombre puede tener como máximo {LARGO_MAXIMO_NOMBRE_ENTRENAMIENTO} caracteres.")
+
     if not fecha:
-        errores.append("Indica la fecha del entrenamiento.")
+        errores.append("Indica una fecha válida para el entrenamiento.")
+    elif fecha < hoy and not permitir_pasado:
+        errores.append("No se puede planificar un entrenamiento en una fecha pasada.")
+    elif fecha > hoy + timedelta(days=DIAS_MAXIMOS_PLANIFICACION):
+        errores.append("La fecha está demasiado lejos. Planifica como máximo con un año de anticipación.")
+
     if not hora_inicio:
-        errores.append("Indica la hora del entrenamiento.")
-    if duracion < 1:
-        errores.append("La duración debe ser de al menos 1 minuto.")
+        errores.append("Indica una hora de inicio válida.")
+
+    if duracion is None:
+        errores.append("Indica la duración en minutos (solo números).")
+    elif not DURACION_MINIMA_ENTRENAMIENTO <= duracion <= DURACION_MAXIMA_ENTRENAMIENTO:
+        errores.append(
+            f"La duración debe estar entre {DURACION_MINIMA_ENTRENAMIENTO} y "
+            f"{DURACION_MAXIMA_ENTRENAMIENTO} minutos."
+        )
+    elif hora_inicio:
+        inicio = datetime.combine(hoy, hora_inicio)
+        if (inicio + timedelta(minutes=duracion)).date() != hoy:
+            errores.append("El entrenamiento debe terminar el mismo día (antes de medianoche).")
+
     if not objetivo:
         errores.append("Escribe el objetivo del entrenamiento.")
+    elif len(objetivo) > LARGO_MAXIMO_OBJETIVO:
+        errores.append(f"El objetivo puede tener como máximo {LARGO_MAXIMO_OBJETIVO} caracteres.")
+
     if responsable is None:
         errores.append("Elige el entrenador responsable.")
     elif categoria is not None and not responsables_posibles(categoria).filter(pk=responsable.pk).exists():
         errores.append("El responsable debe ser un entrenador de esa categoría.")
 
+    # Dos entrenamientos de la misma categoría no pueden cruzarse en el horario
+    if not errores and _choca_con_otro_entrenamiento(categoria, fecha, hora_inicio, duracion, excluir_pk):
+        errores.append("Esa categoría ya tiene un entrenamiento que se cruza con ese horario.")
+
     return errores
+
+
+def _choca_con_otro_entrenamiento(categoria, fecha, hora_inicio, duracion, excluir_pk=None):
+    inicio = datetime.combine(fecha, hora_inicio)
+    fin = inicio + timedelta(minutes=duracion)
+    otros = Entrenamiento.objects.filter(categoria=categoria, fecha=fecha).exclude(hora_inicio=None)
+    if excluir_pk:
+        otros = otros.exclude(pk=excluir_pk)
+    for otro in otros:
+        otro_inicio = datetime.combine(fecha, otro.hora_inicio)
+        otro_fin = otro_inicio + timedelta(minutes=otro.duracion)
+        if inicio < otro_fin and otro_inicio < fin:
+            return True
+    return False
 
 def puede_editar_planificacion(usuario, entrenamiento):
     """
