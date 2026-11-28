@@ -166,3 +166,49 @@ def validar_reutilizacion_apoderado(apoderado, datos):
         for campo in ("nombres", "apellidos", "telefono", "email")
     ):
         raise ValidationError(ERROR_IDENTIDAD_INSCRIPCION)
+
+
+# Parentesco (observación del docente RF-001): lista cerrada, no texto libre.
+# Se guarda la etiqueta legible, así no hace falta migrar la base de datos.
+PARENTESCOS = (
+    "Madre",
+    "Padre",
+    "Abuelo/a",
+    "Tío/a",
+    "Hermano/a mayor de edad",
+    "Tutor/a legal",
+    "Otro familiar responsable",
+)
+_ALIAS_PARENTESCO = {
+    "tutor": "Tutor/a legal",
+    "tutora": "Tutor/a legal",
+    "abuelo": "Abuelo/a",
+    "abuela": "Abuelo/a",
+    "tio": "Tío/a",
+    "tía": "Tío/a",
+    "tia": "Tío/a",
+    "tío": "Tío/a",
+}
+OPCIONES_PARENTESCO = [("", "Selecciona el parentesco")] + [(p, p) for p in PARENTESCOS]
+ERROR_PARENTESCO = "Selecciona un parentesco de la lista."
+
+
+def normalizar_parentesco(valor):
+    """Devuelve la opción oficial de la lista, o "" si el valor no corresponde."""
+    texto = (valor or "").strip().casefold()
+    if not texto:
+        return ""
+    for opcion in PARENTESCOS:
+        if opcion.casefold() == texto:
+            return opcion
+    return _ALIAS_PARENTESCO.get(texto, "")
+
+
+def validar_parentesco(valor):
+    """Vacío se acepta (la obligatoriedad la decide el formulario); otro valor debe ser de la lista."""
+    if not (valor or "").strip():
+        return ""
+    parentesco = normalizar_parentesco(valor)
+    if not parentesco:
+        raise ValidationError(ERROR_PARENTESCO)
+    return parentesco

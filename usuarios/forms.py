@@ -12,6 +12,9 @@ from .validators import (
     ERROR_IDENTIDAD_INSCRIPCION, normalizar_rut, validar_identidad_perfil,
     validar_relacion_apoderado_jugador, validar_reutilizacion_apoderado, validar_rut,
     ATRIBUTOS_TELEFONO,
+    OPCIONES_PARENTESCO,
+    normalizar_parentesco,
+    validar_parentesco,
     validar_telefono,
 )
 
@@ -139,11 +142,7 @@ class InscripcionForm(forms.Form):
     parentesco = forms.CharField(
         label="Parentesco con el jugador",
         max_length=50,
-        widget=forms.TextInput(
-            attrs={
-                "placeholder": "Madre, padre, tutor...",
-            }
-        ),
+        widget=forms.Select(choices=OPCIONES_PARENTESCO),
     )
 
     procedencia = forms.ChoiceField(
@@ -337,7 +336,10 @@ class InscripcionJugadorForm(InscripcionForm):
 
         if apoderado_existente is not None:
             if not self.is_bound:
-                self.initial.setdefault("parentesco", obtener_parentesco_inicial(apoderado_existente))
+                self.initial.setdefault(
+                    "parentesco",
+                    normalizar_parentesco(obtener_parentesco_inicial(apoderado_existente)),
+                )
             for nombre_campo in (
                 "rut_apoderado",
                 "nombres_apoderado",
@@ -349,6 +351,9 @@ class InscripcionJugadorForm(InscripcionForm):
 
     def clean_telefono(self):
         return validar_telefono(self.cleaned_data.get("telefono"))
+
+    def clean_parentesco(self):
+        return validar_parentesco(self.cleaned_data.get("parentesco"))
 
     def clean_telefono_contacto_emergencia(self):
         return validar_telefono(self.cleaned_data.get("telefono_contacto_emergencia"))
@@ -507,7 +512,7 @@ class InscripcionJugadorForm(InscripcionForm):
                     )
                 parentesco = (cleaned.get("parentesco") or "").strip()
 
-                if not parentesco:
+                if not parentesco and "parentesco" not in self.errors:
                     self.add_error(
                         "parentesco",
                         "Debe indicar el parentesco.",
@@ -552,7 +557,7 @@ class InscripcionJugadorForm(InscripcionForm):
             if self.apoderado_existente is not None:
                 parentesco = (cleaned.get("parentesco") or "").strip()
 
-                if not parentesco:
+                if not parentesco and "parentesco" not in self.errors:
                     self.add_error(
                         "parentesco",
                         (
