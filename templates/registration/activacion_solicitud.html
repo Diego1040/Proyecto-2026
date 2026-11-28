@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block titulo %}Activar mi cuenta — Ayllu Basket{% endblock %}
 
@@ -21,4 +22,8 @@
     <p class="pie-form"><a href="{% url 'login' %}">Volver al ingreso</a></p>
   </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/rut.js' %}" defer></script>
 {% endblock %}

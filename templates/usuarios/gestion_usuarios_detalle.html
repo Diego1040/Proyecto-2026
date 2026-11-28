@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block titulo %}Detalle de cuenta — Ayllu Basket{% endblock %}
+
+{% block extra_css %}
+<style>
+.detalle-cuenta{padding:48px 0 72px}
+.detalle-cuenta .etiqueta{color:var(--naranja);font-weight:700;text-transform:uppercase;letter-spacing:.08em;font-size:.82rem}
+.detalle-cuenta .bajada{color:var(--gris);margin:12px 0 24px}
+.ficha-cuenta{background:var(--blanco);border:1px solid var(--linea);border-radius:6px;padding:24px;margin-top:22px;max-width:780px}
+.ficha-cuenta h2{font-size:1.7rem;margin-bottom:18px}
+.datos-cuenta{display:grid;grid-template-columns:190px 1fr;gap:12px 18px;margin:0}
+.datos-cuenta dt{color:var(--gris);font-weight:600}
+.datos-cuenta dd{margin:0;overflow-wrap:anywhere}
+.roles-cuenta{display:flex;flex-wrap:wrap;gap:6px}
+.rol-cuenta{display:inline-block;background:var(--naranja-suave);color:var(--naranja-texto);padding:3px 9px;border-radius:3px;font-size:.82rem}
+@media(max-width:560px){.detalle-cuenta{padding-top:34px}.datos-cuenta{grid-template-columns:1fr;gap:3px}.datos-cuenta dd{margin-bottom:12px}}
+</style>
+{% endblock %}
+
+{% block contenido %}
+<main class="detalle-cuenta">
+  <div class="wrap">
+    <p class="etiqueta">Administración · Usuarios</p>
+    <h1>Detalle de cuenta</h1>
+    <p class="bajada">Información de consulta. Los cambios de cuenta no están habilitados en esta etapa.</p>
+    <a class="boton-linea" href="{% url 'gestion_usuarios' %}">Volver al listado</a>
+
+    <section class="ficha-cuenta">
+      <h2>
+        {% if cuenta.jugador %}
+          {{ cuenta.jugador.nombres }} {{ cuenta.jugador.apellidos }}
+        {% elif cuenta.apoderado %}
+          {{ cuenta.apoderado.nombres }} {{ cuenta.apoderado.apellidos }}
+        {% else %}
+          {{ cuenta.get_full_name|default:"Cuenta sin nombre registrado" }}
+        {% endif %}
+      </h2>
+      <dl class="datos-cuenta">
+        <dt>RUT</dt><dd>{{ cuenta.rut }}</dd>
+        <dt>Correo electrónico</dt><dd>{{ cuenta.email|default:"No registrado" }}</dd>
+        <dt>Estado de cuenta</dt>
+        <dd>{% if cuenta.is_active %}Activa{% else %}Inactiva{% endif %}</dd>
+        <dt>Fecha de activación</dt><dd>{{ cuenta.activado_en|date:"d/m/Y H:i"|default:"Sin fecha registrada" }}</dd>
+        <dt>Último ingreso</dt><dd>{{ cuenta.last_login|date:"d/m/Y H:i"|default:"Sin ingresos registrados" }}</dd>
+        <dt>Cuenta creada</dt><dd>{{ cuenta.date_joined|date:"d/m/Y H:i" }}</dd>
+        <dt>Perfiles asociados</dt>
+        <dd>
+          {% if cuenta.jugador %}Jugador{% endif %}
+          {% if cuenta.jugador and cuenta.apoderado %} · {% endif %}
+          {% if cuenta.apoderado %}Apoderado{% endif %}
+          {% if not cuenta.jugador and not cuenta.apoderado %}Sin perfil asociado{% endif %}
+        </dd>
+        <dt>Roles institucionales</dt>
+        <dd>
+          {% if cuenta.grupos_funcionales %}
+            <div class="roles-cuenta">{% for rol in cuenta.grupos_funcionales %}<span class="rol-cuenta">{{ rol.name }}</span>{% endfor %}</div>
+          {% else %}
+            Sin rol institucional asignado
+          {% endif %}
+        </dd>
+      </dl>
+    </section>
+  </div>
+</main>
+{% endblock %}

@@ -16,6 +16,7 @@
 <nav class="menu-club" aria-label="Navegación de la cuenta">
   <div class="wrap">
     {% include "componentes/enlace_menu.html" with destino="panel" texto="Mi panel" %}
+    {% include "componentes/enlace_menu.html" with destino="editar_mi_cuenta" texto="Datos personales" %}
     <button class="abrir-menu" type="button" aria-expanded="false" aria-controls="secciones-club" hidden>Secciones <span aria-hidden="true">▾</span></button>
     <div class="secciones-club" id="secciones-club">
       {% with grupos=user.groups.all %}

@@ -107,6 +107,14 @@ class Usuario(AbstractUser):
         editable=False,
     )
 
+    telefono = models.CharField(
+    "Teléfono personal",
+    max_length=20,
+    blank=True,
+    default="",
+    db_default="",
+)
+
     objects = UsuarioManager()
 
     USERNAME_FIELD = "rut"
